@@ -1,0 +1,11 @@
+<Project>
+  <!--
+    This target is Rust-only. The file is retained for foundation parity and is intentionally
+    inert until a separately approved managed tooling project needs shared repository defaults.
+  -->
+  <PropertyGroup>
+    <Deterministic>true</Deterministic>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+</Project>

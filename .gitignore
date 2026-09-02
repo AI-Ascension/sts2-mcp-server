@@ -1,0 +1,26 @@
+# Rust build output
+/target/
+
+# Local IDE and operating-system files
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Managed build output, if a future tooling project is added
+/bin/
+/obj/
+
+# Local configuration, credentials, and diagnostic output
+.env
+.env.*
+!.env.example
+*.log
+*.trace
+
+# Temporary review and test output
+/tmp/
+/out/
+/artifacts/
