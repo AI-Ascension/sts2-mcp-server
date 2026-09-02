@@ -5,7 +5,7 @@
 | Layer | Purpose | Current state |
 | --- | --- | --- |
 | Unit | policy parsing, diagnostics, framing, validation, and pure mapping decisions | checker and MCP unit tests are present |
-| Protocol | exact MCP serialization and schemas | future; no product contract yet |
+| Protocol | exact MCP serialization and copied POC mapping | two-tool local fixtures are present |
 | Component | bounded transport, mapping, auth, timeout, cancellation, fake gateway | deterministic fake-gateway seam is present; live transport is future |
 | Integration | real disposable process/socket composition | future and authorized only |
 | Host | game-mod/host load and effect behavior | owned by other targets |
@@ -16,15 +16,19 @@
 Run from this target root:
 
 ```bash
+cargo metadata --locked --offline --no-deps --format-version 1
+sha256sum -c --ignore-missing protocol-artifact/poc-v1/SHA256SUMS
+cargo test --locked --offline --package sts2-mcp-server --test artifact
 cargo fmt --all --check
 cargo clippy --workspace --all-targets --all-features --locked -- -D warnings
 cargo test --workspace --all-targets --all-features --locked
 cargo run --locked --package repo-policy -- --strict
 ```
 
-These commands validate the local MCP seam, fake-gateway mapping tests, policy tool, and repository
-structure. They do not establish a live MCP transport, gateway readiness, authentication, game
-compatibility, model/provider behavior, or end-to-end action settlement.
+These commands validate the local MCP seam, copied artifact identity/checksums/schema fixtures, exactly two tool descriptors,
+fixed GET/POST fake-gateway mappings, policy tool, and repository structure. They do not establish a
+live MCP transport, gateway readiness, authentication, game compatibility, model/provider behavior,
+or end-to-end action settlement.
 
 ## Future product tests
 
