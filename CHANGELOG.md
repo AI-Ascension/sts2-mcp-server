@@ -5,6 +5,13 @@ exists.
 
 ## Unreleased
 
+- Added the `runtime-v1-mcp` stdin/stdout process profile, real bounded gateway TCP adapter,
+  allowlisted runtime projection, and structured stale-generation handling for
+  `show_runtime_probe`.
+
+- Confirmed the MCP adapter in the authorized exact-host runtime trace through the gateway and
+  managed game-mod probe.
+
 - Added the offline `sts2-protocol/poc-v1` artifact copy and exactly two MCP tools, `get_state` and
   `submit_action`, with deterministic fixed GET/POST gateway mapping tests. No live transport or
   runtime claim is added.

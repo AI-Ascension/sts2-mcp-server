@@ -49,3 +49,14 @@ evidence level.
 Use `confirmed` only for controlled reproduced behavior, `source-derived` for exact source/config
 facts, `inferred` for reasoned consequences, `proposed` for new decisions, and `unverified` when an
 external precondition or runtime lane is absent. A skipped check remains visible and is not a pass.
+
+## Runtime profile checks
+
+`runtime_mapping.rs` confirms the two runtime tool calls, fixed routes, complete action envelope,
+effect-witness projection, and structured stale-generation preservation. `runtime_artifact.rs`
+confirms the copied manifest and schema bytes. The runtime binary has bounded stdin frame and HTTP
+adapter paths and builds with the pinned Rust toolchain.
+
+A controlled component lane may run this process against the real gateway and a synthetic downstream;
+that confirms MCP/gateway transport and mapping only. It does not prove the managed mod, Godot
+main-thread execution, STS2 host compatibility, a disposable game profile, or gameplay mutation.

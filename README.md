@@ -1,13 +1,13 @@
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/AI-Ascension/.github/main/profile/assets/banner-dark.svg">
-  <img alt="AI-Ascension — Inspect how AI requests to a game get fenced, one Rust contract at a time. Runtime: unverified. Deterministic tests: confirmed." src="https://raw.githubusercontent.com/AI-Ascension/.github/main/profile/assets/banner-light.svg" width="100%">
+  <img alt="AI-Ascension — Inspect how AI requests to a game get fenced, one Rust contract at a time. Bounded runtime host trace confirmed. Deterministic tests: confirmed." src="https://raw.githubusercontent.com/AI-Ascension/.github/main/profile/assets/banner-light.svg" width="100%">
 </picture>
 
 # sts2-mcp-server
 
 > **AI-Ascension · tier 3: thin MCP adapter** — Thin MCP tool adapter that maps approved calls to the authenticated gateway API without bypassing it.
 >
-> **Status:** deterministic in-memory tests `confirmed` at the pinned commit · runtime, host, and game compatibility `unverified` · nothing is live.
+> **Status:** deterministic tests and one bounded `runtime-v1` host trace `confirmed` for STS2 v0.107.1 on Windows x86-64 · broader compatibility and gameplay mutation `unverified`.
 > **Proof:** [45-second browser replay](https://ai-ascension.github.io/proof.html) · [Evidence ledger](https://ai-ascension.github.io/evidence.html) · [This repository on the map](https://ai-ascension.github.io/repositories.html#sts2-mcp-server)
 > **Seam tests:** [crates/mcp-server/tests/seam.rs](crates/mcp-server/tests/seam.rs) — one tool call maps to one gateway request; malformed frames are rejected before the gateway.
 > **Owner:** `sts2-mcp-server` owns the external MCP process boundary: framing, server identity and capabilities, tool schemas, bounded validation, and the versioned mapping to the gateway API.
@@ -15,9 +15,10 @@
 >
 > AI-Ascension is an independent project. It is not affiliated with or endorsed by Mega Crit or Valve and grants no rights to game files, assets, or marks.
 
-Status: Wave 2 codebase initialization. The target-owned MCP seam includes the two-tool `poc-v1`
-mapping and deterministic fake gateway tests; this directory contains a small local MCP seam, not a
-live product service. It is intentionally not initialized as a Git repository.
+Status: Wave 2 codebase initialization plus a bounded runtime process. The target-owned MCP seam
+includes the two-tool `poc-v1` mapping and deterministic fake gateway tests; an authorized runtime
+trace now confirms the same two-tool adapter through the exact recorded STS2 host. It is intentionally
+not initialized as a Git repository.
 
 ## Owner and consumers
 
@@ -44,9 +45,10 @@ versioned gateway descriptions without making the protocol target a second sourc
 
 ## Evidence and provenance
 
-No live MCP transport, gateway connection, game load, host compatibility, provider call, release, or
-deployment has been run from this target. Those boundaries are `unverified`. The local seam
-and fake-gateway tests are deterministic build/test evidence only; they cover exactly two local tools,
+No provider call, release, or deployment has been run from this target. The controlled component
+lane exercises the real MCP process against the attached gateway and a synthetic downstream; the
+authorized runtime lane additionally exercised the exact packaged host path. The local seam and
+fake-gateway tests remain deterministic build/test evidence and cover exactly two local tools,
 fixed GET/POST mappings, and copied-artifact identity. Documentation, policy tooling, and fixtures
 must be original or carry explicit provenance and redistribution rights. Proprietary game files,
 saves, credentials, personal paths, and copied implementation source do not belong here.
@@ -68,3 +70,16 @@ cargo run --locked --package repo-policy -- --strict
 
 These commands prove local framing/mapping tests and repository policy only. They do not prove a live MCP
 transport, gateway readiness, host behavior, lifecycle, model behavior, or end-to-end readiness.
+
+## Runtime process profile
+
+The `sts2-mcp-server` runtime binary reads one bounded newline-delimited JSON-RPC request per stdin
+line and writes one response per stdout line. In its `runtime-v1` profile it exposes exactly
+`get_state` and `submit_action`, maps them to fixed gateway paths, injects the configured bearer and
+lease identity, and projects only allowlisted runtime results. It is a real MCP-to-gateway TCP
+adapter, not an MCP provider and not a direct game client.
+
+The fixed action is the safe host-visible `show_runtime_probe`, with a fresh effect witness and
+stable stale-generation rejection. Runtime artifact metadata is checked before projection. Local
+Rust and mapping tests are confirmed; the authorized host trace confirms the gateway/mod path for
+STS2 v0.107.1 on Windows x86-64. Gameplay mutation and broader compatibility remain `unverified`.

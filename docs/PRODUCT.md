@@ -37,6 +37,21 @@ artifact. MCP-specific catalogs and gateway-specific routing remain local to the
 
 The initialized crate contains a bounded no-I/O frame decoder/encoder seam, an exactly two-tool local
 catalog, fixed GET/POST gateway mappings, a copied-artifact verifier, and an in-memory fake-gateway test
-suite. It does not open a listener, contact a gateway, access a game, call a provider, or implement the
-final product profile. The POC is source/test evidence only; missing runtime or downstream evidence is
-`unverified`, not implied by these tests.
+suite. The separate runtime binary opens only its configured MCP stdin/stdout and gateway TCP
+connection; it does not access a game, call a provider, or own gateway lifecycle. The POC remains
+source/test evidence only, while the component lane and the authorized exact-host runtime lane are
+separately classified.
+
+## `runtime-v1` process profile
+
+The first executable MCP lane is a stdin/stdout JSON-RPC process with a real bounded TCP adapter to
+the gateway. It advertises only `get_state` and `submit_action`, uses fixed gateway paths and
+configured bearer/lease identity, and rejects unsupported arguments, profiles, response metadata,
+and action identities. It never contacts the game listener directly.
+
+`submit_action` admits only `show_runtime_probe`. A successful result carries a fresh observation
+and `status_overlay_visible` witness; a stale result carries the stable
+`sts2.game-mod/stale_generation` rejection. This is an integration probe, not a gameplay mutation.
+The source/build, copied-artifact, mapping, and exact-host downstream gates are `confirmed` for the
+recorded host. The action remains a probe rather than gameplay mutation, and broader compatibility
+is `unverified`.
