@@ -76,6 +76,6 @@ unsafe or host-specific code belongs outside this target and requires a separate
 The active catalog has exactly two tools: `get_state` maps to `GET /v1/instances/{instance}/state`,
 and `submit_action` maps to `POST /v1/instances/{instance}/action`. Both require an explicit instance
 and MCP session. The action tool additionally requires generation, `use_budget`, and bounded units;
-it constructs the complete copied `poc-v1` action-request envelope. Gateway response bodies are
-returned as bounded MCP text, preserving downstream status/error identity without reimplementing
-game legality.
+it constructs the complete copied `poc-v1` action-request envelope. Gateway responses are reduced to
+bounded, allowlisted state/error projections before MCP content is emitted, preserving downstream
+status/error identity without reimplementing game legality.

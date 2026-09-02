@@ -7,11 +7,13 @@ use crate::gateway::{
     Correlation, GatewayAdapter, GatewayError, GatewayMethod, GatewayRequest, GatewayResponse,
 };
 use crate::json::JsonValue;
+use crate::projection::{project_gateway_body, projection_is_error};
 use crate::protocol::{
     INVALID_PARAMS, METHOD_NOT_FOUND, RequestId, RpcError, RpcRequest, RpcResponse,
 };
 use crate::protocol_artifact::{
-    POC_ARTIFACT, POC_GENERATOR, POC_PROTOCOL_VERSION, POC_SCHEMA_DIGEST, POC_SCHEMA_SOURCE,
+    POC_ARTIFACT, POC_GENERATOR, POC_MAX_GENERATION, POC_PROTOCOL_VERSION, POC_SCHEMA_DIGEST,
+    POC_SCHEMA_SOURCE,
 };
 use crate::server::McpServer;
 
@@ -115,8 +117,10 @@ fn action_call<G: GatewayAdapter>(
             return invalid_params(id, message);
         }
     };
-    let Some(generation) = nonnegative_integer(arguments, "generation") else {
-        return invalid_params(id, "generation must be a non-negative integer");
+    let Some(generation) =
+        nonnegative_integer(arguments, "generation").filter(|value| *value <= POC_MAX_GENERATION)
+    else {
+        return invalid_params(id, "generation exceeds the protocol bound");
     };
     let Some(action_id) = non_empty_string(arguments, "action_id") else {
         return invalid_params(id, "action_id must be a non-empty string");
@@ -160,14 +164,21 @@ fn forward<G: GatewayAdapter>(
 }
 
 fn gateway_success(id: RequestId, response: GatewayResponse) -> RpcResponse {
-    let body = response.body.to_json();
+    let Ok(projection) = project_gateway_body(&response.body) else {
+        return tool_result(
+            id,
+            "gateway response has no valid allowlisted state or error projection",
+            true,
+        );
+    };
+    let body = projection.to_json();
     if body.len() > MAX_RESPONSE_BYTES {
         return tool_result(id, "gateway returned an oversized response", true);
     }
     tool_result(
         id,
         body,
-        !(200..300).contains(&response.status) || response_indicates_error(&response.body),
+        !(200..300).contains(&response.status) || projection_is_error(&projection),
     )
 }
 
@@ -196,19 +207,6 @@ fn tool_result(id: RequestId, text: impl Into<String>, is_error: bool) -> RpcRes
             ),
             ("isError".to_owned(), JsonValue::Bool(is_error)),
         ]),
-    )
-}
-
-fn response_indicates_error(body: &JsonValue) -> bool {
-    let Some(object) = body.as_object() else {
-        return false;
-    };
-    matches!(
-        object.get("error_code").and_then(JsonValue::as_string),
-        Some(value) if !value.is_empty()
-    ) || matches!(
-        object.get("status").and_then(JsonValue::as_string),
-        Some("rejected")
     )
 }
 

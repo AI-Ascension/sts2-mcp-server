@@ -4,7 +4,7 @@ use std::collections::BTreeMap;
 
 use sts2_mcp_server::{
     Correlation, GatewayAdapter, GatewayError, GatewayMethod, GatewayRequest, GatewayResponse,
-    JsonValue, MCP_PROTOCOL_VERSION, McpServer, RequestId, verify_poc_artifact,
+    JsonValue, MCP_PROTOCOL_VERSION, McpServer, POC_SCHEMA_DIGEST, RequestId, verify_poc_artifact,
 };
 
 struct FakeGateway {
@@ -64,15 +64,28 @@ fn action_call(id: &str, session: &str, instance: &str, generation: i64, units: 
 
 #[test]
 fn valid_call_maps_to_one_owned_gateway_request() {
-    let mut server = McpServer::new(FakeGateway::success(JsonValue::object([(
-        String::from("phase"),
-        JsonValue::string("ready"),
-    )])));
+    let mut server = McpServer::new(FakeGateway::success(JsonValue::object([
+        (String::from("kind"), JsonValue::string("state_response")),
+        (String::from("generation"), JsonValue::Number(0)),
+        (
+            String::from("observation"),
+            JsonValue::object([
+                (String::from("available_units"), JsonValue::Number(3)),
+                (String::from("settled_effects"), JsonValue::Number(0)),
+            ]),
+        ),
+        (
+            String::from("private_note"),
+            JsonValue::string("do-not-expose"),
+        ),
+    ])));
 
     let response = server.handle_frame(&state_call("request-7", "session-1", "instance-1"));
 
     assert!(response.contains("\"isError\":false"));
-    assert!(response.contains("ready"));
+    assert!(response.contains("available_units"));
+    assert!(!response.contains("do-not-expose"));
+    assert!(!response.contains("private_note"));
     let request = server.gateway().first_request();
     assert_eq!(request.method, GatewayMethod::Get);
     assert_eq!(request.path, "/v1/instances/instance-1/state");
@@ -196,15 +209,40 @@ fn gateway_authorization_error_maps_to_tool_error_result() {
 #[test]
 fn submit_action_maps_to_post_and_preserves_poc_request_fields() -> Result<(), String> {
     verify_poc_artifact().map_err(|error| error.to_string())?;
-    let mut server = McpServer::new(FakeGateway::success(JsonValue::object([(
-        String::from("status"),
-        JsonValue::string("accepted"),
-    )])));
+    let mut server = McpServer::new(FakeGateway::success(JsonValue::object([
+        (String::from("kind"), JsonValue::string("action_response")),
+        (String::from("generation"), JsonValue::Number(1)),
+        (
+            String::from("observation"),
+            JsonValue::object([
+                (String::from("available_units"), JsonValue::Number(2)),
+                (String::from("settled_effects"), JsonValue::Number(1)),
+            ]),
+        ),
+        (
+            String::from("action"),
+            JsonValue::object([
+                (String::from("action_id"), JsonValue::string("use_budget")),
+                (String::from("units"), JsonValue::Number(1)),
+            ]),
+        ),
+        (String::from("status"), JsonValue::string("accepted")),
+        (String::from("error_code"), JsonValue::Null),
+        (
+            String::from("private_note"),
+            JsonValue::string("do-not-expose"),
+        ),
+    ])));
 
     let response = server.handle_frame(&action_call("request-9", "session-4", "instance-1", 0, 1));
 
     if !response.contains("\"isError\":false") {
         return Err(format!("unexpected MCP response: {response}"));
+    }
+    if response.contains("do-not-expose") {
+        return Err(String::from(
+            "gateway private content leaked into MCP result",
+        ));
     }
     let request = server.gateway().first_request();
     assert_eq!(request.method, GatewayMethod::Post);
@@ -225,9 +263,7 @@ fn submit_action_maps_to_post_and_preserves_poc_request_fields() -> Result<(), S
     );
     assert_eq!(
         body.get("schema_digest"),
-        Some(&JsonValue::string(
-            "adb434d119a51b00d968e71bf0bf774f2a08de7c875a5479900aa34b3c02e027"
-        ))
+        Some(&JsonValue::string(POC_SCHEMA_DIGEST))
     );
     assert_eq!(body.get("kind"), Some(&JsonValue::string("action_request")));
     assert_eq!(body.get("generation"), Some(&JsonValue::Number(0)));
@@ -252,6 +288,21 @@ fn zero_unit_action_is_forwarded_for_core_rejection_identity() {
 
     assert!(response.contains("sts2.game-core/zero_units"));
     assert!(response.contains("\"isError\":true"));
+    assert_eq!(server.gateway().requests.len(), 1);
+}
+
+#[test]
+fn gateway_projection_rejects_unallowlisted_only_responses_without_leaking_them() {
+    let mut server = McpServer::new(FakeGateway::success(JsonValue::object([(
+        String::from("private_note"),
+        JsonValue::string("do-not-expose"),
+    )])));
+
+    let response = server.handle_frame(&state_call("request-11", "session-4", "instance-1"));
+
+    assert!(response.contains("\"isError\":true"));
+    assert!(response.contains("allowlisted"));
+    assert!(!response.contains("do-not-expose"));
     assert_eq!(server.gateway().requests.len(), 1);
 }
 

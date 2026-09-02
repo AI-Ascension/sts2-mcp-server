@@ -16,13 +16,16 @@
 Run from this target root:
 
 ```bash
+cargo metadata --locked --offline --no-deps --format-version 1
+sha256sum -c --ignore-missing protocol-artifact/poc-v1/SHA256SUMS
+cargo test --locked --offline --package sts2-mcp-server --test artifact
 cargo fmt --all --check
 cargo clippy --workspace --all-targets --all-features --locked -- -D warnings
 cargo test --workspace --all-targets --all-features --locked
 cargo run --locked --package repo-policy -- --strict
 ```
 
-These commands validate the local MCP seam, copied artifact identity, exactly two tool descriptors,
+These commands validate the local MCP seam, copied artifact identity/checksums/schema fixtures, exactly two tool descriptors,
 fixed GET/POST fake-gateway mappings, policy tool, and repository structure. They do not establish a
 live MCP transport, gateway readiness, authentication, game compatibility, model/provider behavior,
 or end-to-end action settlement.

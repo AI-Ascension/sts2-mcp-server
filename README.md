@@ -41,6 +41,9 @@ The workspace contains the target-owned sts2-mcp-server crate and Rust repo-poli
 directory run:
 
 ```bash
+cargo metadata --locked --no-deps --format-version 1
+sha256sum -c --ignore-missing protocol-artifact/poc-v1/SHA256SUMS
+cargo test --locked --package sts2-mcp-server --test artifact
 cargo fmt --all --check
 cargo clippy --workspace --all-targets --all-features --locked -- -D warnings
 cargo test --workspace --all-targets --all-features --locked

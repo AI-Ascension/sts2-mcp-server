@@ -10,11 +10,11 @@ runtime compatibility.
 
 ## Automation
 
-`ci.yml` runs formatting, Clippy, MCP/policy Rust tests, and strict repository policy for the initialized
-workspace. `policy.yml` independently runs the policy tool and strict check. Both use `pull_request` and pushes to
-`main`, top-level `contents: read`, explicit timeouts, cancellation only for superseded pull requests,
-and an immutable checkout action commit. Neither workflow uses secrets, trusted self-hosted runners,
-write tokens, or `pull_request_target`.
+`ci.yml` runs locked metadata, copied-POC checksum/schema validation, formatting, Clippy, MCP/policy Rust
+tests, and strict repository policy for the initialized workspace. `policy.yml` independently runs the policy
+tool and strict check. Both use `pull_request` and pushes to `main`, top-level `contents: read`, explicit
+timeouts, cancellation only for superseded pull requests, and an immutable checkout action commit. Neither
+workflow uses secrets, trusted self-hosted runners, write tokens, or `pull_request_target`.
 
 The workflows remain intentionally small and under the repository budget. Product, gateway, security,
 compatibility, and release jobs are added only when their command and evidence artifact exist. A job must
