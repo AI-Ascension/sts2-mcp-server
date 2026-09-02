@@ -2,7 +2,8 @@
 
 use crate::json::JsonValue;
 
-pub const GET_STATE_TOOL: &str = "sts2_get_state";
+pub const GET_STATE_TOOL: &str = "get_state";
+pub const SUBMIT_ACTION_TOOL: &str = "submit_action";
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ToolDescriptor {
@@ -42,7 +43,7 @@ pub struct ToolCatalog {
 
 impl Default for ToolCatalog {
     fn default() -> Self {
-        let schema = JsonValue::object([
+        let state_schema = JsonValue::object([
             ("type".to_owned(), JsonValue::string("object")),
             (
                 "required".to_owned(),
@@ -71,16 +72,79 @@ impl Default for ToolCatalog {
                 ]),
             ),
         ]);
+        let action_schema = JsonValue::object([
+            ("type".to_owned(), JsonValue::string("object")),
+            (
+                "required".to_owned(),
+                JsonValue::Array(vec![
+                    JsonValue::string("instance_id"),
+                    JsonValue::string("mcp_session_id"),
+                    JsonValue::string("generation"),
+                    JsonValue::string("action_id"),
+                    JsonValue::string("units"),
+                ]),
+            ),
+            (
+                "properties".to_owned(),
+                JsonValue::object([
+                    (
+                        "instance_id".to_owned(),
+                        JsonValue::object([
+                            ("type".to_owned(), JsonValue::string("string")),
+                            ("minLength".to_owned(), JsonValue::Number(1)),
+                        ]),
+                    ),
+                    (
+                        "mcp_session_id".to_owned(),
+                        JsonValue::object([
+                            ("type".to_owned(), JsonValue::string("string")),
+                            ("minLength".to_owned(), JsonValue::Number(1)),
+                        ]),
+                    ),
+                    (
+                        "generation".to_owned(),
+                        JsonValue::object([
+                            ("type".to_owned(), JsonValue::string("integer")),
+                            ("minimum".to_owned(), JsonValue::Number(0)),
+                        ]),
+                    ),
+                    (
+                        "action_id".to_owned(),
+                        JsonValue::object([
+                            ("type".to_owned(), JsonValue::string("string")),
+                            ("const".to_owned(), JsonValue::string("use_budget")),
+                        ]),
+                    ),
+                    (
+                        "units".to_owned(),
+                        JsonValue::object([
+                            ("type".to_owned(), JsonValue::string("integer")),
+                            ("minimum".to_owned(), JsonValue::Number(0)),
+                            ("maximum".to_owned(), JsonValue::Number(8)),
+                        ]),
+                    ),
+                ]),
+            ),
+        ]);
         Self {
-            revision: String::from("wave2-local-v0"),
+            revision: String::from("poc-v1-mcp"),
             capabilities: CapabilityCatalog::default(),
-            tools: vec![ToolDescriptor {
-                name: String::from(GET_STATE_TOOL),
-                description: String::from(
-                    "Read one bounded state snapshot through the authenticated gateway.",
-                ),
-                input_schema: schema,
-            }],
+            tools: vec![
+                ToolDescriptor {
+                    name: String::from(GET_STATE_TOOL),
+                    description: String::from(
+                        "Read one bounded state snapshot through the authenticated gateway.",
+                    ),
+                    input_schema: state_schema,
+                },
+                ToolDescriptor {
+                    name: String::from(SUBMIT_ACTION_TOOL),
+                    description: String::from(
+                        "Submit one typed use_budget action through the authenticated gateway.",
+                    ),
+                    input_schema: action_schema,
+                },
+            ],
         }
     }
 }

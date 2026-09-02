@@ -5,6 +5,7 @@
 ```text
 .
 ├── crates/mcp-server/       target-owned MCP framing/catalog/mapping crate
+├── protocol-artifact/poc-v1 offline release-like artifact copy used by the POC mapping
 ├── schemas/mcp/             reserved MCP schema location; no accepted schema yet
 ├── conformance/             reserved implementation-neutral fixture location
 ├── tests/                   reserved product/component test location
@@ -15,8 +16,8 @@
 ```
 
 The schemas/mcp, conformance, and root tests directories remain reserved for owner-local contract
-artifacts. The MCP crate is non-empty and has a focused integration test; no placeholder crate was added
-elsewhere.
+artifacts. The MCP crate is non-empty and has focused framing and POC mapping tests; no placeholder
+crate was added elsewhere.
 
 ## Responsibility map
 

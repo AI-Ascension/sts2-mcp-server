@@ -8,6 +8,7 @@ use crate::protocol::RequestId;
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum GatewayMethod {
     Get,
+    Post,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]

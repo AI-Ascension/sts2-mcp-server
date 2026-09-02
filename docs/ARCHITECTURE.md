@@ -35,7 +35,8 @@ MCP boundary:  MCP server -> declared gateway-interface descriptions
 The current project decision recognizes `sts2-protocol` as the sixth target. Its scope is limited to
 genuinely shared language- and transport-neutral contracts with named consumers and conformance. It
 must not contain MCP tool catalogs, gateway routes, host objects, game rules, model behavior, or provider
-semantics. Boundary-specific MCP contracts remain owned here.
+semantics. Boundary-specific MCP contracts remain owned here. The POC consumes a checked-in artifact
+copy and does not link a protocol implementation crate.
 
 The MCP package may eventually consume an accepted protocol package and a versioned gateway description,
 but it must not depend on game-mod implementation, host assemblies, gateway registry internals, or
@@ -69,3 +70,12 @@ operation completed; completion must be represented by the approved downstream c
 Transport, protocol, mapping, and test-support modules should each have one cohesive responsibility.
 Pure validation and mapping must remain testable without a process, socket, clock, or game. Any future
 unsafe or host-specific code belongs outside this target and requires a separate decision.
+
+## Minimal POC mapping
+
+The active catalog has exactly two tools: `get_state` maps to `GET /v1/instances/{instance}/state`,
+and `submit_action` maps to `POST /v1/instances/{instance}/action`. Both require an explicit instance
+and MCP session. The action tool additionally requires generation, `use_budget`, and bounded units;
+it constructs the complete copied `poc-v1` action-request envelope. Gateway response bodies are
+returned as bounded MCP text, preserving downstream status/error identity without reimplementing
+game legality.

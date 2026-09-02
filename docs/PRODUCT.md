@@ -30,14 +30,13 @@ the game-mod and host remain the authoritative game boundary.
 - model/provider calls, prompts, scoring, replay, trajectories, datasets, or artifact ownership; and
 - trust based only on localhost, a tool description, a client request ID, or a successful acknowledgement.
 
-The sixth accepted target, `sts2-protocol`, may own only genuinely shared language- and transport-neutral
-contracts. MCP-specific catalogs and gateway-specific routing remain local to their boundary owners.
+The sixth accepted target, `sts2-protocol`, owns the shared `poc-v1` language- and transport-neutral
+artifact. MCP-specific catalogs and gateway-specific routing remain local to their boundary owners.
 
 ## Wave 2 initialization status
 
-The initialized crate contains a bounded no-I/O frame decoder/encoder seam, a local capability/tool
-catalog with one read-only preparation entry, a gateway adapter trait, and an in-memory fake-gateway test
+The initialized crate contains a bounded no-I/O frame decoder/encoder seam, an exactly two-tool local
+catalog, fixed GET/POST gateway mappings, a copied-artifact verifier, and an in-memory fake-gateway test
 suite. It does not open a listener, contact a gateway, access a game, call a provider, or implement the
-final product profile. Before any public contract is accepted, document its owner, consumers, version,
-provenance, mapping, security impact, deterministic fixtures, and conformance oracle. Missing runtime or
-downstream evidence is `unverified`, not implied by these tests.
+final product profile. The POC is source/test evidence only; missing runtime or downstream evidence is
+`unverified`, not implied by these tests.
