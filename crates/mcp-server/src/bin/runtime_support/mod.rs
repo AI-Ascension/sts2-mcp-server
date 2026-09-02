@@ -7,7 +7,7 @@ use std::time::Duration;
 
 use sts2_mcp_server::{
     GatewayAdapter, GatewayError, GatewayMethod, GatewayRequest, GatewayResponse, JsonValue,
-    parse_json,
+    RUNTIME_V2_PROTOCOL_VERSION, ToolCatalog, parse_json,
 };
 
 const MAX_BODY_BYTES: usize = 16 * 1024;
@@ -83,22 +83,38 @@ impl RuntimeGatewayAdapter {
         let JsonValue::Object(mut object) = value.clone() else {
             return Err(GatewayError::Rejected);
         };
-        object.insert(
-            String::from("instance_id"),
-            JsonValue::string(self.config.instance_id.as_str()),
+        let is_runtime_v2 = matches!(
+            object.get("protocol_version"),
+            Some(JsonValue::String(value)) if value == RUNTIME_V2_PROTOCOL_VERSION
         );
-        object.insert(
-            String::from("session_id"),
-            JsonValue::string(self.config.session_id.as_str()),
-        );
-        object.insert(
-            String::from("lease_id"),
-            JsonValue::string(self.config.lease_id.as_str()),
-        );
-        object.insert(
-            String::from("lease_epoch"),
-            JsonValue::Number(self.config.lease_epoch),
-        );
+        if is_runtime_v2 {
+            if object.get("instance_id")
+                != Some(&JsonValue::string(self.config.instance_id.as_str()))
+                || object.get("session_id")
+                    != Some(&JsonValue::string(self.config.session_id.as_str()))
+                || object.get("lease_id") != Some(&JsonValue::string(self.config.lease_id.as_str()))
+                || object.get("lease_epoch") != Some(&JsonValue::Number(self.config.lease_epoch))
+            {
+                return Err(GatewayError::Rejected);
+            }
+        } else {
+            object.insert(
+                String::from("instance_id"),
+                JsonValue::string(self.config.instance_id.as_str()),
+            );
+            object.insert(
+                String::from("session_id"),
+                JsonValue::string(self.config.session_id.as_str()),
+            );
+            object.insert(
+                String::from("lease_id"),
+                JsonValue::string(self.config.lease_id.as_str()),
+            );
+            object.insert(
+                String::from("lease_epoch"),
+                JsonValue::Number(self.config.lease_epoch),
+            );
+        }
         let encoded = JsonValue::Object(object).to_json();
         if encoded.len() > MAX_BODY_BYTES {
             return Err(GatewayError::Rejected);
@@ -200,7 +216,10 @@ fn is_runtime_result(body: &JsonValue) -> bool {
             if matches!(
                 object.get("kind"),
                 Some(JsonValue::String(kind))
-                    if matches!(kind.as_str(), "state_response" | "action_response")
+                    if matches!(
+                        kind.as_str(),
+                        "state_response" | "action_response" | "reconcile_response"
+                    )
             )
     )
 }
@@ -336,4 +355,128 @@ fn safe_header_value(value: &str) -> bool {
         && value.bytes().all(|byte| {
             byte.is_ascii_alphanumeric() || matches!(byte, b'-' | b'_' | b'.' | b':' | b'/')
         })
+}
+
+pub(crate) fn catalog_from_environment() -> Result<ToolCatalog, String> {
+    let profile = match std::env::var("STS2_RUNTIME_PROFILE") {
+        Ok(value) => Some(value),
+        Err(std::env::VarError::NotPresent) => None,
+        Err(std::env::VarError::NotUnicode(_)) => {
+            return Err(String::from("STS2_RUNTIME_PROFILE is not valid UTF-8"));
+        }
+    };
+    catalog_for_profile(profile.as_deref())
+}
+
+pub(crate) fn catalog_for_profile(profile: Option<&str>) -> Result<ToolCatalog, String> {
+    match profile.unwrap_or("runtime-v1") {
+        "runtime-v1" => Ok(ToolCatalog::runtime_v1()),
+        "runtime-v2" => Ok(ToolCatalog::runtime_v2()),
+        value => Err(format!(
+            "STS2_RUNTIME_PROFILE must be runtime-v1 or runtime-v2, got {value}"
+        )),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use sts2_mcp_server::Correlation;
+
+    fn config() -> RuntimeConfig {
+        RuntimeConfig {
+            gateway_address: String::from("127.0.0.1:15525"),
+            gateway_token: String::from("token"),
+            instance_id: String::from("configured-instance"),
+            caller_id: String::from("caller"),
+            session_id: String::from("configured-session"),
+            lease_id: String::from("configured-lease"),
+            lease_epoch: 7,
+        }
+    }
+
+    fn request(body: JsonValue) -> GatewayRequest {
+        GatewayRequest {
+            method: GatewayMethod::Post,
+            path: String::from("/v2/instances/configured-instance/action"),
+            headers: BTreeMap::new(),
+            body: Some(body),
+            correlation: Correlation {
+                mcp_session_id: String::from("configured-session"),
+                mcp_request_id: sts2_mcp_server::RequestId::String(String::from("request-1")),
+            },
+        }
+    }
+
+    #[test]
+    fn runtime_profile_defaults_to_v1_and_selects_v2_explicitly() {
+        assert_eq!(
+            catalog_for_profile(None).map(|catalog| catalog.revision),
+            Ok(String::from("runtime-v1-mcp"))
+        );
+        assert_eq!(
+            catalog_for_profile(Some("runtime-v2")).map(|catalog| catalog.revision),
+            Ok(String::from("runtime-v2-mcp"))
+        );
+        assert!(catalog_for_profile(Some("runtime-v3")).is_err());
+    }
+
+    #[test]
+    fn runtime_result_recognition_includes_reconcile_response() {
+        for kind in ["state_response", "action_response", "reconcile_response"] {
+            assert!(is_runtime_result(&JsonValue::object([(
+                String::from("kind"),
+                JsonValue::string(kind),
+            )])));
+        }
+        assert!(!is_runtime_result(&JsonValue::object([(
+            String::from("kind"),
+            JsonValue::string("reconcile_request"),
+        )])));
+    }
+
+    #[test]
+    fn runtime_v2_body_rejects_wrong_supplied_identity_before_forwarding() {
+        let adapter = RuntimeGatewayAdapter::new(config());
+        let body = JsonValue::object([
+            (
+                String::from("protocol_version"),
+                JsonValue::string(RUNTIME_V2_PROTOCOL_VERSION),
+            ),
+            (
+                String::from("instance_id"),
+                JsonValue::string("wrong-instance"),
+            ),
+            (
+                String::from("session_id"),
+                JsonValue::string("configured-session"),
+            ),
+            (
+                String::from("lease_id"),
+                JsonValue::string("configured-lease"),
+            ),
+            (String::from("lease_epoch"), JsonValue::Number(7)),
+        ]);
+        assert_eq!(adapter.body(&request(body)), Err(GatewayError::Rejected));
+    }
+
+    #[test]
+    fn runtime_v1_body_keeps_configured_identity_injection() {
+        let adapter = RuntimeGatewayAdapter::new(config());
+        let body = JsonValue::object([
+            (
+                String::from("protocol_version"),
+                JsonValue::string("runtime-v1"),
+            ),
+            (
+                String::from("instance_id"),
+                JsonValue::string("wrong-instance"),
+            ),
+        ]);
+        let encoded = adapter.body(&request(body));
+        assert!(encoded.is_ok());
+        let encoded = encoded.unwrap_or_default();
+        assert!(String::from_utf8_lossy(&encoded).contains("configured-instance"));
+        assert!(!String::from_utf8_lossy(&encoded).contains("wrong-instance"));
+    }
 }

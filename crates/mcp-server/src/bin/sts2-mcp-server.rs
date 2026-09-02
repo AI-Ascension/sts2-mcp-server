@@ -2,7 +2,7 @@
 
 use std::io::{self, BufRead, Write};
 
-use sts2_mcp_server::{MAX_FRAME_BYTES, McpServer, ToolCatalog};
+use sts2_mcp_server::{MAX_FRAME_BYTES, McpServer};
 
 #[path = "runtime_support/mod.rs"]
 mod runtime_http;
@@ -16,8 +16,9 @@ fn main() {
 
 fn run() -> Result<(), String> {
     let config = runtime_http::RuntimeConfig::from_environment()?;
+    let catalog = runtime_http::catalog_from_environment()?;
     let adapter = runtime_http::RuntimeGatewayAdapter::new(config);
-    let mut server = McpServer::with_catalog(adapter, ToolCatalog::runtime_v1());
+    let mut server = McpServer::with_catalog(adapter, catalog);
     let stdin = io::stdin();
     let mut input = stdin.lock();
     let stdout = io::stdout();

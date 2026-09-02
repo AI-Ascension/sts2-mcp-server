@@ -18,11 +18,16 @@ use crate::server::McpServer;
 mod response;
 #[path = "mapping_runtime.rs"]
 mod runtime;
+#[path = "mapping_runtime_v2.rs"]
+mod runtime_v2;
 
 pub(crate) fn tools_call<G: GatewayAdapter>(
     server: &mut McpServer<G>,
     request: RpcRequest,
 ) -> RpcResponse {
+    if server.catalog.is_runtime_v2() {
+        return runtime_v2::tools_call(server, request);
+    }
     let Some(params) = request.params.as_object() else {
         return RpcResponse::failure(
             Some(request.id),

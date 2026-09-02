@@ -98,3 +98,24 @@ adapter: it owns neither gateway lease authority nor host/game semantics.
 The process and mapping are source/build-confirmed. The authorized host trace confirms the real
 downstream listener and safe probe effect for STS2 v0.107.1 on Windows x86-64; the action is not a
 gameplay mutation and broader host compatibility remains unverified.
+
+## Runtime-v2 gameplay-operation mapping
+
+The executable defaults to `runtime-v1`; `STS2_RUNTIME_PROFILE=runtime-v2` selects the separate
+`runtime-v2-mcp` catalog, while unknown profile values fail closed. The v2 catalog contains exactly
+`get_state`, `submit_action`, and `reconcile_action`. `get_state` maps to
+`GET /v2/instances/{id}/state`, `submit_action` maps to `POST /v2/instances/{id}/action`, and
+`reconcile_action` maps to `GET /v2/instances/{id}/operations/{operation_id}` with no
+mutation-bearing body. Submission accepts only bounded instance/session/lease context, a stable
+`operation_id`, the expected `generation`, and the fixed `end_turn` action with no action arguments.
+Reconciliation requires the same bounded context and operation identity and cannot dispatch a second
+mutation.
+
+Both calls carry the complete copied Runtime-v2 envelope to the gateway. Valid gateway results retain
+all envelope fields, including the exact status and `error_code` origin. Unknown envelope fields,
+metadata drift, identity mismatch, invalid fences, malformed observations, and invalid witnesses fail
+closed. Timeout or disconnect uncertainty becomes an `unknown` result and is never retried automatically.
+`accepted` is admission only. The adapter reports `settled` only for a downstream `settled` result with
+a fresh observation whose generation advances past the request and a matching `turn_end_settled`
+witness. It does not infer settlement from an acknowledgement or from a state read. Runtime-v1's
+catalog, routes, and projection remain unchanged.
