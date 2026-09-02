@@ -36,7 +36,7 @@ impl JsonValue {
         }
     }
 
-    pub(crate) fn to_json(&self) -> String {
+    pub fn to_json(&self) -> String {
         let mut output = String::new();
         self.write_json(&mut output);
         output
@@ -126,6 +126,11 @@ pub(crate) fn parse(input: &str) -> Result<JsonValue, JsonParseError> {
         ));
     }
     Ok(value)
+}
+
+/// Parses one bounded JSON value for an owner-local runtime adapter.
+pub fn parse_json(input: &str) -> Result<JsonValue, String> {
+    parse(input).map_err(|error| error.to_string())
 }
 
 struct Parser<'a> {

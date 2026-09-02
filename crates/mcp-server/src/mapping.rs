@@ -3,11 +3,8 @@
 use std::collections::BTreeMap;
 
 use crate::catalog::{GET_STATE_TOOL, MAX_IDENTIFIER_BYTES, SUBMIT_ACTION_TOOL};
-use crate::gateway::{
-    Correlation, GatewayAdapter, GatewayError, GatewayMethod, GatewayRequest, GatewayResponse,
-};
+use crate::gateway::{Correlation, GatewayAdapter, GatewayError, GatewayMethod, GatewayRequest};
 use crate::json::JsonValue;
-use crate::projection::{project_gateway_body, projection_is_error};
 use crate::protocol::{
     INVALID_PARAMS, METHOD_NOT_FOUND, RequestId, RpcError, RpcRequest, RpcResponse,
 };
@@ -17,7 +14,10 @@ use crate::protocol_artifact::{
 };
 use crate::server::McpServer;
 
-const MAX_RESPONSE_BYTES: usize = 16 * 1024;
+#[path = "mapping_response.rs"]
+mod response;
+#[path = "mapping_runtime.rs"]
+mod runtime;
 
 pub(crate) fn tools_call<G: GatewayAdapter>(
     server: &mut McpServer<G>,
@@ -57,6 +57,9 @@ pub(crate) fn tools_call<G: GatewayAdapter>(
     }
     match tool_name {
         GET_STATE_TOOL => state_call(server, id, arguments, &correlation_id),
+        SUBMIT_ACTION_TOOL if server.catalog.is_runtime_v1() => {
+            runtime::runtime_action_call(server, id, arguments, &correlation_id)
+        }
         SUBMIT_ACTION_TOOL => action_call(server, id, arguments, &correlation_id),
         _ => RpcResponse::failure(
             Some(id),
@@ -158,28 +161,9 @@ fn forward<G: GatewayAdapter>(
     request: GatewayRequest,
 ) -> RpcResponse {
     match server.gateway.forward(request) {
-        Ok(response) => gateway_success(id, response),
+        Ok(response) => response::gateway_success(id, response, server.catalog.is_runtime_v1()),
         Err(error) => gateway_error_result(id, error),
     }
-}
-
-fn gateway_success(id: RequestId, response: GatewayResponse) -> RpcResponse {
-    let Ok(projection) = project_gateway_body(&response.body) else {
-        return tool_result(
-            id,
-            "gateway response has no valid allowlisted state or error projection",
-            true,
-        );
-    };
-    let body = projection.to_json();
-    if body.len() > MAX_RESPONSE_BYTES {
-        return tool_result(id, "gateway returned an oversized response", true);
-    }
-    tool_result(
-        id,
-        body,
-        !(200..300).contains(&response.status) || projection_is_error(&projection),
-    )
 }
 
 fn gateway_error_result(id: RequestId, error: GatewayError) -> RpcResponse {

@@ -20,6 +20,22 @@ pub const POC_MAX_SETTLED_EFFECTS: u16 = 4;
 /// Maximum generation that remains exact in common JSON number implementations.
 pub const POC_MAX_GENERATION: i64 = 9_007_199_254_740_991;
 
+/// Version consumed by the live runtime mapping.
+pub const RUNTIME_PROTOCOL_VERSION: &str = "runtime-v1";
+/// Schema digest supplied by the runtime protocol artifact.
+pub const RUNTIME_SCHEMA_DIGEST: &str =
+    "a76086d7a68668fd4cff53999369d2b450b0d6623827393882f458f2aa1f93eb";
+/// Release-like runtime artifact identity.
+pub const RUNTIME_ARTIFACT: &str = "sts2-protocol/runtime-v1";
+/// Runtime schema provenance source.
+pub const RUNTIME_SCHEMA_SOURCE: &str = "schemas/runtime-v1.schema.json";
+/// Runtime schema generator.
+pub const RUNTIME_GENERATOR: &str = "hand-authored";
+/// Fixed action admitted by the runtime mapping.
+pub const RUNTIME_ACTION_ID: &str = "show_runtime_probe";
+/// Maximum runtime generation represented exactly in JSON.
+pub const RUNTIME_MAX_GENERATION: i64 = 9_007_199_254_740_991;
+
 const MANIFEST: &str = include_str!("../../../protocol-artifact/poc-v1/manifest.json");
 const SCHEMA: &str = include_str!("../../../protocol-artifact/poc-v1/schema.json");
 const STATE_REQUEST: &str =

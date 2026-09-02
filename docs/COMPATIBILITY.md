@@ -9,11 +9,11 @@ does.
 
 ## Current baseline
 
-The target now contains a local no-I/O package and fake-gateway tests, but no accepted external MCP
-profile, frozen gateway API, live server, or public release. It consumes the protocol owner's
-release-like POC artifact copy. The current status is
-`unverified` for live MCP framing, gateway mapping, authentication, downstream readiness,
-timeout/cancellation behavior, and end-to-end operation effects.
+The target contains the local no-I/O package, a runtime MCP process, and fake-gateway tests. The
+`runtime-v1-mcp` profile is accepted for this bounded sprint and consumes the protocol owner's
+release-like runtime artifact copy. A controlled component lane exercises the real MCP process and
+gateway adapter with a synthetic downstream, and an authorized host lane exercises the exact
+packaged downstream. Provider behavior and public release remain `unverified`.
 
 | Subject | Current identity | Evidence |
 | --- | --- | --- |
@@ -45,5 +45,16 @@ separate namespaces with explicit mappings and restart/reuse rules.
 - `host`: game-mod proves its own host boundary; this target does not establish it;
 - `end-to-end`: the complete client-to-game path proves effect settlement and fresh observation.
 
-Only the first level is available during this preparation wave. A parse, build, handshake, or tool
-acknowledgement must not be reported as downstream readiness or game-effect compatibility.
+Build-only and controlled component/gateway levels are available for this sprint's bounded lane. A
+parse, build, handshake, or tool acknowledgement must not be reported as downstream host readiness
+or game-effect compatibility. The real component trace does not promote the managed mod or game
+host to a supported compatibility row.
+
+## Runtime profile row
+
+| MCP profile | Gateway path | Current evidence | Result |
+| --- | --- | --- | --- |
+| `runtime-v1-mcp` | Fixed single-instance runtime adapter | Mapping/artifact tests, component TCP lane, and authorized exact-host trace | Bounded adapter path confirmed for STS2 v0.107.1 Windows x86-64; gameplay and broader compatibility unverified |
+
+The profile is compatible only with the exact `runtime-v1` schema digest and allowlisted response
+shapes. It makes no provider, game-rule, gameplay mutation, or release-support claim.

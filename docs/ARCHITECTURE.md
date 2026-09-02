@@ -79,3 +79,22 @@ and MCP session. The action tool additionally requires generation, `use_budget`,
 it constructs the complete copied `poc-v1` action-request envelope. Gateway responses are reduced to
 bounded, allowlisted state/error projections before MCP content is emitted, preserving downstream
 status/error identity without reimplementing game legality.
+
+## Runtime process adapter
+
+ADR 0007 adds `crates/mcp-server/src/bin/sts2-mcp-server.rs` as an owner-local process entry point.
+Its transport is bounded newline-delimited JSON-RPC over stdin/stdout. The runtime catalog is a
+separate `runtime-v1-mcp` profile containing exactly `get_state` and `submit_action`. Mapping builds
+only fixed gateway paths and a complete runtime action envelope; the TCP adapter rewrites the
+configured instance/session/lease values, injects bearer authentication and correlation headers,
+and rejects malformed or oversized responses.
+
+Before a result reaches MCP content, the adapter requires the runtime protocol version, exact schema
+digest, provenance, identity, epoch, generation, action, observation, status, and witness shape to
+match its allowlist. HTTP 409 is preserved when it contains a valid structured stale action result;
+other gateway rejection statuses become sanitized MCP tool errors. The MCP server remains a thin
+adapter: it owns neither gateway lease authority nor host/game semantics.
+
+The process and mapping are source/build-confirmed. The authorized host trace confirms the real
+downstream listener and safe probe effect for STS2 v0.107.1 on Windows x86-64; the action is not a
+gameplay mutation and broader host compatibility remains unverified.

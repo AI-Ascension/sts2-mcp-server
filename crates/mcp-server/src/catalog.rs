@@ -2,6 +2,9 @@
 
 use crate::json::JsonValue;
 
+#[path = "catalog_runtime.rs"]
+mod runtime;
+
 pub const GET_STATE_TOOL: &str = "get_state";
 pub const SUBMIT_ACTION_TOOL: &str = "submit_action";
 pub(crate) const MAX_IDENTIFIER_BYTES: usize = 128;
@@ -177,6 +180,15 @@ impl Default for ToolCatalog {
 }
 
 impl ToolCatalog {
+    #[must_use]
+    pub fn runtime_v1() -> Self {
+        runtime::build()
+    }
+
+    pub(crate) fn is_runtime_v1(&self) -> bool {
+        self.revision == "runtime-v1-mcp"
+    }
+
     pub(crate) fn descriptor(&self, name: &str) -> Option<&ToolDescriptor> {
         self.tools.iter().find(|tool| tool.name == name)
     }

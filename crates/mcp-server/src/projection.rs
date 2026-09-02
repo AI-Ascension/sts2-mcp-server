@@ -4,6 +4,11 @@ use crate::catalog::MAX_IDENTIFIER_BYTES;
 use crate::json::JsonValue;
 use crate::protocol_artifact::{POC_MAX_GENERATION, POC_MAX_SETTLED_EFFECTS, POC_MAX_UNITS};
 
+#[path = "projection_runtime.rs"]
+mod runtime;
+
+pub(crate) use runtime::project_runtime_gateway_body;
+
 const ALLOWLISTED_KINDS: [&str; 4] = [
     "state_request",
     "state_response",
