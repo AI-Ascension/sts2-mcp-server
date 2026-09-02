@@ -12,13 +12,20 @@ mutation ran.
 
 ## Decision
 
-Add a separate `runtime-v2-mcp` catalog with exactly two tools:
+Add a separate `runtime-v2-mcp` catalog with exactly three tools:
 
-- `submit_action` maps one bounded request to the fixed action route. It accepts only `end_turn`, no
+- `get_state` maps a bounded state request to `GET /v2/instances/{instance_id}/state` and preserves
+  the complete `state_response` envelope.
+
+- `submit_action` maps one bounded request to `POST /v2/instances/{instance_id}/action`. It accepts only `end_turn`, no
   action arguments, and requires `operation_id`, instance/session/lease identity, lease epoch, and
   expected generation.
-- `reconcile_action` maps one bounded request to the fixed reconciliation route. It requires the same
-  `operation_id` and does not dispatch a mutation.
+- `reconcile_action` maps one bounded request to
+  `GET /v2/instances/{instance_id}/operations/{operation_id}` with no mutation-bearing body. It
+  requires the same `operation_id` and does not dispatch a mutation.
+
+The executable selects Runtime-v1 by default for backward compatibility. `STS2_RUNTIME_PROFILE=runtime-v2`
+selects the v2 catalog; unsupported profile values fail closed.
 
 The mapping constructs the complete Runtime-v2 envelope using the copied artifact metadata. Gateway
 responses are accepted only when their metadata, identity, kind, operation, bounded observation, and
@@ -30,6 +37,9 @@ admission and state reads do not imply settlement.
 
 Runtime-v1 catalog and behavior remain unchanged. Idempotency storage, lease authority, host state,
 game rules, and settlement authority remain downstream responsibilities.
+The runtime HTTP adapter rejects Runtime-v2 request envelopes whose instance, session, lease, or
+lease-epoch identity disagrees with configured identity before any network connection. Runtime-v1
+retains its historical configured-identity injection behavior.
 
 ## Evidence and limits
 

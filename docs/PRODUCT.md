@@ -58,10 +58,14 @@ is `unverified`.
 
 ## `runtime-v2-mcp` gameplay-operation profile
 
-The additive Runtime-v2 profile exposes only `submit_action` and `reconcile_action`. It admits exactly
-the argument-free `end_turn` action and requires a bounded operation identity plus explicit lease and
-generation fences. `reconcile_action` carries the same `operation_id` to resolve an uncertain prior
-submission; it is not a retry path.
+The executable defaults to Runtime-v1 for backward compatibility. `STS2_RUNTIME_PROFILE=runtime-v2`
+selects the additive Runtime-v2 profile; invalid values fail closed. It exposes `get_state`,
+`submit_action`, and `reconcile_action`. State maps to `GET /v2/instances/{id}/state`; submission
+maps to `POST /v2/instances/{id}/action`; reconciliation maps to
+`GET /v2/instances/{id}/operations/{operation_id}` and has no mutation-bearing body. Submission
+admits exactly the argument-free `end_turn` action and requires a bounded operation identity plus
+explicit lease and generation fences. Reconciliation carries the same `operation_id` to resolve an
+uncertain prior submission; it is not a retry path.
 
 The MCP layer preserves the complete versioned envelope and exact downstream status/error origin.
 Timeout or disconnect uncertainty maps to `unknown`, not a generic successful or retryable result.

@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 
 use super::{
-    CapabilityCatalog, INSTANCE_ID_PATTERN, MAX_IDENTIFIER_BYTES, RECONCILE_ACTION_TOOL,
-    SESSION_ID_PATTERN, SUBMIT_ACTION_TOOL, ToolDescriptor,
+    CapabilityCatalog, GET_STATE_TOOL, INSTANCE_ID_PATTERN, MAX_IDENTIFIER_BYTES,
+    RECONCILE_ACTION_TOOL, SESSION_ID_PATTERN, SUBMIT_ACTION_TOOL, ToolDescriptor,
 };
 use crate::json::JsonValue;
 use crate::protocol_artifact_runtime_v2::{RUNTIME_V2_ACTION_ID, RUNTIME_V2_MAX_GENERATION};
@@ -10,12 +10,20 @@ use crate::protocol_artifact_runtime_v2::{RUNTIME_V2_ACTION_ID, RUNTIME_V2_MAX_G
 const OPERATION_ID_PATTERN: &str = "^[A-Za-z0-9_.:/-]{1,128}$";
 
 pub(super) fn build() -> super::ToolCatalog {
+    let state_schema = state_schema();
     let action_schema = action_schema();
     let reconcile_schema = reconcile_schema();
     super::ToolCatalog {
         revision: String::from("runtime-v2-mcp"),
         capabilities: CapabilityCatalog::default(),
         tools: vec![
+            ToolDescriptor {
+                name: String::from(GET_STATE_TOOL),
+                description: String::from(
+                    "Read one bounded Runtime-v2 state snapshot through the authenticated gateway.",
+                ),
+                input_schema: state_schema,
+            },
             ToolDescriptor {
                 name: String::from(SUBMIT_ACTION_TOOL),
                 description: String::from(
@@ -32,6 +40,29 @@ pub(super) fn build() -> super::ToolCatalog {
             },
         ],
     }
+}
+
+fn state_schema() -> JsonValue {
+    JsonValue::object([
+        (String::from("type"), JsonValue::string("object")),
+        (String::from("additionalProperties"), JsonValue::Bool(false)),
+        (
+            String::from("required"),
+            JsonValue::Array(
+                [
+                    "instance_id",
+                    "mcp_session_id",
+                    "lease_id",
+                    "lease_epoch",
+                    "generation",
+                ]
+                .into_iter()
+                .map(JsonValue::string)
+                .collect(),
+            ),
+        ),
+        (String::from("properties"), context_properties(false, false)),
+    ])
 }
 
 fn action_schema() -> JsonValue {
@@ -55,7 +86,7 @@ fn action_schema() -> JsonValue {
                 .collect(),
             ),
         ),
-        (String::from("properties"), context_properties(true)),
+        (String::from("properties"), context_properties(true, true)),
     ])
 }
 
@@ -79,11 +110,11 @@ fn reconcile_schema() -> JsonValue {
                 .collect(),
             ),
         ),
-        (String::from("properties"), context_properties(false)),
+        (String::from("properties"), context_properties(true, false)),
     ])
 }
 
-fn context_properties(include_action: bool) -> JsonValue {
+fn context_properties(include_operation: bool, include_action: bool) -> JsonValue {
     let mut properties = vec![
         (
             String::from("instance_id"),
@@ -105,11 +136,13 @@ fn context_properties(include_action: bool) -> JsonValue {
             String::from("generation"),
             bounded_counter(RUNTIME_V2_MAX_GENERATION),
         ),
-        (
+    ];
+    if include_operation {
+        properties.push((
             String::from("operation_id"),
             bounded_string(OPERATION_ID_PATTERN),
-        ),
-    ];
+        ));
+    }
     if include_action {
         properties.push((
             String::from("action_id"),

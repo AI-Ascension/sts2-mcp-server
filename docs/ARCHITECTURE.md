@@ -101,11 +101,15 @@ gameplay mutation and broader host compatibility remains unverified.
 
 ## Runtime-v2 gameplay-operation mapping
 
-The separate `runtime-v2-mcp` catalog contains exactly `submit_action` and `reconcile_action`.
-`submit_action` accepts only bounded instance/session/lease context, a stable `operation_id`, the
-expected `generation`, and the fixed `end_turn` action with no action arguments. `reconcile_action`
-requires the same bounded context and `operation_id`; it maps to a fixed reconciliation request and
-cannot dispatch a second mutation.
+The executable defaults to `runtime-v1`; `STS2_RUNTIME_PROFILE=runtime-v2` selects the separate
+`runtime-v2-mcp` catalog, while unknown profile values fail closed. The v2 catalog contains exactly
+`get_state`, `submit_action`, and `reconcile_action`. `get_state` maps to
+`GET /v2/instances/{id}/state`, `submit_action` maps to `POST /v2/instances/{id}/action`, and
+`reconcile_action` maps to `GET /v2/instances/{id}/operations/{operation_id}` with no
+mutation-bearing body. Submission accepts only bounded instance/session/lease context, a stable
+`operation_id`, the expected `generation`, and the fixed `end_turn` action with no action arguments.
+Reconciliation requires the same bounded context and operation identity and cannot dispatch a second
+mutation.
 
 Both calls carry the complete copied Runtime-v2 envelope to the gateway. Valid gateway results retain
 all envelope fields, including the exact status and `error_code` origin. Unknown envelope fields,

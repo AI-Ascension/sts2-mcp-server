@@ -11,6 +11,7 @@ pub(super) fn request_envelope(
     context: &RuntimeV2Context,
     kind: &str,
     include_action: bool,
+    include_operation: bool,
 ) -> JsonValue {
     JsonValue::object([
         (
@@ -49,7 +50,11 @@ pub(super) fn request_envelope(
         (String::from("kind"), JsonValue::string(kind)),
         (
             String::from("operation_id"),
-            JsonValue::string(context.operation_id.as_str()),
+            if include_operation {
+                JsonValue::string(context.operation_id.as_str())
+            } else {
+                JsonValue::Null
+            },
         ),
         (String::from("observation"), JsonValue::Null),
         (

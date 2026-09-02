@@ -84,10 +84,14 @@ line and writes one response per stdout line. In its `runtime-v1` profile it exp
 lease identity, and projects only allowlisted runtime results. It is a real MCP-to-gateway TCP
 adapter, not an MCP provider and not a direct game client.
 
-The separate `runtime-v2-mcp` catalog exposes only `submit_action` and `reconcile_action`. The former
-admits exactly `end_turn` with a required stable `operation_id`, lease epoch, and expected generation;
-the latter reconciles that same operation identity without dispatching another mutation. Both map to
-fixed gateway paths and carry the complete Runtime-v2 envelope. Gateway timeout/disconnect uncertainty
+The executable defaults to `runtime-v1`; setting `STS2_RUNTIME_PROFILE=runtime-v2` selects the
+separate `runtime-v2-mcp` catalog, and any other profile value fails closed. Runtime-v2 exposes
+`get_state`, `submit_action`, and `reconcile_action`: state maps to `GET /v2/instances/{id}/state`,
+submission maps to `POST /v2/instances/{id}/action`, and reconciliation maps to
+`GET /v2/instances/{id}/operations/{operation_id}` with no mutation-bearing body. Submission admits
+exactly `end_turn` with a required stable `operation_id`, lease epoch, and expected generation; the
+reconcile call uses that same operation identity without dispatching another mutation. Both profiles
+keep their existing v1/v2 mapping paths isolated. Runtime-v2 gateway timeout/disconnect uncertainty
 is surfaced as `unknown` with no automatic retry. `accepted` is admission only; MCP reports `settled`
 only when the downstream result contains a fresh post-action observation and the
 `turn_end_settled` witness. MCP does not infer settlement from an acknowledgement or a state read.

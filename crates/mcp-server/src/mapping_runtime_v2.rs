@@ -25,6 +25,13 @@ const SUBMIT_ARGUMENTS: [&str; 7] = [
     "operation_id",
     "action_id",
 ];
+const STATE_ARGUMENTS: [&str; 5] = [
+    "instance_id",
+    "mcp_session_id",
+    "lease_id",
+    "lease_epoch",
+    "generation",
+];
 const RECONCILE_ARGUMENTS: [&str; 6] = [
     "instance_id",
     "mcp_session_id",
@@ -71,6 +78,7 @@ pub(super) fn tools_call<G: GatewayAdapter>(
         );
     }
     match tool_name {
+        crate::catalog::GET_STATE_TOOL => state_call(server, id, arguments, &correlation_id),
         crate::catalog::SUBMIT_ACTION_TOOL => {
             submit_action_call(server, id, arguments, &correlation_id)
         }
@@ -87,6 +95,37 @@ pub(super) fn tools_call<G: GatewayAdapter>(
     }
 }
 
+fn state_call<G: GatewayAdapter>(
+    server: &mut McpServer<G>,
+    id: RequestId,
+    arguments: &BTreeMap<String, JsonValue>,
+    correlation_id: &str,
+) -> RpcResponse {
+    if !super::has_only_arguments(arguments, &STATE_ARGUMENTS) {
+        return invalid_params(id, "get_state arguments contain an unsupported field");
+    }
+    let context = match request_context(arguments, correlation_id, false) {
+        Ok(context) => context,
+        Err(message) => return invalid_params(id, message),
+    };
+    let gateway_request = GatewayRequest {
+        method: GatewayMethod::Get,
+        path: format!("/v2/instances/{}/state", context.instance_id),
+        headers: headers(&context.session_id, correlation_id),
+        body: Some(envelope::request_envelope(
+            &context,
+            "state_request",
+            false,
+            false,
+        )),
+        correlation: Correlation {
+            mcp_session_id: context.session_id.clone(),
+            mcp_request_id: id.clone(),
+        },
+    };
+    forward(server, id, gateway_request, &context, "state_response")
+}
+
 fn submit_action_call<G: GatewayAdapter>(
     server: &mut McpServer<G>,
     id: RequestId,
@@ -96,7 +135,7 @@ fn submit_action_call<G: GatewayAdapter>(
     if !super::has_only_arguments(arguments, &SUBMIT_ARGUMENTS) {
         return invalid_params(id, "submit_action arguments contain an unsupported field");
     }
-    let context = match request_context(arguments, correlation_id) {
+    let context = match request_context(arguments, correlation_id, true) {
         Ok(context) => context,
         Err(message) => return invalid_params(id, message),
     };
@@ -108,9 +147,14 @@ fn submit_action_call<G: GatewayAdapter>(
     }
     let gateway_request = GatewayRequest {
         method: GatewayMethod::Post,
-        path: format!("/v1/instances/{}/action", context.instance_id),
+        path: format!("/v2/instances/{}/action", context.instance_id),
         headers: headers(&context.session_id, correlation_id),
-        body: Some(envelope::request_envelope(&context, "action_request", true)),
+        body: Some(envelope::request_envelope(
+            &context,
+            "action_request",
+            true,
+            true,
+        )),
         correlation: Correlation {
             mcp_session_id: context.session_id.clone(),
             mcp_request_id: id.clone(),
@@ -131,19 +175,18 @@ fn reconcile_action_call<G: GatewayAdapter>(
             "reconcile_action arguments contain an unsupported field",
         );
     }
-    let context = match request_context(arguments, correlation_id) {
+    let context = match request_context(arguments, correlation_id, true) {
         Ok(context) => context,
         Err(message) => return invalid_params(id, message),
     };
     let gateway_request = GatewayRequest {
-        method: GatewayMethod::Post,
-        path: format!("/v1/instances/{}/reconcile", context.instance_id),
+        method: GatewayMethod::Get,
+        path: format!(
+            "/v2/instances/{}/operations/{}",
+            context.instance_id, context.operation_id
+        ),
         headers: headers(&context.session_id, correlation_id),
-        body: Some(envelope::request_envelope(
-            &context,
-            "reconcile_request",
-            false,
-        )),
+        body: None,
         correlation: Correlation {
             mcp_session_id: context.session_id.clone(),
             mcp_request_id: id.clone(),
@@ -155,6 +198,7 @@ fn reconcile_action_call<G: GatewayAdapter>(
 fn request_context(
     arguments: &BTreeMap<String, JsonValue>,
     correlation_id: &str,
+    require_operation_id: bool,
 ) -> Result<RuntimeV2Context, &'static str> {
     let instance_id = non_empty_string(arguments, "instance_id")
         .ok_or("instance_id must be a non-empty string")?;
@@ -162,12 +206,16 @@ fn request_context(
         .ok_or("mcp_session_id must be a non-empty string")?;
     let lease_id =
         non_empty_string(arguments, "lease_id").ok_or("lease_id must be a non-empty string")?;
-    let operation_id = non_empty_string(arguments, "operation_id")
-        .ok_or("operation_id is required for Runtime-v2 operations")?;
+    let operation_id = if require_operation_id {
+        non_empty_string(arguments, "operation_id")
+            .ok_or("operation_id is required for Runtime-v2 operations")?
+    } else {
+        ""
+    };
     if !super::safe_segment(instance_id)
         || !super::safe_header_value(session_id)
         || !super::safe_header_value(lease_id)
-        || !super::safe_header_value(operation_id)
+        || (require_operation_id && !super::safe_header_value(operation_id))
     {
         return Err("Runtime-v2 identity is unsafe or oversized");
     }

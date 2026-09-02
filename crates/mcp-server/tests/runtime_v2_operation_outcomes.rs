@@ -4,7 +4,7 @@
 #[allow(dead_code)]
 mod support;
 
-use sts2_mcp_server::{GatewayError, GatewayResponse, JsonValue, McpServer, ToolCatalog};
+use sts2_mcp_server::{GatewayError, GatewayMethod, GatewayResponse, McpServer, ToolCatalog};
 use support::{
     RecordingGateway, contains_result_field, observation, reconcile_call, result, settled,
     submit_call,
@@ -86,22 +86,12 @@ fn duplicate_replays_and_reconcile_keep_the_same_operation_identity() {
         "op-timeout"
     ));
     assert_eq!(server.gateway().requests.len(), 3);
+    assert_eq!(server.gateway().requests[2].method, GatewayMethod::Get);
     assert_eq!(
         server.gateway().requests[2].path,
-        "/v1/instances/instance-1/reconcile"
+        "/v2/instances/instance-1/operations/op-timeout"
     );
-    let Some(JsonValue::Object(body)) = server.gateway().requests[2].body.as_ref() else {
-        return;
-    };
-    assert_eq!(
-        body.get("kind"),
-        Some(&JsonValue::string("reconcile_request"))
-    );
-    assert_eq!(
-        body.get("operation_id"),
-        Some(&JsonValue::string("op-timeout"))
-    );
-    assert_eq!(body.get("action"), Some(&JsonValue::Null));
+    assert!(server.gateway().requests[2].body.is_none());
 }
 
 #[test]

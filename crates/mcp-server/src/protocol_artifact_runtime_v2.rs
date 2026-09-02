@@ -8,6 +8,9 @@
 
 use crate::json::JsonValue;
 
+#[path = "protocol_artifact_runtime_v2_hash.rs"]
+mod hash;
+
 /// Version consumed by the Runtime-v2 MCP mapping.
 pub const RUNTIME_V2_PROTOCOL_VERSION: &str = "runtime-v2";
 /// SHA-256 of the canonical Runtime-v2 schema source bytes.
@@ -32,26 +35,138 @@ pub const RUNTIME_V2_MAX_TURN_INDEX: i64 = 1024;
 
 const MANIFEST: &str = include_str!("../../../protocol-artifact/runtime-v2/manifest.json");
 const SCHEMA: &str = include_str!("../../../protocol-artifact/runtime-v2/schema.json");
-const GOLDENS: &[&str] = &[
-    include_str!("../../../protocol-artifact/runtime-v2/golden/cancelled-before-dispatch.json"),
-    include_str!("../../../protocol-artifact/runtime-v2/golden/duplicate-replay.json"),
-    include_str!("../../../protocol-artifact/runtime-v2/golden/enemy-turn-request.json"),
-    include_str!("../../../protocol-artifact/runtime-v2/golden/enemy-turn-response.json"),
-    include_str!("../../../protocol-artifact/runtime-v2/golden/idempotency-conflict-request.json"),
-    include_str!("../../../protocol-artifact/runtime-v2/golden/idempotency-conflict-response.json"),
-    include_str!("../../../protocol-artifact/runtime-v2/golden/legal-action-accepted.json"),
-    include_str!("../../../protocol-artifact/runtime-v2/golden/legal-action-request.json"),
-    include_str!("../../../protocol-artifact/runtime-v2/golden/legal-action-settled.json"),
-    include_str!("../../../protocol-artifact/runtime-v2/golden/outside-combat-request.json"),
-    include_str!("../../../protocol-artifact/runtime-v2/golden/outside-combat-response.json"),
-    include_str!("../../../protocol-artifact/runtime-v2/golden/reconcile-request.json"),
-    include_str!("../../../protocol-artifact/runtime-v2/golden/reconcile-settled-response.json"),
-    include_str!("../../../protocol-artifact/runtime-v2/golden/stale-generation-request.json"),
-    include_str!("../../../protocol-artifact/runtime-v2/golden/stale-generation-response.json"),
-    include_str!("../../../protocol-artifact/runtime-v2/golden/state-request.json"),
-    include_str!("../../../protocol-artifact/runtime-v2/golden/state-response.json"),
-    include_str!("../../../protocol-artifact/runtime-v2/golden/timeout-action-request.json"),
-    include_str!("../../../protocol-artifact/runtime-v2/golden/timeout-unknown-response.json"),
+const CHECKSUMS: &str = include_str!("../../../protocol-artifact/runtime-v2/SHA256SUMS");
+
+struct ArtifactFile {
+    path: &'static str,
+    bytes: &'static [u8],
+}
+
+const ARTIFACT_FILES: &[ArtifactFile] = &[
+    ArtifactFile {
+        path: "../../conformance/cases/runtime-v2.json",
+        bytes: include_bytes!("../../../conformance/cases/runtime-v2.json"),
+    },
+    ArtifactFile {
+        path: "../../schemas/runtime-v2.schema.json",
+        bytes: include_bytes!("../../../schemas/runtime-v2.schema.json"),
+    },
+    ArtifactFile {
+        path: "manifest.json",
+        bytes: include_bytes!("../../../protocol-artifact/runtime-v2/manifest.json"),
+    },
+    ArtifactFile {
+        path: "schema.json",
+        bytes: include_bytes!("../../../protocol-artifact/runtime-v2/schema.json"),
+    },
+    ArtifactFile {
+        path: "golden/cancelled-before-dispatch.json",
+        bytes: include_bytes!(
+            "../../../protocol-artifact/runtime-v2/golden/cancelled-before-dispatch.json"
+        ),
+    },
+    ArtifactFile {
+        path: "golden/duplicate-replay.json",
+        bytes: include_bytes!("../../../protocol-artifact/runtime-v2/golden/duplicate-replay.json"),
+    },
+    ArtifactFile {
+        path: "golden/enemy-turn-request.json",
+        bytes: include_bytes!(
+            "../../../protocol-artifact/runtime-v2/golden/enemy-turn-request.json"
+        ),
+    },
+    ArtifactFile {
+        path: "golden/enemy-turn-response.json",
+        bytes: include_bytes!(
+            "../../../protocol-artifact/runtime-v2/golden/enemy-turn-response.json"
+        ),
+    },
+    ArtifactFile {
+        path: "golden/idempotency-conflict-request.json",
+        bytes: include_bytes!(
+            "../../../protocol-artifact/runtime-v2/golden/idempotency-conflict-request.json"
+        ),
+    },
+    ArtifactFile {
+        path: "golden/idempotency-conflict-response.json",
+        bytes: include_bytes!(
+            "../../../protocol-artifact/runtime-v2/golden/idempotency-conflict-response.json"
+        ),
+    },
+    ArtifactFile {
+        path: "golden/legal-action-accepted.json",
+        bytes: include_bytes!(
+            "../../../protocol-artifact/runtime-v2/golden/legal-action-accepted.json"
+        ),
+    },
+    ArtifactFile {
+        path: "golden/legal-action-request.json",
+        bytes: include_bytes!(
+            "../../../protocol-artifact/runtime-v2/golden/legal-action-request.json"
+        ),
+    },
+    ArtifactFile {
+        path: "golden/legal-action-settled.json",
+        bytes: include_bytes!(
+            "../../../protocol-artifact/runtime-v2/golden/legal-action-settled.json"
+        ),
+    },
+    ArtifactFile {
+        path: "golden/outside-combat-request.json",
+        bytes: include_bytes!(
+            "../../../protocol-artifact/runtime-v2/golden/outside-combat-request.json"
+        ),
+    },
+    ArtifactFile {
+        path: "golden/outside-combat-response.json",
+        bytes: include_bytes!(
+            "../../../protocol-artifact/runtime-v2/golden/outside-combat-response.json"
+        ),
+    },
+    ArtifactFile {
+        path: "golden/reconcile-request.json",
+        bytes: include_bytes!(
+            "../../../protocol-artifact/runtime-v2/golden/reconcile-request.json"
+        ),
+    },
+    ArtifactFile {
+        path: "golden/reconcile-settled-response.json",
+        bytes: include_bytes!(
+            "../../../protocol-artifact/runtime-v2/golden/reconcile-settled-response.json"
+        ),
+    },
+    ArtifactFile {
+        path: "golden/stale-generation-request.json",
+        bytes: include_bytes!(
+            "../../../protocol-artifact/runtime-v2/golden/stale-generation-request.json"
+        ),
+    },
+    ArtifactFile {
+        path: "golden/stale-generation-response.json",
+        bytes: include_bytes!(
+            "../../../protocol-artifact/runtime-v2/golden/stale-generation-response.json"
+        ),
+    },
+    ArtifactFile {
+        path: "golden/state-request.json",
+        bytes: include_bytes!("../../../protocol-artifact/runtime-v2/golden/state-request.json"),
+    },
+    ArtifactFile {
+        path: "golden/state-response.json",
+        bytes: include_bytes!("../../../protocol-artifact/runtime-v2/golden/state-response.json"),
+    },
+    ArtifactFile {
+        path: "golden/timeout-action-request.json",
+        bytes: include_bytes!(
+            "../../../protocol-artifact/runtime-v2/golden/timeout-action-request.json"
+        ),
+    },
+    ArtifactFile {
+        path: "golden/timeout-unknown-response.json",
+        bytes: include_bytes!(
+            "../../../protocol-artifact/runtime-v2/golden/timeout-unknown-response.json"
+        ),
+    },
 ];
 
 /// Verifies the copied release-like Runtime-v2 package metadata and vectors.
@@ -93,15 +208,19 @@ pub fn verify_runtime_v2_artifact() -> Result<(), RuntimeV2ArtifactError> {
     if field(&parse(SCHEMA)?, "$id") != Some(&JsonValue::string("sts2-runtime-v2")) {
         return Err(RuntimeV2ArtifactError::SchemaMismatch);
     }
-    for golden in GOLDENS {
-        parse(golden)?;
+    for file in ARTIFACT_FILES {
+        let text = std::str::from_utf8(file.bytes)
+            .map_err(|_| RuntimeV2ArtifactError::ChecksumMismatch)?;
+        parse(text)?;
     }
+    verify_checksums()?;
     Ok(())
 }
 
 /// A deterministic failure while loading the copied Runtime-v2 artifact.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum RuntimeV2ArtifactError {
+    ChecksumMismatch,
     InvalidJson,
     ManifestMismatch,
     SchemaMismatch,
@@ -121,4 +240,39 @@ fn field<'a>(value: &'a JsonValue, key: &str) -> Option<&'a JsonValue> {
 
 fn parse(text: &str) -> Result<JsonValue, RuntimeV2ArtifactError> {
     crate::json::parse(text).map_err(|_| RuntimeV2ArtifactError::InvalidJson)
+}
+
+fn verify_checksums() -> Result<(), RuntimeV2ArtifactError> {
+    let mut verified = Vec::new();
+    for line in CHECKSUMS.lines() {
+        let (expected, path) = line
+            .split_once("  ")
+            .ok_or(RuntimeV2ArtifactError::ChecksumMismatch)?;
+        if expected.len() != 64
+            || !expected
+                .bytes()
+                .all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte))
+        {
+            return Err(RuntimeV2ArtifactError::ChecksumMismatch);
+        }
+        if verified.contains(&path) {
+            return Err(RuntimeV2ArtifactError::ChecksumMismatch);
+        }
+        let file = ARTIFACT_FILES
+            .iter()
+            .find(|file| file.path == path)
+            .ok_or(RuntimeV2ArtifactError::ChecksumMismatch)?;
+        if hash::sha256_hex(file.bytes) != expected {
+            return Err(RuntimeV2ArtifactError::ChecksumMismatch);
+        }
+        verified.push(path);
+    }
+    if verified.len() != ARTIFACT_FILES.len()
+        || ARTIFACT_FILES
+            .iter()
+            .any(|file| !verified.contains(&file.path))
+    {
+        return Err(RuntimeV2ArtifactError::ChecksumMismatch);
+    }
+    Ok(())
 }

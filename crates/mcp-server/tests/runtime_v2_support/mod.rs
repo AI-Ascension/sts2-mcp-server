@@ -50,6 +50,25 @@ pub fn submit_call(
     )
 }
 
+pub fn state_call(
+    id: &str,
+    instance: &str,
+    session: &str,
+    lease: &str,
+    lease_epoch: i64,
+    generation: i64,
+) -> String {
+    let closing = "}}}";
+    format!(
+        "{{\"jsonrpc\":\"2.0\",\"id\":\"{id}\",\"method\":\"tools/call\",\
+         \"params\":{{\"name\":\"get_state\",\"arguments\":{{\
+         \"instance_id\":\"{instance}\",\"mcp_session_id\":\"{session}\",\
+         \"lease_id\":\"{lease}\",\"lease_epoch\":{lease_epoch},\
+         \"generation\":{generation}{closing}",
+        closing = closing,
+    )
+}
+
 #[allow(dead_code)]
 pub fn reconcile_call(
     id: &str,
@@ -176,6 +195,55 @@ pub fn accepted(correlation: &str, generation: i64) -> JsonValue {
         None,
         None,
     )
+}
+
+pub fn state_response(correlation: &str, generation: i64) -> JsonValue {
+    JsonValue::object([
+        (
+            String::from("protocol_version"),
+            JsonValue::string(RUNTIME_V2_PROTOCOL_VERSION),
+        ),
+        (
+            String::from("schema_digest"),
+            JsonValue::string(RUNTIME_V2_SCHEMA_DIGEST),
+        ),
+        (
+            String::from("provenance"),
+            JsonValue::object([
+                (
+                    String::from("artifact"),
+                    JsonValue::string(RUNTIME_V2_ARTIFACT),
+                ),
+                (
+                    String::from("source"),
+                    JsonValue::string(RUNTIME_V2_SCHEMA_SOURCE),
+                ),
+                (
+                    String::from("generator"),
+                    JsonValue::string(RUNTIME_V2_GENERATOR),
+                ),
+            ]),
+        ),
+        (
+            String::from("correlation_id"),
+            JsonValue::string(correlation),
+        ),
+        (String::from("instance_id"), JsonValue::string("instance-1")),
+        (String::from("session_id"), JsonValue::string("session-1")),
+        (String::from("lease_id"), JsonValue::string("lease-1")),
+        (String::from("lease_epoch"), JsonValue::Number(1)),
+        (String::from("generation"), JsonValue::Number(generation)),
+        (String::from("kind"), JsonValue::string("state_response")),
+        (String::from("operation_id"), JsonValue::Null),
+        (
+            String::from("observation"),
+            observation(generation, "combat/player_turn", 2),
+        ),
+        (String::from("action"), JsonValue::Null),
+        (String::from("status"), JsonValue::Null),
+        (String::from("error_code"), JsonValue::Null),
+        (String::from("effect_witness"), JsonValue::Null),
+    ])
 }
 
 pub fn settled(correlation: &str, generation: i64, operation: &str, kind: &str) -> JsonValue {
