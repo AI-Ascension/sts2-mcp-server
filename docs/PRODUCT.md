@@ -55,3 +55,16 @@ and `status_overlay_visible` witness; a stale result carries the stable
 The source/build, copied-artifact, mapping, and exact-host downstream gates are `confirmed` for the
 recorded host. The action remains a probe rather than gameplay mutation, and broader compatibility
 is `unverified`.
+
+## `runtime-v2-mcp` gameplay-operation profile
+
+The additive Runtime-v2 profile exposes only `submit_action` and `reconcile_action`. It admits exactly
+the argument-free `end_turn` action and requires a bounded operation identity plus explicit lease and
+generation fences. `reconcile_action` carries the same `operation_id` to resolve an uncertain prior
+submission; it is not a retry path.
+
+The MCP layer preserves the complete versioned envelope and exact downstream status/error origin.
+Timeout or disconnect uncertainty maps to `unknown`, not a generic successful or retryable result.
+Only an explicit `settled` result with a fresh post-action observation and `turn_end_settled` witness
+is surfaced as settled. The deterministic fake/source seam is confirmed; live host settlement,
+gameplay mutation, and end-to-end compatibility are unverified.

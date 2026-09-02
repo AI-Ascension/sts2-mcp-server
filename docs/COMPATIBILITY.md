@@ -55,6 +55,13 @@ host to a supported compatibility row.
 | MCP profile | Gateway path | Current evidence | Result |
 | --- | --- | --- | --- |
 | `runtime-v1-mcp` | Fixed single-instance runtime adapter | Mapping/artifact tests, component TCP lane, and authorized exact-host trace | Bounded adapter path confirmed for STS2 v0.107.1 Windows x86-64; gameplay and broader compatibility unverified |
+| `runtime-v2-mcp` | Fixed `end_turn` action and reconciliation adapter | Copied-artifact checksum and deterministic mapping/projection tests | Source/fake seam confirmed; live gateway, host settlement, gameplay mutation, and end-to-end compatibility unverified |
 
 The profile is compatible only with the exact `runtime-v1` schema digest and allowlisted response
 shapes. It makes no provider, game-rule, gameplay mutation, or release-support claim.
+
+Runtime-v2 consumes the exact handed-off schema digest
+`f7963b19c8ed5bbdc02c08e83c7a2e16c4771ed5eb798b29a8208d7a917a86c2`. Its MCP mapping is a thin
+adapter: it does not own idempotency, lease authority, host state, or settlement inference. A gateway
+timeout or disconnect is an `unknown` operation outcome and requires reconciliation with the same
+`operation_id`; it is never automatically resubmitted.

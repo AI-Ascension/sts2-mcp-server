@@ -5,6 +5,12 @@ exists.
 
 ## Unreleased
 
+- Added the separate `runtime-v2-mcp` catalog and fixed `submit_action`/`reconcile_action` mapping for
+  the argument-free `end_turn` operation, including full-envelope projection, fencing, uncertainty,
+  and deterministic accepted/settled/rejected/unknown/cancelled/idempotency tests.
+- Copied and checksum-verified the handed-off `sts2-protocol/runtime-v2` release-like artifact with
+  schema digest `f7963b19c8ed5bbdc02c08e83c7a2e16c4771ed5eb798b29a8208d7a917a86c2`.
+
 - Added the `runtime-v1-mcp` stdin/stdout process profile, real bounded gateway TCP adapter,
   allowlisted runtime projection, and structured stale-generation handling for
   `show_runtime_probe`.

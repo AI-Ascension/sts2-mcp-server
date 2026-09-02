@@ -15,10 +15,11 @@
 >
 > AI-Ascension is an independent project. It is not affiliated with or endorsed by Mega Crit or Valve and grants no rights to game files, assets, or marks.
 
-Status: Wave 2 codebase initialization plus a bounded runtime process. The target-owned MCP seam
-includes the two-tool `poc-v1` mapping and deterministic fake gateway tests; an authorized runtime
-trace now confirms the same two-tool adapter through the exact recorded STS2 host. It is intentionally
-not initialized as a Git repository.
+Status: Wave 2 codebase initialization plus bounded runtime seams. The target-owned MCP seam includes
+the two-tool `poc-v1` mapping, the separate `runtime-v1` process profile, and the deterministic
+`runtime-v2` gameplay-operation mapping. Runtime-v2 source/fake tests are confirmed; live host
+settlement and gameplay mutation remain unverified. It is intentionally not initialized as a Git
+repository.
 
 ## Owner and consumers
 
@@ -42,6 +43,8 @@ The current build-completion decision recognizes `sts2-protocol` as the sixth ta
 limited to genuinely shared language- and transport-neutral contracts. This repository owns MCP wire and
 tool schemas; it consumes a checked-in copy of the `sts2-protocol/poc-v1` release-like artifact and
 versioned gateway descriptions without making the protocol target a second source of boundary behavior.
+The checked-in `protocol-artifact/runtime-v2` package is the byte-verified Runtime-v2 release-like copy;
+its digest is pinned in one owner-local metadata module.
 
 ## Evidence and provenance
 
@@ -61,7 +64,9 @@ directory run:
 ```bash
 cargo metadata --locked --no-deps --format-version 1
 sha256sum -c --ignore-missing protocol-artifact/poc-v1/SHA256SUMS
+(cd protocol-artifact/runtime-v2 && sha256sum -c SHA256SUMS)
 cargo test --locked --package sts2-mcp-server --test artifact
+cargo test --locked --package sts2-mcp-server --test runtime_v2_artifact --test runtime_v2_mapping
 cargo fmt --all --check
 cargo clippy --workspace --all-targets --all-features --locked -- -D warnings
 cargo test --workspace --all-targets --all-features --locked
@@ -78,6 +83,14 @@ line and writes one response per stdout line. In its `runtime-v1` profile it exp
 `get_state` and `submit_action`, maps them to fixed gateway paths, injects the configured bearer and
 lease identity, and projects only allowlisted runtime results. It is a real MCP-to-gateway TCP
 adapter, not an MCP provider and not a direct game client.
+
+The separate `runtime-v2-mcp` catalog exposes only `submit_action` and `reconcile_action`. The former
+admits exactly `end_turn` with a required stable `operation_id`, lease epoch, and expected generation;
+the latter reconciles that same operation identity without dispatching another mutation. Both map to
+fixed gateway paths and carry the complete Runtime-v2 envelope. Gateway timeout/disconnect uncertainty
+is surfaced as `unknown` with no automatic retry. `accepted` is admission only; MCP reports `settled`
+only when the downstream result contains a fresh post-action observation and the
+`turn_end_settled` witness. MCP does not infer settlement from an acknowledgement or a state read.
 
 The fixed action is the safe host-visible `show_runtime_probe`, with a fresh effect witness and
 stable stale-generation rejection. Runtime artifact metadata is checked before projection. Local
