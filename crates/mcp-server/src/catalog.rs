@@ -14,18 +14,20 @@ pub struct ToolDescriptor {
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct CapabilityCatalog {
-    pub tools: bool,
+    pub supports_tools: bool,
 }
 
 impl Default for CapabilityCatalog {
     fn default() -> Self {
-        Self { tools: true }
+        Self {
+            supports_tools: true,
+        }
     }
 }
 
 impl CapabilityCatalog {
     pub(crate) fn to_json(&self) -> JsonValue {
-        let tools = if self.tools {
+        let tools = if self.supports_tools {
             JsonValue::Object(Default::default())
         } else {
             JsonValue::Null

@@ -42,3 +42,10 @@ must not depend on gateway registry internals, game-mod/host implementation, or 
 
 Every future module gets one responsibility, one identified consumer, and a build/test purpose. Generated
 output, proprietary files, saves, credentials, and machine-specific paths are not repository contents.
+
+## Naming authority
+
+Shared naming and exception rules are normative in the aggregate
+[`NAMING_CONVENTIONS.md`](../../planning/naming_conventions/NAMING_CONVENTIONS.md), with machine
+readable ownership in [`naming-registry.yaml`](../../planning/naming_conventions/naming-registry.yaml).
+The MCP adapter owns its mapping names but preserves standard JSON-RPC and MCP member spellings.
