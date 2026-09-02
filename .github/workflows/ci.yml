@@ -27,6 +27,23 @@ jobs:
       - name: Install pinned Rust toolchain
         run: rustup toolchain install 1.97.1 --profile minimal --component clippy --component rustfmt --no-self-update
 
+      - name: Check repository metadata
+        run: cargo metadata --locked --no-deps --format-version 1
+
+      - name: Verify copied POC artifact checksums
+        working-directory: protocol-artifact/poc-v1
+        run: |
+          for path in schema.json manifest.json \
+            golden/state-request.json golden/state-response.json \
+            golden/action-request.json golden/action-accepted.json \
+            golden/action-rejected.json fixtures/invalid-action.json; do
+            test -f "$path"
+          done
+          sha256sum -c --ignore-missing SHA256SUMS
+
+      - name: Validate copied POC schema and fixtures
+        run: cargo test --locked --package sts2-mcp-server --test artifact
+
       - name: Check formatting
         run: cargo fmt --all --check
 

@@ -10,6 +10,7 @@ use crate::transport::{FrameCodec, FrameError};
 
 pub const SERVER_NAME: &str = "sts2-mcp-server";
 pub const SERVER_VERSION: &str = "0.0.0";
+pub const MCP_PROTOCOL_VERSION: &str = "2025-06-18";
 
 pub struct McpServer<G> {
     pub(crate) gateway: G,
@@ -56,16 +57,62 @@ impl<G: GatewayAdapter> McpServer<G> {
     }
 
     fn initialize(&self, request: RpcRequest) -> RpcResponse {
-        if request.params.as_object().is_none() {
+        let Some(params) = request.params.as_object() else {
             return RpcResponse::failure(
                 Some(request.id),
                 RpcError::new(INVALID_PARAMS, "initialize params must be an object"),
+            );
+        };
+        if !matches!(
+            params
+                .get("protocolVersion")
+                .and_then(JsonValue::as_string),
+            Some(value) if !value.is_empty()
+        ) {
+            return RpcResponse::failure(
+                Some(request.id),
+                RpcError::new(
+                    INVALID_PARAMS,
+                    "initialize requires a non-empty protocolVersion",
+                ),
+            );
+        }
+        if params
+            .get("capabilities")
+            .and_then(JsonValue::as_object)
+            .is_none()
+        {
+            return RpcResponse::failure(
+                Some(request.id),
+                RpcError::new(INVALID_PARAMS, "initialize capabilities must be an object"),
+            );
+        }
+        let Some(client_info) = params.get("clientInfo").and_then(JsonValue::as_object) else {
+            return RpcResponse::failure(
+                Some(request.id),
+                RpcError::new(INVALID_PARAMS, "initialize clientInfo must be an object"),
+            );
+        };
+        let client_info_is_valid = matches!(
+            client_info.get("name").and_then(JsonValue::as_string),
+            Some(value) if !value.is_empty()
+        ) && matches!(
+            client_info.get("version").and_then(JsonValue::as_string),
+            Some(value) if !value.is_empty()
+        );
+        if !client_info_is_valid {
+            return RpcResponse::failure(
+                Some(request.id),
+                RpcError::new(
+                    INVALID_PARAMS,
+                    "initialize clientInfo requires non-empty name and version",
+                ),
             );
         }
         let result = JsonValue::object([
             (
                 "protocolVersion".to_owned(),
-                JsonValue::string(self.catalog.revision.as_str()),
+                JsonValue::string(MCP_PROTOCOL_VERSION),
             ),
             (
                 "capabilities".to_owned(),
