@@ -24,5 +24,5 @@ pub use protocol_artifact::{
     ArtifactError, POC_ARTIFACT, POC_GENERATOR, POC_MAX_SETTLED_EFFECTS, POC_MAX_UNITS,
     POC_PROTOCOL_VERSION, POC_SCHEMA_DIGEST, POC_SCHEMA_SOURCE, verify_poc_artifact,
 };
-pub use server::{McpServer, SERVER_NAME, SERVER_VERSION};
+pub use server::{MCP_PROTOCOL_VERSION, McpServer, SERVER_NAME, SERVER_VERSION};
 pub use transport::{FrameCodec, FrameError, MAX_FRAME_BYTES};

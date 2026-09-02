@@ -19,7 +19,7 @@ timeout/cancellation behavior, and end-to-end operation effects.
 | Target package | sts2-mcp-server 0.0.0; local revision wave2-local-v0 | statically derived; not an external compatibility claim |
 | Repository policy | target-local Rust repo-policy, version 0.0.0 | statically derived after local checks |
 | Rust toolchain | `1.97.1`, edition 2024 | declared; compilation is a local gate |
-| MCP protocol revision | not frozen | unverified; pin a first-party revision before implementation |
+| MCP protocol revision | `2025-06-18` for the POC handshake | statically pinned; live transport compatibility remains unverified |
 | Gateway API revision | not frozen | unverified; consume an approved versioned description |
 | Game host/loader | outside this target | not applicable to adapter source; owned by game-mod |
 | Harness/model/provider | outside this target | not applicable to adapter authority |

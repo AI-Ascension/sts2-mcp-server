@@ -4,6 +4,9 @@ use crate::json::JsonValue;
 
 pub const GET_STATE_TOOL: &str = "get_state";
 pub const SUBMIT_ACTION_TOOL: &str = "submit_action";
+pub(crate) const MAX_IDENTIFIER_BYTES: usize = 128;
+const INSTANCE_ID_PATTERN: &str = "^[A-Za-z0-9_-]{1,128}$";
+const SESSION_ID_PATTERN: &str = "^[A-Za-z0-9_.:/-]{1,128}$";
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ToolDescriptor {
@@ -45,6 +48,7 @@ impl Default for ToolCatalog {
     fn default() -> Self {
         let state_schema = JsonValue::object([
             ("type".to_owned(), JsonValue::string("object")),
+            ("additionalProperties".to_owned(), JsonValue::Bool(false)),
             (
                 "required".to_owned(),
                 JsonValue::Array(vec![
@@ -60,6 +64,11 @@ impl Default for ToolCatalog {
                         JsonValue::object([
                             ("type".to_owned(), JsonValue::string("string")),
                             ("minLength".to_owned(), JsonValue::Number(1)),
+                            (
+                                "maxLength".to_owned(),
+                                JsonValue::Number(MAX_IDENTIFIER_BYTES as i64),
+                            ),
+                            ("pattern".to_owned(), JsonValue::string(INSTANCE_ID_PATTERN)),
                         ]),
                     ),
                     (
@@ -67,6 +76,11 @@ impl Default for ToolCatalog {
                         JsonValue::object([
                             ("type".to_owned(), JsonValue::string("string")),
                             ("minLength".to_owned(), JsonValue::Number(1)),
+                            (
+                                "maxLength".to_owned(),
+                                JsonValue::Number(MAX_IDENTIFIER_BYTES as i64),
+                            ),
+                            ("pattern".to_owned(), JsonValue::string(SESSION_ID_PATTERN)),
                         ]),
                     ),
                 ]),
@@ -74,6 +88,7 @@ impl Default for ToolCatalog {
         ]);
         let action_schema = JsonValue::object([
             ("type".to_owned(), JsonValue::string("object")),
+            ("additionalProperties".to_owned(), JsonValue::Bool(false)),
             (
                 "required".to_owned(),
                 JsonValue::Array(vec![
@@ -92,6 +107,11 @@ impl Default for ToolCatalog {
                         JsonValue::object([
                             ("type".to_owned(), JsonValue::string("string")),
                             ("minLength".to_owned(), JsonValue::Number(1)),
+                            (
+                                "maxLength".to_owned(),
+                                JsonValue::Number(MAX_IDENTIFIER_BYTES as i64),
+                            ),
+                            ("pattern".to_owned(), JsonValue::string(INSTANCE_ID_PATTERN)),
                         ]),
                     ),
                     (
@@ -99,6 +119,11 @@ impl Default for ToolCatalog {
                         JsonValue::object([
                             ("type".to_owned(), JsonValue::string("string")),
                             ("minLength".to_owned(), JsonValue::Number(1)),
+                            (
+                                "maxLength".to_owned(),
+                                JsonValue::Number(MAX_IDENTIFIER_BYTES as i64),
+                            ),
+                            ("pattern".to_owned(), JsonValue::string(SESSION_ID_PATTERN)),
                         ]),
                     ),
                     (
