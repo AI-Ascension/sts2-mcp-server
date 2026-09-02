@@ -46,6 +46,6 @@ evidence level.
 
 ## Evidence language
 
-Use `confirmed` only for controlled reproduced behavior, `statically derived` for exact source/config
+Use `confirmed` only for controlled reproduced behavior, `source-derived` for exact source/config
 facts, `inferred` for reasoned consequences, `proposed` for new decisions, and `unverified` when an
 external precondition or runtime lane is absent. A skipped check remains visible and is not a pass.

@@ -53,4 +53,11 @@ Public MCP or gateway contract changes require a decision, version classificatio
 fixtures, mapping tests, and compatibility notes. The local wave2-local-v0 catalog is a preparation
 profile and must not be presented as a frozen external protocol. Security, lifecycle, timeout,
 cancellation, or concurrency changes require deterministic negative and recovery tests. Documentation must distinguish
-`confirmed`, `statically derived`, `inferred`, `proposed`, `unsupported`, and `unverified` evidence.
+`confirmed`, `source-derived`, `inferred`, `proposed`, `unsupported`, and `unverified` evidence.
+
+## Aggregate naming authority
+
+Use the aggregate NAMING_CONVENTIONS.md and naming-registry.yaml for casing,
+identity namespaces, lifecycle vocabulary, evidence states, and protected MCP/JSON-RPC spellings.
+MCP standard members remain exact; an MCP request or session is never renamed into a gateway or host
+identity merely because the adapter maps it.

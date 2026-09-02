@@ -45,7 +45,7 @@ versioned gateway descriptions without making the protocol target a second sourc
 ## Evidence and provenance
 
 No live MCP transport, gateway connection, game load, host compatibility, provider call, release, or
-deployment has been run from this target. Those boundaries are `runtime-unverified`. The local seam
+deployment has been run from this target. Those boundaries are `unverified`. The local seam
 and fake-gateway tests are deterministic build/test evidence only; they cover exactly two local tools,
 fixed GET/POST mappings, and copied-artifact identity. Documentation, policy tooling, and fixtures
 must be original or carry explicit provenance and redistribution rights. Proprietary game files,

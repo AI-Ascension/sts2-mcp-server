@@ -12,13 +12,13 @@ does.
 The target now contains a local no-I/O package and fake-gateway tests, but no accepted external MCP
 profile, frozen gateway API, live server, or public release. It consumes the protocol owner's
 release-like POC artifact copy. The current status is
-`runtime-unverified` for live MCP framing, gateway mapping, authentication, downstream readiness,
+`unverified` for live MCP framing, gateway mapping, authentication, downstream readiness,
 timeout/cancellation behavior, and end-to-end operation effects.
 
 | Subject | Current identity | Evidence |
 | --- | --- | --- |
-| Target package | sts2-mcp-server 0.0.0; local revision wave2-local-v0 | statically derived; not an external compatibility claim |
-| Repository policy | target-local Rust repo-policy, version 0.0.0 | statically derived after local checks |
+| Target package | sts2-mcp-server 0.0.0; local revision wave2-local-v0 | source-derived; not an external compatibility claim |
+| Repository policy | target-local Rust repo-policy, version 0.0.0 | source-derived after local checks |
 | Rust toolchain | `1.97.1`, edition 2024 | declared; compilation is a local gate |
 | MCP protocol revision | `2025-06-18` for the POC handshake | statically pinned; live transport compatibility remains unverified |
 | POC protocol artifact | `sts2-protocol/poc-v1`; schema digest `242b8f9233e915a55ea8d2e72ca476c1258169a67e62de72ee5aed848a6a0a19` | copied artifact/schema/checksum tests; protocol head `cad3c85d` |
