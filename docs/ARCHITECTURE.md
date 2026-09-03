@@ -115,6 +115,9 @@ Both calls carry the complete copied Runtime-v2 envelope to the gateway. Valid g
 all envelope fields, including the exact status and `error_code` origin. Unknown envelope fields,
 metadata drift, identity mismatch, invalid fences, malformed observations, and invalid witnesses fail
 closed. Timeout or disconnect uncertainty becomes an `unknown` result and is never retried automatically.
+An authenticated gateway `429` overload is handled before gameplay-envelope projection and emits an
+MCP tool error containing only the allowlisted typed `error_code`, `retryable`, and bounded
+`retry_after_ms` fields; arbitrary overload payload fields are not forwarded.
 `accepted` is admission only. The adapter reports `settled` only for a downstream `settled` result with
 a fresh observation whose generation advances past the request and a matching `turn_end_settled`
 witness. It does not infer settlement from an acknowledgement or from a state read. Runtime-v1's

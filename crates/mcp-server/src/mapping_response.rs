@@ -16,6 +16,9 @@ pub(super) fn gateway_success(
     response: GatewayResponse,
     runtime_v1: bool,
 ) -> RpcResponse {
+    if response.status == 429 {
+        return gateway_overload(id, response);
+    }
     let projection = if runtime_v1 {
         project_runtime_gateway_body(&response.body)
     } else {
@@ -107,6 +110,9 @@ pub(super) fn gateway_success_v3(
     context: &RuntimeV3GameplayContext,
     expected_kind: &str,
 ) -> RpcResponse {
+    if response.status == 429 {
+        return gateway_overload(id, response);
+    }
     let projection =
         project_runtime_v3_gameplay_gateway_body(&response.body, context, expected_kind);
     let Ok(projection) = projection else {
@@ -125,4 +131,38 @@ pub(super) fn gateway_success_v3(
         body,
         !(200..300).contains(&response.status) || runtime_v3_gameplay_result_is_error(&projection),
     )
+}
+
+fn gateway_overload(id: RequestId, response: GatewayResponse) -> RpcResponse {
+    let Some(object) = response.body.as_object() else {
+        return super::tool_result(id, "gateway returned an invalid overload response", true);
+    };
+    let Some(error_code) = object.get("error_code").and_then(JsonValue::as_string) else {
+        return super::tool_result(id, "gateway returned an invalid overload response", true);
+    };
+    if error_code.is_empty()
+        || error_code.len() > 128
+        || !error_code.bytes().all(|byte| {
+            byte.is_ascii_alphanumeric() || matches!(byte, b'-' | b'_' | b'.' | b':' | b'/')
+        })
+        || object.get("retryable") != Some(&JsonValue::Bool(true))
+    {
+        return super::tool_result(id, "gateway returned an invalid overload response", true);
+    }
+    let Some(JsonValue::Number(retry_after_ms)) = object.get("retry_after_ms") else {
+        return super::tool_result(id, "gateway returned an invalid overload response", true);
+    };
+    if !(0..=60_000).contains(retry_after_ms) {
+        return super::tool_result(id, "gateway returned an invalid overload response", true);
+    }
+    let body = JsonValue::object([
+        ("error_code".to_owned(), JsonValue::string(error_code)),
+        ("retryable".to_owned(), JsonValue::Bool(true)),
+        (
+            "retry_after_ms".to_owned(),
+            JsonValue::Number(*retry_after_ms),
+        ),
+    ])
+    .to_json();
+    super::tool_result(id, body, true)
 }

@@ -24,6 +24,38 @@ fn runtime_v2_catalog_exposes_state_submit_and_reconcile() {
 }
 
 #[test]
+fn gateway_overload_preserves_typed_retry_guidance_at_mcp_boundary() {
+    let mut server = McpServer::with_catalog(
+        RecordingGateway::new([Ok(GatewayResponse {
+            status: 429,
+            body: JsonValue::object([
+                (
+                    String::from("error_code"),
+                    JsonValue::string("runtime_v2_queue_capacity"),
+                ),
+                (String::from("retryable"), JsonValue::Bool(true)),
+                (String::from("retry_after_ms"), JsonValue::Number(1000)),
+            ]),
+        })]),
+        ToolCatalog::runtime_v2(),
+    );
+    let response = server.handle_frame(&submit_call(
+        "request-overloaded",
+        "instance-1",
+        "session-1",
+        "lease-1",
+        1,
+        4,
+        "op-overloaded",
+    ));
+    assert!(response.contains("\"isError\":true"));
+    assert!(response.contains("runtime_v2_queue_capacity"));
+    assert!(response.contains(r#"\"retryable\":true"#));
+    assert!(response.contains(r#"\"retry_after_ms\":1000"#));
+    assert!(!response.contains("invalid Runtime-v2 envelope"));
+}
+
+#[test]
 fn configured_mcp_and_gateway_sessions_remain_distinct_at_the_mapping_boundary() {
     let mut server = McpServer::with_catalog_and_sessions(
         RecordingGateway::new([Ok(GatewayResponse {

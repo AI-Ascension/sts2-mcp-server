@@ -91,7 +91,9 @@ submission maps to `POST /v2/instances/{id}/action`, and reconciliation maps to
 exactly `end_turn` with a required stable `operation_id`, lease epoch, and expected generation; the
 reconcile call uses that same operation identity without dispatching another mutation. Both profiles
 keep their existing v1/v2 mapping paths isolated. Runtime-v2 gateway timeout/disconnect uncertainty
-is surfaced as `unknown` with no automatic retry. `accepted` is admission only; MCP reports `settled`
+is surfaced as `unknown` with no automatic retry. Gateway overload responses remain typed MCP tool
+errors with bounded retry guidance and no arbitrary payload projection. `accepted` is admission only;
+MCP reports `settled`
 only when the downstream result contains a fresh post-action observation and the
 `turn_end_settled` witness. MCP does not infer settlement from an acknowledgement or a state read.
 
