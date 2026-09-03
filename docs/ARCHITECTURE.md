@@ -92,7 +92,8 @@ and rejects malformed or oversized responses.
 Before a result reaches MCP content, the adapter requires the runtime protocol version, exact schema
 digest, provenance, identity, epoch, generation, action, observation, status, and witness shape to
 match its allowlist. HTTP 409 is preserved when it contains a valid structured stale action result;
-other gateway rejection statuses become sanitized MCP tool errors. The MCP server remains a thin
+HTTP 401 and 403 become distinct sanitized MCP authorization errors; other gateway rejection statuses
+become sanitized MCP tool errors. The MCP server remains a thin
 adapter: it owns neither gateway lease authority nor host/game semantics.
 
 The process and mapping are source/build-confirmed. The authorized host trace confirms the real
