@@ -4,7 +4,8 @@
 mod support;
 
 use sts2_mcp_server::{
-    GatewayMethod, GatewayResponse, JsonValue, McpServer, RUNTIME_V2_ACTION_ID, ToolCatalog,
+    GatewayError, GatewayMethod, GatewayResponse, JsonValue, McpServer, RUNTIME_V2_ACTION_ID,
+    ToolCatalog,
 };
 use support::{
     RecordingGateway, accepted, contains_result_field, observation, rejected, result, settled,
@@ -53,6 +54,25 @@ fn gateway_overload_preserves_typed_retry_guidance_at_mcp_boundary() {
     assert!(response.contains(r#"\"retryable\":true"#));
     assert!(response.contains(r#"\"retry_after_ms\":1000"#));
     assert!(!response.contains("invalid Runtime-v2 envelope"));
+}
+
+#[test]
+fn forbidden_gateway_scope_maps_to_stable_v2_tool_error() {
+    let mut server = McpServer::with_catalog(
+        RecordingGateway::new([Err(GatewayError::Forbidden)]),
+        ToolCatalog::runtime_v2(),
+    );
+    let response = server.handle_frame(&state_call(
+        "request-forbidden",
+        "instance-1",
+        "session-1",
+        "lease-1",
+        1,
+        4,
+    ));
+    assert!(response.contains("\"isError\":true"));
+    assert!(response.contains("gateway error -32007: gateway scope authorization failed"));
+    assert_eq!(server.gateway().requests.len(), 1);
 }
 
 #[test]
