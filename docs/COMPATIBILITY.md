@@ -68,3 +68,6 @@ timeout or disconnect is an `unknown` operation outcome and requires reconciliat
 The process defaults to `runtime-v1`; `STS2_RUNTIME_PROFILE=runtime-v2` selects Runtime-v2 and any
 other value fails closed. Runtime-v2 supplied instance/session/lease/epoch fields must match the
 configured gateway identity before forwarding; Runtime-v1 retains its compatibility injection path.
+The executable also binds `STS2_MCP_SESSION_ID` separately from the gateway session, defaulting it to
+`STS2_SESSION_ID`; a mismatch is rejected before gateway forwarding. Distinct values are compatible
+only when the gateway and harness carry the same configured MCP-session binding.

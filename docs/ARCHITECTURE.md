@@ -117,5 +117,8 @@ metadata drift, identity mismatch, invalid fences, malformed observations, and i
 closed. Timeout or disconnect uncertainty becomes an `unknown` result and is never retried automatically.
 `accepted` is admission only. The adapter reports `settled` only for a downstream `settled` result with
 a fresh observation whose generation advances past the request and a matching `turn_end_settled`
-witness. It does not infer settlement from an acknowledgement or from a state read. Runtime-v1's
-catalog, routes, and projection remain unchanged.
+witness. It does not infer settlement from an acknowledgement or from a state read. The executable
+binds `STS2_MCP_SESSION_ID` separately from `STS2_SESSION_ID`: the former is checked in the MCP
+tool argument, correlation, and `x-mcp-session-id` header, while the latter remains the envelope's
+gateway session. The frozen Runtime-v2 artifact is unchanged, and the MCP-session header is not
+forwarded to the game-mod. Runtime-v1's catalog, routes, and projection remain unchanged.
