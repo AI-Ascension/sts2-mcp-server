@@ -133,36 +133,3 @@ pub(super) fn gateway_success_v3(
     )
 }
 
-fn gateway_overload(id: RequestId, response: GatewayResponse) -> RpcResponse {
-    let Some(object) = response.body.as_object() else {
-        return super::tool_result(id, "gateway returned an invalid overload response", true);
-    };
-    let Some(error_code) = object.get("error_code").and_then(JsonValue::as_string) else {
-        return super::tool_result(id, "gateway returned an invalid overload response", true);
-    };
-    if error_code.is_empty()
-        || error_code.len() > 128
-        || !error_code.bytes().all(|byte| {
-            byte.is_ascii_alphanumeric() || matches!(byte, b'-' | b'_' | b'.' | b':' | b'/')
-        })
-        || object.get("retryable") != Some(&JsonValue::Bool(true))
-    {
-        return super::tool_result(id, "gateway returned an invalid overload response", true);
-    }
-    let Some(JsonValue::Number(retry_after_ms)) = object.get("retry_after_ms") else {
-        return super::tool_result(id, "gateway returned an invalid overload response", true);
-    };
-    if !(0..=60_000).contains(retry_after_ms) {
-        return super::tool_result(id, "gateway returned an invalid overload response", true);
-    }
-    let body = JsonValue::object([
-        ("error_code".to_owned(), JsonValue::string(error_code)),
-        ("retryable".to_owned(), JsonValue::Bool(true)),
-        (
-            "retry_after_ms".to_owned(),
-            JsonValue::Number(*retry_after_ms),
-        ),
-    ])
-    .to_json();
-    super::tool_result(id, body, true)
-}
