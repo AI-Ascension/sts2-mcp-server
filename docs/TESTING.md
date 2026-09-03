@@ -59,5 +59,7 @@ adapter paths, configured MCP-session propagation, and pre-forward session rejec
 the pinned Rust toolchain.
 
 A controlled component lane may run this process against the real gateway and a synthetic downstream;
-that confirms MCP/gateway transport and mapping only. It does not prove the managed mod, Godot
-main-thread execution, STS2 host compatibility, a disposable game profile, or gameplay mutation.
+that confirms MCP/gateway transport and mapping only. A gateway `429` overload must remain an MCP
+tool error while preserving only its typed error code and bounded retry guidance. It does not prove
+the managed mod, Godot main-thread execution, STS2 host compatibility, a disposable game profile, or
+gameplay mutation.
