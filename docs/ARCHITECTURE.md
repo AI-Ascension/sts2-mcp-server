@@ -133,3 +133,6 @@ The standalone process defaults its MCP session to `mcp-session-1`, independentl
 session default `session-1`. Explicit `STS2_MCP_SESSION_ID` values remain authoritative; same-session
 setups must configure both variables. [ADR 0011](decisions/0011-composition-mcp-session-default.md)
 records the configuration compatibility change.
+
+The executable binds `STS2_MCP_SESSION_ID` separately from `STS2_SESSION_ID`; the MCP-session
+header remains adapter correlation metadata and is not forwarded to the game-mod.

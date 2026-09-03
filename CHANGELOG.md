@@ -27,6 +27,9 @@ exists.
   `STS2_RUNTIME_PROFILE=runtime-v2` selects the v2 catalog and invalid values fail closed. Runtime-v2
   now maps state/action/reconciliation to fixed v2 routes, rejects configured-identity mismatches,
   recognizes `reconcile_response`, and verifies every local `SHA256SUMS` entry.
+- Added an explicit MCP-session process binding. `STS2_MCP_SESSION_ID` is checked before forwarding,
+  preserved separately in gateway correlation/header metadata, and kept distinct from the gateway
+  session in the unchanged Runtime-v2 envelope.
 
 - Added the `runtime-v1-mcp` stdin/stdout process profile, real bounded gateway TCP adapter,
   allowlisted runtime projection, and structured stale-generation handling for

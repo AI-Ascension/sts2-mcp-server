@@ -24,6 +24,61 @@ fn runtime_v2_catalog_exposes_state_submit_and_reconcile() {
 }
 
 #[test]
+fn configured_mcp_and_gateway_sessions_remain_distinct_at_the_mapping_boundary() {
+    let mut server = McpServer::with_catalog_and_sessions(
+        RecordingGateway::new([Ok(GatewayResponse {
+            status: 200,
+            body: state_response("request-bound", 4),
+        })]),
+        ToolCatalog::runtime_v2(),
+        "session-1",
+        "mcp-session-1",
+    );
+    let response = server.handle_frame(&state_call(
+        "request-bound",
+        "instance-1",
+        "mcp-session-1",
+        "lease-1",
+        1,
+        4,
+    ));
+    assert!(response.contains("\"isError\":false"));
+    let request = &server.gateway().requests[0];
+    assert_eq!(
+        request.headers.get("x-mcp-session-id"),
+        Some(&String::from("mcp-session-1"))
+    );
+    assert_eq!(request.correlation.mcp_session_id, "mcp-session-1");
+    assert_eq!(
+        request.body.as_ref().and_then(|body| match body {
+            JsonValue::Object(object) => object.get("session_id"),
+            _ => None,
+        }),
+        Some(&JsonValue::string("session-1"))
+    );
+}
+
+#[test]
+fn configured_mcp_session_mismatch_is_rejected_before_gateway_access() {
+    let mut server = McpServer::with_catalog_and_sessions(
+        RecordingGateway::new([]),
+        ToolCatalog::runtime_v2(),
+        "session-1",
+        "mcp-session-1",
+    );
+    let response = server.handle_frame(&state_call(
+        "request-wrong-mcp",
+        "instance-1",
+        "other-mcp-session",
+        "lease-1",
+        1,
+        4,
+    ));
+    assert!(response.contains("MCP session identity does not match"));
+    assert!(server.gateway().requests.is_empty());
+}
+
+#[test]
 fn state_preserves_the_complete_response_and_uses_the_v2_read_route() {
     let mut server = McpServer::with_catalog(
         RecordingGateway::new([Ok(GatewayResponse {

@@ -9,7 +9,7 @@ use http::{ReadError, read_response, write_request};
 
 use sts2_mcp_server::{
     GatewayAdapter, GatewayError, GatewayMethod, GatewayRequest, GatewayResponse, JsonValue,
-    RUNTIME_V2_PROTOCOL_VERSION, ToolCatalog, parse_json,
+    RUNTIME_V2_PROTOCOL_VERSION, RUNTIME_V3_GAMEPLAY_PROTOCOL_VERSION, ToolCatalog, parse_json,
 };
 
 const MAX_BODY_BYTES: usize = 16 * 1024;
@@ -93,7 +93,11 @@ impl RuntimeGatewayAdapter {
             object.get("protocol_version"),
             Some(JsonValue::String(value)) if value == RUNTIME_V2_PROTOCOL_VERSION
         );
-        if is_runtime_v2 {
+        let is_runtime_v3 = matches!(
+            object.get("protocol_version"),
+            Some(JsonValue::String(value)) if value == RUNTIME_V3_GAMEPLAY_PROTOCOL_VERSION
+        );
+        if is_runtime_v2 || is_runtime_v3 {
             if object.get("instance_id")
                 != Some(&JsonValue::string(self.config.instance_id.as_str()))
                 || object.get("session_id")
@@ -306,8 +310,9 @@ pub(crate) fn catalog_for_profile(profile: Option<&str>) -> Result<ToolCatalog, 
     match profile.unwrap_or("runtime-v1") {
         "runtime-v1" => Ok(ToolCatalog::runtime_v1()),
         "runtime-v2" => Ok(ToolCatalog::runtime_v2()),
+        "runtime-v3-gameplay" => Ok(ToolCatalog::runtime_v3_gameplay()),
         value => Err(format!(
-            "STS2_RUNTIME_PROFILE must be runtime-v1 or runtime-v2, got {value}"
+            "STS2_RUNTIME_PROFILE must be runtime-v1, runtime-v2, or runtime-v3-gameplay, got {value}"
         )),
     }
 }

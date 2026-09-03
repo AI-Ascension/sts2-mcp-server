@@ -82,7 +82,8 @@ an in-flight gateway call on cancellation; notification silence is not evidence 
 `runtime_mapping.rs` confirms the two runtime tool calls, fixed routes, complete action envelope,
 effect-witness projection, and structured stale-generation preservation. `runtime_artifact.rs`
 confirms the copied manifest and schema bytes. The runtime binary has bounded stdin frame and HTTP
-adapter paths and builds with the pinned Rust toolchain.
+adapter paths, configured MCP-session propagation, and pre-forward session rejection, and builds with
+the pinned Rust toolchain.
 
 A controlled component lane may run this process against the real gateway and a synthetic downstream;
 that confirms MCP/gateway transport and mapping only. It does not prove the managed mod, Godot
