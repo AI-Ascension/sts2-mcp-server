@@ -64,6 +64,11 @@ untrusted payload leakage; state-read failures report missing observation rather
 operation. Operation IDs containing `/` are rejected before submission, because they cannot be
 looked up as one segment of the current gateway reconciliation route.
 
+`runtime_v2_sessions.rs` checks distinct configured MCP/gateway sessions for state, submission and
+reconciliation, rejects foreign MCP sessions before forwarding, and exercises the actual executable
+against a disposable loopback HTTP peer. It verifies both outbound header namespaces and the gateway
+envelope, not only library construction. No host process or provider participates.
+
 `json_notifications.rs` checks raw Unicode and surrogate-pair round trips, duplicate-key and
 leading-zero rejection, and a 64-value nesting limit before recursive parsing. It also exercises the
 actual binary's stdin/stdout to prove notifications produce no output, not even a blank line. The
