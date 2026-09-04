@@ -3,10 +3,9 @@
 use crate::gateway::GatewayResponse;
 use crate::json::JsonValue;
 use crate::projection::{
-    RuntimeV2Context, project_gateway_body, project_runtime_gateway_body,
-    RuntimeV3GameplayProjectionContext, project_runtime_v2_gateway_body,
-    project_runtime_v3_gateway_body, projection_is_error, runtime_v2_result_is_error,
-    runtime_v3_result_is_error,
+    RuntimeV2Context, RuntimeV3GameplayProjectionContext, project_gateway_body,
+    project_runtime_gateway_body, project_runtime_v2_gateway_body, project_runtime_v3_gateway_body,
+    projection_is_error, runtime_v2_result_is_error, runtime_v3_result_is_error,
 };
 use crate::protocol::{RequestId, RpcResponse};
 

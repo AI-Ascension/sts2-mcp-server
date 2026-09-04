@@ -88,7 +88,9 @@ fn exact_root(body: &JsonValue) -> Result<&BTreeMap<String, JsonValue>, &'static
 }
 
 fn validate_metadata(object: &BTreeMap<String, JsonValue>) -> Result<(), &'static str> {
-    if object.get("protocol_version").and_then(JsonValue::as_string)
+    if object
+        .get("protocol_version")
+        .and_then(JsonValue::as_string)
         != Some("runtime-v3-gameplay")
         || object.get("schema_digest").and_then(JsonValue::as_string)
             != Some("fbfb18279b0c7ebb350ef0ce0d56547fa11e83985b13380cb2b0f1dba4cb56e9")
@@ -171,7 +173,10 @@ fn validate_kind_shape(
             let Some(outcome) = object.get("wait_outcome").and_then(JsonValue::as_string) else {
                 return Err("Runtime-v3 wait outcome is missing");
             };
-            if !matches!(outcome, "successor" | "same_state_mutation" | "timeout" | "recovery_required") {
+            if !matches!(
+                outcome,
+                "successor" | "same_state_mutation" | "timeout" | "recovery_required"
+            ) {
                 return Err("Runtime-v3 wait outcome is not allowlisted");
             }
             match outcome {
@@ -207,7 +212,10 @@ fn validate_result(
     let Some(status) = object.get("status").and_then(JsonValue::as_string) else {
         return Err("Runtime-v3 result status must be a string");
     };
-    if !matches!(status, "accepted" | "settled" | "rejected" | "unknown" | "cancelled") {
+    if !matches!(
+        status,
+        "accepted" | "settled" | "rejected" | "unknown" | "cancelled"
+    ) {
         return Err("Runtime-v3 result status is not allowlisted");
     }
     match status {
@@ -268,9 +276,7 @@ fn validate_observation(
     validate_identity_value(object.get("state_id"))?;
     bounded_number(object.get("generation"), MAX_GENERATION)?;
     if let Some(value) = object.get("visible_seed") {
-        if !matches!(value, JsonValue::Null)
-            && !value.as_string().is_some_and(safe_text)
-        {
+        if !matches!(value, JsonValue::Null) && !value.as_string().is_some_and(safe_text) {
             return Err("Runtime-v3 visible_seed is invalid");
         }
     }
@@ -283,7 +289,9 @@ fn validate_player(value: Option<&JsonValue>) -> Result<(), &'static str> {
     let Some(object) = value.and_then(JsonValue::as_object) else {
         return Err("Runtime-v3 player must be an object");
     };
-    const FIELDS: [&str; 8] = ["hp", "max_hp", "energy", "gold", "hand", "deck", "discard", "exhaust"];
+    const FIELDS: [&str; 8] = [
+        "hp", "max_hp", "energy", "gold", "hand", "deck", "discard", "exhaust",
+    ];
     if object.len() != FIELDS.len() || FIELDS.iter().any(|field| !object.contains_key(*field)) {
         return Err("Runtime-v3 player contains unknown or missing fields");
     }
@@ -314,11 +322,19 @@ fn validate_cards(value: Option<&JsonValue>) -> Result<(), &'static str> {
         let Some(card) = value.as_object() else {
             return Err("Runtime-v3 card must be an object");
         };
-        if card.len() != 4 || ["card_id", "name", "cost", "upgraded"].iter().any(|field| !card.contains_key(*field)) {
+        if card.len() != 4
+            || ["card_id", "name", "cost", "upgraded"]
+                .iter()
+                .any(|field| !card.contains_key(*field))
+        {
             return Err("Runtime-v3 card contains unknown or missing fields");
         }
         validate_identity_value(card.get("card_id"))?;
-        if !card.get("name").and_then(JsonValue::as_string).is_some_and(safe_text) {
+        if !card
+            .get("name")
+            .and_then(JsonValue::as_string)
+            .is_some_and(safe_text)
+        {
             return Err("Runtime-v3 card name is invalid");
         }
         bounded_number(card.get("cost"), 255)?;
@@ -339,14 +355,20 @@ fn validate_state(value: Option<&JsonValue>) -> Result<(), &'static str> {
     match state {
         "setup" => id_list_shape(object, &["state", "characters"]),
         "map" => {
-            if object.len() != 3 || !object.contains_key("node_id") || !object.contains_key("options") {
+            if object.len() != 3
+                || !object.contains_key("node_id")
+                || !object.contains_key("options")
+            {
                 return Err("Runtime-v3 map state contains unknown or missing fields");
             }
             optional_identity(object.get("node_id"))?;
             validate_id_list(object.get("options"))
         }
         "combat" => {
-            if object.len() != 3 || !object.contains_key("turn_index") || !object.contains_key("enemies") {
+            if object.len() != 3
+                || !object.contains_key("turn_index")
+                || !object.contains_key("enemies")
+            {
                 return Err("Runtime-v3 combat state contains unknown or missing fields");
             }
             bounded_number(object.get("turn_index"), 65_535)?;
@@ -361,14 +383,21 @@ fn validate_state(value: Option<&JsonValue>) -> Result<(), &'static str> {
             validate_shop_items(object.get("items"))
         }
         "victory" => {
-            if object.len() != 1 { Err("Runtime-v3 victory state contains unknown fields") } else { Ok(()) }
+            if object.len() != 1 {
+                Err("Runtime-v3 victory state contains unknown fields")
+            } else {
+                Ok(())
+            }
         }
         "defeat" => {
             if object.len() != 2 || !object.contains_key("reason") {
                 return Err("Runtime-v3 defeat state contains unknown or missing fields");
             }
             if !matches!(object.get("reason"), Some(JsonValue::Null))
-                && !object.get("reason").and_then(JsonValue::as_string).is_some_and(safe_text)
+                && !object
+                    .get("reason")
+                    .and_then(JsonValue::as_string)
+                    .is_some_and(safe_text)
             {
                 return Err("Runtime-v3 defeat reason is invalid");
             }
@@ -384,7 +413,10 @@ fn validate_state(value: Option<&JsonValue>) -> Result<(), &'static str> {
     }
 }
 
-fn id_list_shape(object: &BTreeMap<String, JsonValue>, fields: &[&str]) -> Result<(), &'static str> {
+fn id_list_shape(
+    object: &BTreeMap<String, JsonValue>,
+    fields: &[&str],
+) -> Result<(), &'static str> {
     if object.len() != fields.len() || fields.iter().any(|field| !object.contains_key(*field)) {
         return Err("Runtime-v3 state contains unknown or missing fields");
     }
@@ -422,12 +454,18 @@ fn validate_enemies(value: Option<&JsonValue>) -> Result<(), &'static str> {
             return Err("Runtime-v3 enemy must be an object");
         };
         if enemy.len() != 5
-            || ["enemy_id", "name", "hp", "max_hp", "intent"].iter().any(|field| !enemy.contains_key(*field))
+            || ["enemy_id", "name", "hp", "max_hp", "intent"]
+                .iter()
+                .any(|field| !enemy.contains_key(*field))
         {
             return Err("Runtime-v3 enemy contains unknown or missing fields");
         }
         validate_identity_value(enemy.get("enemy_id"))?;
-        if !enemy.get("name").and_then(JsonValue::as_string).is_some_and(safe_text) {
+        if !enemy
+            .get("name")
+            .and_then(JsonValue::as_string)
+            .is_some_and(safe_text)
+        {
             return Err("Runtime-v3 enemy name is invalid");
         }
         let hp = bounded_number(enemy.get("hp"), 65_535)?;
@@ -454,10 +492,18 @@ fn validate_intent(value: Option<&JsonValue>) -> Result<(), &'static str> {
             }
             bounded_number(object.get("damage"), 65_535)?;
             let hits = bounded_number(object.get("hits"), 255)?;
-            if hits == 0 { Err("Runtime-v3 attack intent hits must be positive") } else { Ok(()) }
+            if hits == 0 {
+                Err("Runtime-v3 attack intent hits must be positive")
+            } else {
+                Ok(())
+            }
         }
         "defend" | "buff" | "debuff" | "unknown" => {
-            if object.len() != 1 { Err("Runtime-v3 enemy intent contains unknown fields") } else { Ok(()) }
+            if object.len() != 1 {
+                Err("Runtime-v3 enemy intent contains unknown fields")
+            } else {
+                Ok(())
+            }
         }
         _ => Err("Runtime-v3 enemy intent is not allowlisted"),
     }
@@ -470,14 +516,26 @@ fn validate_shop_items(value: Option<&JsonValue>) -> Result<(), &'static str> {
     }) else {
         return Err("Runtime-v3 shop items must be an array");
     };
-    if values.len() > 256 { return Err("Runtime-v3 shop items exceed the bound"); }
+    if values.len() > 256 {
+        return Err("Runtime-v3 shop items exceed the bound");
+    }
     for value in values {
-        let Some(item) = value.as_object() else { return Err("Runtime-v3 shop item must be an object"); };
-        if item.len() != 3 || ["item_id", "name", "price"].iter().any(|field| !item.contains_key(*field)) {
+        let Some(item) = value.as_object() else {
+            return Err("Runtime-v3 shop item must be an object");
+        };
+        if item.len() != 3
+            || ["item_id", "name", "price"]
+                .iter()
+                .any(|field| !item.contains_key(*field))
+        {
             return Err("Runtime-v3 shop item contains unknown or missing fields");
         }
         validate_identity_value(item.get("item_id"))?;
-        if !item.get("name").and_then(JsonValue::as_string).is_some_and(safe_text) {
+        if !item
+            .get("name")
+            .and_then(JsonValue::as_string)
+            .is_some_and(safe_text)
+        {
             return Err("Runtime-v3 shop item name is invalid");
         }
         bounded_number(item.get("price"), 4_294_967_295_i64)?;
@@ -500,7 +558,14 @@ fn validate_transition(value: Option<&JsonValue>, generation: i64) -> Result<(),
         return Err("Runtime-v3 transition witness must be an object");
     };
     if object.len() != 4
-        || ["from_generation", "to_generation", "state_id", "effect_kind"].iter().any(|field| !object.contains_key(*field))
+        || [
+            "from_generation",
+            "to_generation",
+            "state_id",
+            "effect_kind",
+        ]
+        .iter()
+        .any(|field| !object.contains_key(*field))
     {
         return Err("Runtime-v3 transition witness contains unknown or missing fields");
     }
@@ -517,7 +582,11 @@ fn require_error_code(object: &BTreeMap<String, JsonValue>) -> Result<(), &'stat
     let Some(value) = object.get("error_code").and_then(JsonValue::as_string) else {
         return Err("Runtime-v3 result error_code must be a string");
     };
-    if safe_identifier(value) { Ok(()) } else { Err("Runtime-v3 result error_code is unsafe or oversized") }
+    if safe_identifier(value) {
+        Ok(())
+    } else {
+        Err("Runtime-v3 result error_code is unsafe or oversized")
+    }
 }
 
 fn require_null(object: &BTreeMap<String, JsonValue>, field: &str) -> Result<(), &'static str> {
@@ -528,7 +597,10 @@ fn require_null(object: &BTreeMap<String, JsonValue>, field: &str) -> Result<(),
     }
 }
 
-fn validate_identity_field(object: &BTreeMap<String, JsonValue>, field: &str) -> Result<(), &'static str> {
+fn validate_identity_field(
+    object: &BTreeMap<String, JsonValue>,
+    field: &str,
+) -> Result<(), &'static str> {
     validate_identity_value(object.get(field))
 }
 
@@ -536,7 +608,11 @@ fn validate_identity_value(value: Option<&JsonValue>) -> Result<(), &'static str
     let Some(value) = value.and_then(JsonValue::as_string) else {
         return Err("Runtime-v3 identity must be a string");
     };
-    if safe_identifier(value) { Ok(()) } else { Err("Runtime-v3 identity is unsafe or oversized") }
+    if safe_identifier(value) {
+        Ok(())
+    } else {
+        Err("Runtime-v3 identity is unsafe or oversized")
+    }
 }
 
 fn optional_identity(value: Option<&JsonValue>) -> Result<(), &'static str> {
@@ -576,18 +652,14 @@ fn project_root(object: &BTreeMap<String, JsonValue>) -> Result<JsonValue, &'sta
         let value = match field {
             "legal_actions" if matches!(object.get(field), Some(JsonValue::Null)) => {
                 JsonValue::Null
-            },
+            }
             "legal_actions" => project_legal_actions(
                 object
                     .get(field)
                     .ok_or("Runtime-v3 legal_actions is missing")?,
             )?,
             "action" if !matches!(object.get(field), Some(JsonValue::Null)) => {
-                project_legal_action(
-                    object
-                        .get(field)
-                        .ok_or("Runtime-v3 action is missing")?,
-                )?
+                project_legal_action(object.get(field).ok_or("Runtime-v3 action is missing")?)?
             }
             _ => object
                 .get(field)

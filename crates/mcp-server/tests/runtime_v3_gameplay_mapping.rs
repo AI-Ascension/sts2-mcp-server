@@ -5,7 +5,7 @@ use std::collections::VecDeque;
 use sts2_mcp_server::{
     DISPATCH_ACTION_TOOL, GatewayAdapter, GatewayError, GatewayMethod, GatewayRequest,
     GatewayResponse, JsonValue, LEGAL_ACTIONS_TOOL, McpServer, OBSERVE_TOOL, RECOVER_TOOL,
-    REOBSERVE_TOOL, WAIT_FOR_TRANSITION_TOOL, ToolCatalog,
+    REOBSERVE_TOOL, ToolCatalog, WAIT_FOR_TRANSITION_TOOL,
 };
 
 struct RecordingGateway {
@@ -59,12 +59,13 @@ fn root(
     wait_outcome: JsonValue,
 ) -> JsonValue {
     JsonValue::object([
-        (String::from("protocol_version"), JsonValue::string("runtime-v3-gameplay")),
+        (
+            String::from("protocol_version"),
+            JsonValue::string("runtime-v3-gameplay"),
+        ),
         (
             String::from("schema_digest"),
-            JsonValue::string(
-                "fbfb18279b0c7ebb350ef0ce0d56547fa11e83985b13380cb2b0f1dba4cb56e9",
-            ),
+            JsonValue::string("fbfb18279b0c7ebb350ef0ce0d56547fa11e83985b13380cb2b0f1dba4cb56e9"),
         ),
         (
             String::from("provenance"),
@@ -77,10 +78,16 @@ fn root(
                     String::from("source"),
                     JsonValue::string("schemas/runtime-v3-gameplay.schema.json"),
                 ),
-                (String::from("generator"), JsonValue::string("hand-authored")),
+                (
+                    String::from("generator"),
+                    JsonValue::string("hand-authored"),
+                ),
             ]),
         ),
-        (String::from("correlation_id"), JsonValue::string("request-1")),
+        (
+            String::from("correlation_id"),
+            JsonValue::string("request-1"),
+        ),
         (String::from("instance_id"), JsonValue::string("instance-1")),
         (String::from("session_id"), JsonValue::string("session-1")),
         (String::from("lease_id"), JsonValue::string("lease-1")),
@@ -105,7 +112,10 @@ fn observation(generation: i64) -> JsonValue {
     JsonValue::object([
         (String::from("state_id"), JsonValue::string("combat-1")),
         (String::from("generation"), JsonValue::Number(generation)),
-        (String::from("visible_seed"), JsonValue::string("visible-seed")),
+        (
+            String::from("visible_seed"),
+            JsonValue::string("visible-seed"),
+        ),
         (
             String::from("player"),
             JsonValue::object([
@@ -177,7 +187,7 @@ fn catalog_exposes_only_the_six_semantic_operations() {
     let catalog = ToolCatalog::runtime_v3_gameplay();
     let mut server = McpServer::with_catalog(RecordingGateway::new([]), catalog);
     let response = server
-        .handle_frame("{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"tools/list\",\"params\":{}}" );
+        .handle_frame("{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"tools/list\",\"params\":{}}");
     for name in [
         OBSERVE_TOOL,
         LEGAL_ACTIONS_TOOL,
@@ -203,7 +213,10 @@ fn observe_maps_the_complete_identity_bound_request_to_the_v3_route() {
         ToolCatalog::runtime_v3_gameplay(),
     );
     let response = server.handle_frame(&call(OBSERVE_TOOL, &context_arguments("")));
-    assert!(response.contains("\"isError\":false"), "response: {response}");
+    assert!(
+        response.contains("\"isError\":false"),
+        "response: {response}"
+    );
     assert!(response.contains("combat-1"));
     assert_eq!(server.gateway().requests.len(), 1);
     let request = &server.gateway().requests[0];
@@ -245,7 +258,10 @@ fn dispatch_maps_one_typed_action_and_preserves_stale_rejection() {
 
 #[test]
 fn action_shape_and_unknown_response_fields_fail_closed_before_or_at_projection() {
-    let mut server = McpServer::with_catalog(RecordingGateway::new([]), ToolCatalog::runtime_v3_gameplay());
+    let mut server = McpServer::with_catalog(
+        RecordingGateway::new([]),
+        ToolCatalog::runtime_v3_gameplay(),
+    );
     let invalid_action = context_arguments(
         ",\"state_id\":\"combat-1\",\"operation_id\":\"operation-1\",\
          \"action\":{\"action_id\":\"end-turn\",\"action\":{\"kind\":\"end_turn\",\"shell\":\"rm\"}}",
@@ -259,7 +275,10 @@ fn action_shape_and_unknown_response_fields_fail_closed_before_or_at_projection(
         object.insert(String::from("raw_memory"), JsonValue::string("blocked"));
     }
     let mut projection_server = McpServer::with_catalog(
-        RecordingGateway::new([Ok(GatewayResponse { status: 200, body: response })]),
+        RecordingGateway::new([Ok(GatewayResponse {
+            status: 200,
+            body: response,
+        })]),
         ToolCatalog::runtime_v3_gameplay(),
     );
     let observed = projection_server.handle_frame(&call(OBSERVE_TOOL, &context_arguments("")));
@@ -289,9 +308,7 @@ fn timeout_on_wait_is_an_unknown_timeout_result() {
         RecordingGateway::new([Err(GatewayError::Timeout)]),
         ToolCatalog::runtime_v3_gameplay(),
     );
-    let arguments = context_arguments(
-        ",\"operation_id\":\"operation-1\",\"wait_for_millis\":1000",
-    );
+    let arguments = context_arguments(",\"operation_id\":\"operation-1\",\"wait_for_millis\":1000");
     let response = server.handle_frame(&call(WAIT_FOR_TRANSITION_TOOL, &arguments));
     assert!(response.contains("\"status\":\"unknown\""));
     assert!(response.contains("\"wait_outcome\":\"timeout\""));
@@ -302,10 +319,16 @@ fn timeout_on_wait_is_an_unknown_timeout_result() {
 fn result_operation_identity_must_match_the_requested_operation() {
     let mut response = rejected_response();
     if let JsonValue::Object(object) = &mut response {
-        object.insert(String::from("operation_id"), JsonValue::string("other-operation"));
+        object.insert(
+            String::from("operation_id"),
+            JsonValue::string("other-operation"),
+        );
     }
     let mut server = McpServer::with_catalog(
-        RecordingGateway::new([Ok(GatewayResponse { status: 409, body: response })]),
+        RecordingGateway::new([Ok(GatewayResponse {
+            status: 409,
+            body: response,
+        })]),
         ToolCatalog::runtime_v3_gameplay(),
     );
     let arguments = context_arguments(

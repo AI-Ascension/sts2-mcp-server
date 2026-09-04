@@ -34,7 +34,8 @@ impl RuntimeV3GameplayContext {
         let lease_epoch = bounded_argument(arguments, "lease_epoch")?;
         let generation = bounded_argument(arguments, "generation")?;
         let state_id = optional_string_argument(arguments, "state_id", require_state_id)?;
-        let operation_id = optional_string_argument(arguments, "operation_id", require_operation_id)?;
+        let operation_id =
+            optional_string_argument(arguments, "operation_id", require_operation_id)?;
         if state_id
             .as_deref()
             .is_some_and(|value| !crate::mapping::safe_header_value(value))

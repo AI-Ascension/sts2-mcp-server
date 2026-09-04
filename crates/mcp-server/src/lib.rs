@@ -12,12 +12,12 @@ mod protocol_artifact_runtime_v3_gameplay;
 mod server;
 mod transport;
 
+pub use catalog::COOP_SYNCHRONIZATION_TOOL;
 pub use catalog::{
     CapabilityCatalog, DISPATCH_ACTION_TOOL, GET_STATE_TOOL, LEGAL_ACTIONS_TOOL, OBSERVE_TOOL,
-    RECOVER_TOOL, RECONCILE_ACTION_TOOL, REOBSERVE_TOOL, SUBMIT_ACTION_TOOL,
-    WAIT_FOR_TRANSITION_TOOL, ToolCatalog, ToolDescriptor,
+    RECONCILE_ACTION_TOOL, RECOVER_TOOL, REOBSERVE_TOOL, SUBMIT_ACTION_TOOL, ToolCatalog,
+    ToolDescriptor, WAIT_FOR_TRANSITION_TOOL,
 };
-pub use catalog::COOP_SYNCHRONIZATION_TOOL;
 pub use gateway::{
     Correlation, GatewayAdapter, GatewayError, GatewayMethod, GatewayRequest, GatewayResponse,
 };

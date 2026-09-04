@@ -75,18 +75,9 @@ fn context_schema(required_extra: &[&str], optional_extra: &[&str]) -> JsonValue
             String::from("mcp_session_id"),
             bounded_string(IDENTITY_PATTERN),
         ),
-        (
-            String::from("lease_id"),
-            bounded_string(IDENTITY_PATTERN),
-        ),
-        (
-            String::from("lease_epoch"),
-            bounded_counter(MAX_GENERATION),
-        ),
-        (
-            String::from("generation"),
-            bounded_counter(MAX_GENERATION),
-        ),
+        (String::from("lease_id"), bounded_string(IDENTITY_PATTERN)),
+        (String::from("lease_epoch"), bounded_counter(MAX_GENERATION)),
+        (String::from("generation"), bounded_counter(MAX_GENERATION)),
     ];
     let schema_for = |key: &str| -> JsonValue {
         match key {
@@ -94,10 +85,7 @@ fn context_schema(required_extra: &[&str], optional_extra: &[&str]) -> JsonValue
             "action" => legal_action_schema(),
             "wait_for_millis" => bounded_counter(MAX_WAIT_MILLIS),
             "recovery_kind" => JsonValue::object([
-                (
-                    String::from("type"),
-                    JsonValue::string("string"),
-                ),
+                (String::from("type"), JsonValue::string("string")),
                 (
                     String::from("enum"),
                     JsonValue::Array(
@@ -162,7 +150,10 @@ fn legal_action_schema() -> JsonValue {
         (String::from("additionalProperties"), JsonValue::Bool(false)),
         (
             String::from("required"),
-            JsonValue::Array(vec![JsonValue::string("action_id"), JsonValue::string("action")]),
+            JsonValue::Array(vec![
+                JsonValue::string("action_id"),
+                JsonValue::string("action"),
+            ]),
         ),
         (
             String::from("properties"),
@@ -215,12 +206,13 @@ fn action_payload_schema() -> JsonValue {
                 (String::from("card_id"), bounded_string(IDENTITY_PATTERN)),
                 (
                     String::from("target_id"),
-                    JsonValue::object([
-                        (String::from("anyOf"), JsonValue::Array(vec![
+                    JsonValue::object([(
+                        String::from("anyOf"),
+                        JsonValue::Array(vec![
                             bounded_string(IDENTITY_PATTERN),
                             JsonValue::object([(String::from("type"), JsonValue::string("null"))]),
-                        ])),
-                    ]),
+                        ]),
+                    )]),
                 ),
             ]),
         ),

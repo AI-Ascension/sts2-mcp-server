@@ -29,9 +29,7 @@ pub(super) fn project_legal_action(value: &JsonValue) -> Result<JsonValue, &'sta
     ]))
 }
 
-pub(super) fn project_legal_actions(
-    value: &JsonValue,
-) -> Result<JsonValue, &'static str> {
+pub(super) fn project_legal_actions(value: &JsonValue) -> Result<JsonValue, &'static str> {
     let Some(values) = (match value {
         JsonValue::Array(values) => Some(values),
         _ => None,
@@ -109,10 +107,7 @@ fn one_argument(
     ]))
 }
 
-fn play_card(
-    object: &BTreeMap<String, JsonValue>,
-    kind: &str,
-) -> Result<JsonValue, &'static str> {
+fn play_card(object: &BTreeMap<String, JsonValue>, kind: &str) -> Result<JsonValue, &'static str> {
     if !exact_keys(object, &["kind", "card_id", "target_id"]) {
         return Err("Runtime-v3 play_card contains unknown or missing fields");
     }

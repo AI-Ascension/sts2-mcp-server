@@ -8,7 +8,9 @@ use crate::catalog::{
 };
 use crate::gateway::{Correlation, GatewayAdapter, GatewayError, GatewayMethod, GatewayRequest};
 use crate::json::JsonValue;
-use crate::protocol::{INVALID_PARAMS, METHOD_NOT_FOUND, RequestId, RpcError, RpcRequest, RpcResponse};
+use crate::protocol::{
+    INVALID_PARAMS, METHOD_NOT_FOUND, RequestId, RpcError, RpcRequest, RpcResponse,
+};
 use crate::server::McpServer;
 
 use super::{headers, invalid_params, response, tool_result};
@@ -81,7 +83,10 @@ pub(super) fn tools_call<G: GatewayAdapter>(
     if server.catalog.descriptor(tool_name).is_none() {
         return RpcResponse::failure(
             Some(request.id),
-            RpcError::new(METHOD_NOT_FOUND, "tool is not in the active Runtime-v3 catalog"),
+            RpcError::new(
+                METHOD_NOT_FOUND,
+                "tool is not in the active Runtime-v3 catalog",
+            ),
         );
     }
     let Some(arguments) = params.get("arguments").and_then(JsonValue::as_object) else {
@@ -90,7 +95,10 @@ pub(super) fn tools_call<G: GatewayAdapter>(
     let id = request.id;
     let correlation_id = id.stable_text();
     if !super::safe_header_value(&correlation_id) {
-        return invalid_params(id, "request id contains an unsafe or oversized header value");
+        return invalid_params(
+            id,
+            "request id contains an unsafe or oversized header value",
+        );
     }
     match tool_name {
         OBSERVE_TOOL => observe_call(server, id, arguments, &correlation_id),
@@ -101,7 +109,10 @@ pub(super) fn tools_call<G: GatewayAdapter>(
         RECOVER_TOOL => recover_call(server, id, arguments, &correlation_id),
         _ => RpcResponse::failure(
             Some(id),
-            RpcError::new(METHOD_NOT_FOUND, "tool is not in the active Runtime-v3 catalog"),
+            RpcError::new(
+                METHOD_NOT_FOUND,
+                "tool is not in the active Runtime-v3 catalog",
+            ),
         ),
     }
 }
@@ -112,7 +123,15 @@ fn observe_call<G: GatewayAdapter>(
     arguments: &BTreeMap<String, JsonValue>,
     correlation_id: &str,
 ) -> RpcResponse {
-    call_read(server, id, arguments, correlation_id, &OBSERVE_ARGUMENTS, "state_request", "state_response")
+    call_read(
+        server,
+        id,
+        arguments,
+        correlation_id,
+        &OBSERVE_ARGUMENTS,
+        "state_request",
+        "state_response",
+    )
 }
 
 fn legal_actions_call<G: GatewayAdapter>(
@@ -122,12 +141,16 @@ fn legal_actions_call<G: GatewayAdapter>(
     correlation_id: &str,
 ) -> RpcResponse {
     if !super::has_only_arguments(arguments, &LEGAL_ACTION_ARGUMENTS) {
-        return invalid_params(id, "sts2.legal_actions arguments contain an unsupported field");
+        return invalid_params(
+            id,
+            "sts2.legal_actions arguments contain an unsupported field",
+        );
     }
-    let context = match context::RuntimeV3GameplayContext::parse(arguments, correlation_id, true, false) {
-        Ok(context) => context,
-        Err(message) => return invalid_params(id, message),
-    };
+    let context =
+        match context::RuntimeV3GameplayContext::parse(arguments, correlation_id, true, false) {
+            Ok(context) => context,
+            Err(message) => return invalid_params(id, message),
+        };
     let body = envelope::request_envelope(
         &context,
         "legal_actions_request",
@@ -144,7 +167,14 @@ fn legal_actions_call<G: GatewayAdapter>(
         format!("/v3/instances/{}/legal-actions", context.instance_id()),
         body,
     );
-    forward(server, id, request, &context, "legal_actions_response", false)
+    forward(
+        server,
+        id,
+        request,
+        &context,
+        "legal_actions_response",
+        false,
+    )
 }
 
 fn dispatch_call<G: GatewayAdapter>(
@@ -154,12 +184,16 @@ fn dispatch_call<G: GatewayAdapter>(
     correlation_id: &str,
 ) -> RpcResponse {
     if !super::has_only_arguments(arguments, &DISPATCH_ARGUMENTS) {
-        return invalid_params(id, "sts2.dispatch_action arguments contain an unsupported field");
+        return invalid_params(
+            id,
+            "sts2.dispatch_action arguments contain an unsupported field",
+        );
     }
-    let context = match context::RuntimeV3GameplayContext::parse(arguments, correlation_id, true, true) {
-        Ok(context) => context,
-        Err(message) => return invalid_params(id, message),
-    };
+    let context =
+        match context::RuntimeV3GameplayContext::parse(arguments, correlation_id, true, true) {
+            Ok(context) => context,
+            Err(message) => return invalid_params(id, message),
+        };
     let Some(action) = arguments.get("action") else {
         return invalid_params(id, "sts2.dispatch_action requires one LegalAction");
     };
@@ -183,7 +217,14 @@ fn dispatch_call<G: GatewayAdapter>(
         format!("/v3/instances/{}/action", context.instance_id()),
         body,
     );
-    forward(server, id, request, &context, "dispatch_action_response", true)
+    forward(
+        server,
+        id,
+        request,
+        &context,
+        "dispatch_action_response",
+        true,
+    )
 }
 
 fn wait_call<G: GatewayAdapter>(
@@ -193,14 +234,21 @@ fn wait_call<G: GatewayAdapter>(
     correlation_id: &str,
 ) -> RpcResponse {
     if !super::has_only_arguments(arguments, &WAIT_ARGUMENTS) {
-        return invalid_params(id, "sts2.wait_for_transition arguments contain an unsupported field");
+        return invalid_params(
+            id,
+            "sts2.wait_for_transition arguments contain an unsupported field",
+        );
     }
-    let context = match context::RuntimeV3GameplayContext::parse(arguments, correlation_id, false, true) {
-        Ok(context) => context,
-        Err(message) => return invalid_params(id, message),
-    };
+    let context =
+        match context::RuntimeV3GameplayContext::parse(arguments, correlation_id, false, true) {
+            Ok(context) => context,
+            Err(message) => return invalid_params(id, message),
+        };
     let Some(wait_for_millis) = bounded_wait(arguments) else {
-        return invalid_params(id, "wait_for_millis must be an integer between 1 and 120000");
+        return invalid_params(
+            id,
+            "wait_for_millis must be an integer between 1 and 120000",
+        );
     };
     let body = envelope::request_envelope(
         &context,
@@ -227,7 +275,15 @@ fn reobserve_call<G: GatewayAdapter>(
     arguments: &BTreeMap<String, JsonValue>,
     correlation_id: &str,
 ) -> RpcResponse {
-    call_read(server, id, arguments, correlation_id, &OBSERVE_ARGUMENTS, "reobserve_request", "reobserve_response")
+    call_read(
+        server,
+        id,
+        arguments,
+        correlation_id,
+        &OBSERVE_ARGUMENTS,
+        "reobserve_request",
+        "reobserve_response",
+    )
 }
 
 fn recover_call<G: GatewayAdapter>(
@@ -239,14 +295,21 @@ fn recover_call<G: GatewayAdapter>(
     if !super::has_only_arguments(arguments, &RECOVER_ARGUMENTS) {
         return invalid_params(id, "sts2.recover arguments contain an unsupported field");
     }
-    let context = match context::RuntimeV3GameplayContext::parse(arguments, correlation_id, false, false) {
-        Ok(context) => context,
-        Err(message) => return invalid_params(id, message),
-    };
-    let Some(kind) = arguments.get("recovery_kind").and_then(JsonValue::as_string) else {
+    let context =
+        match context::RuntimeV3GameplayContext::parse(arguments, correlation_id, false, false) {
+            Ok(context) => context,
+            Err(message) => return invalid_params(id, message),
+        };
+    let Some(kind) = arguments
+        .get("recovery_kind")
+        .and_then(JsonValue::as_string)
+    else {
         return invalid_params(id, "recovery_kind must be an allowlisted string");
     };
-    if !matches!(kind, "reobserve" | "reconcile" | "release_lease" | "stop_episode") {
+    if !matches!(
+        kind,
+        "reobserve" | "reconcile" | "release_lease" | "stop_episode"
+    ) {
         return invalid_params(id, "recovery_kind is not allowlisted");
     }
     if kind == "reconcile" && context.operation_id.is_none() {
@@ -296,24 +359,12 @@ fn call_read<G: GatewayAdapter>(
     if !super::has_only_arguments(arguments, allowed) {
         return invalid_params(id, "Runtime-v3 read arguments contain an unsupported field");
     }
-    let context = match context::RuntimeV3GameplayContext::parse(
-        arguments,
-        correlation_id,
-        false,
-        false,
-    ) {
-        Ok(context) => context,
-        Err(message) => return invalid_params(id, message),
-    };
-    let body = envelope::request_envelope(
-        &context,
-        request_kind,
-        None,
-        None,
-        None,
-        None,
-        None,
-    );
+    let context =
+        match context::RuntimeV3GameplayContext::parse(arguments, correlation_id, false, false) {
+            Ok(context) => context,
+            Err(message) => return invalid_params(id, message),
+        };
+    let body = envelope::request_envelope(&context, request_kind, None, None, None, None, None);
     let path_suffix = if request_kind == "reobserve_request" {
         "reobserve"
     } else {
@@ -357,12 +408,9 @@ fn forward<G: GatewayAdapter>(
     mutation: bool,
 ) -> RpcResponse {
     match server.gateway.forward(request) {
-        Ok(response) => response::gateway_success_v3(
-            id,
-            response,
-            &context.projection,
-            expected_kind,
-        ),
+        Ok(response) => {
+            response::gateway_success_v3(id, response, &context.projection, expected_kind)
+        }
         Err(GatewayError::Timeout | GatewayError::Unavailable) if mutation => {
             let body = envelope::unknown_response(
                 context,

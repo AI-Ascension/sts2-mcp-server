@@ -5,8 +5,7 @@ use crate::json::JsonValue;
 use super::context::RuntimeV3GameplayContext;
 
 const PROTOCOL_VERSION: &str = "runtime-v3-gameplay";
-const SCHEMA_DIGEST: &str =
-    "fbfb18279b0c7ebb350ef0ce0d56547fa11e83985b13380cb2b0f1dba4cb56e9";
+const SCHEMA_DIGEST: &str = "fbfb18279b0c7ebb350ef0ce0d56547fa11e83985b13380cb2b0f1dba4cb56e9";
 const ARTIFACT: &str = "sts2-protocol/runtime-v3-gameplay";
 const SOURCE: &str = "schemas/runtime-v3-gameplay.schema.json";
 const GENERATOR: &str = "hand-authored";
@@ -21,8 +20,14 @@ pub(super) fn request_envelope(
     recovery: Option<JsonValue>,
 ) -> JsonValue {
     JsonValue::object([
-        (String::from("protocol_version"), JsonValue::string(PROTOCOL_VERSION)),
-        (String::from("schema_digest"), JsonValue::string(SCHEMA_DIGEST)),
+        (
+            String::from("protocol_version"),
+            JsonValue::string(PROTOCOL_VERSION),
+        ),
+        (
+            String::from("schema_digest"),
+            JsonValue::string(SCHEMA_DIGEST),
+        ),
         (String::from("provenance"), provenance()),
         (
             String::from("correlation_id"),
@@ -59,7 +64,10 @@ pub(super) fn request_envelope(
         ),
         (String::from("observation"), JsonValue::Null),
         (String::from("legal_actions"), JsonValue::Null),
-        (String::from("action"), action.map_or(JsonValue::Null, |value| value)),
+        (
+            String::from("action"),
+            action.map_or(JsonValue::Null, |value| value),
+        ),
         (String::from("status"), JsonValue::Null),
         (String::from("transition"), JsonValue::Null),
         (String::from("error_code"), JsonValue::Null),
@@ -68,7 +76,10 @@ pub(super) fn request_envelope(
             wait_for_millis.map_or(JsonValue::Null, JsonValue::Number),
         ),
         (String::from("wait_outcome"), JsonValue::Null),
-        (String::from("recovery"), recovery.map_or(JsonValue::Null, |value| value)),
+        (
+            String::from("recovery"),
+            recovery.map_or(JsonValue::Null, |value| value),
+        ),
     ])
 }
 
@@ -87,8 +98,14 @@ pub(super) fn unknown_response(
         .as_deref()
         .or((kind == "recover_response").then_some(context.correlation_id()));
     JsonValue::object([
-        (String::from("protocol_version"), JsonValue::string(PROTOCOL_VERSION)),
-        (String::from("schema_digest"), JsonValue::string(SCHEMA_DIGEST)),
+        (
+            String::from("protocol_version"),
+            JsonValue::string(PROTOCOL_VERSION),
+        ),
+        (
+            String::from("schema_digest"),
+            JsonValue::string(SCHEMA_DIGEST),
+        ),
         (String::from("provenance"), provenance()),
         (
             String::from("correlation_id"),

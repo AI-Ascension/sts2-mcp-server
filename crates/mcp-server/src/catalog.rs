@@ -2,14 +2,14 @@
 
 use crate::json::JsonValue;
 
+#[path = "catalog_coop_gameplay.rs"]
+mod coop_gameplay;
 #[path = "catalog_runtime.rs"]
 mod runtime;
 #[path = "catalog_runtime_v2.rs"]
 mod runtime_v2;
 #[path = "catalog_runtime_v3_gameplay.rs"]
 mod runtime_v3_gameplay;
-#[path = "catalog_coop_gameplay.rs"]
-mod coop_gameplay;
 
 pub const GET_STATE_TOOL: &str = "get_state";
 pub const SUBMIT_ACTION_TOOL: &str = "submit_action";

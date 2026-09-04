@@ -14,6 +14,8 @@ use crate::protocol_artifact::{
 };
 use crate::server::McpServer;
 
+#[path = "mapping_coop_gameplay.rs"]
+mod coop_gameplay;
 #[path = "mapping_response.rs"]
 mod response;
 #[path = "mapping_runtime.rs"]
@@ -22,8 +24,6 @@ mod runtime;
 mod runtime_v2;
 #[path = "mapping_runtime_v3_gameplay.rs"]
 mod runtime_v3_gameplay;
-#[path = "mapping_coop_gameplay.rs"]
-mod coop_gameplay;
 
 pub(crate) fn tools_call<G: GatewayAdapter>(
     server: &mut McpServer<G>,
