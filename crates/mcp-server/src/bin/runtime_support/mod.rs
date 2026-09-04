@@ -3,6 +3,7 @@
 use std::net::{SocketAddr, TcpStream};
 use std::time::{Duration, Instant};
 
+mod binding;
 mod http;
 use http::{ReadError, read_response, write_request};
 
@@ -125,6 +126,9 @@ impl RuntimeGatewayAdapter {
 
 impl GatewayAdapter for RuntimeGatewayAdapter {
     fn forward(&mut self, request: GatewayRequest) -> Result<GatewayResponse, GatewayError> {
+        binding::admit(&self.config, &request)?;
+        let response_kind = binding::response_kind(&self.config, &request);
+        let correlation = request.correlation.mcp_request_id.stable_text();
         let body = self.body(&request)?;
         let deadline = Instant::now() + Duration::from_secs(5);
         let mut stream =
@@ -191,6 +195,11 @@ impl GatewayAdapter for RuntimeGatewayAdapter {
             std::str::from_utf8(&response.body).map_err(|_| GatewayError::MalformedResponse)?,
         )
         .map_err(|_| GatewayError::MalformedResponse)?;
+        if ((200..300).contains(&response.status) || is_runtime_result(&body))
+            && let Some(kind) = response_kind
+        {
+            binding::response(&self.config, &body, &correlation, kind)?;
+        }
         match response.status {
             401 => Err(GatewayError::Unauthorized),
             404 => Err(GatewayError::NotFound),

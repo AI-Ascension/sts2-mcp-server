@@ -76,3 +76,9 @@ additionally limited to two seconds. Responses require HTTP/1.1, a final 200–5
 Content-Length, and `application/json` (optionally UTF-8 charset); duplicate headers, transfer/content
 encodings, and headers exceeding 8 KiB including the terminator fail closed. Bodies remain capped at
 64 KiB. These are source and loopback-test guarantees, not downstream readiness evidence.
+
+The Runtime-v2 mapping carries the caller's instance/session/lease/epoch as explicit authority
+headers even for bodyless reconciliation. Before connecting, the executable rejects mismatches with
+its configured gateway authority instead of silently replacing them. Runtime-v1 keeps its documented
+configured-identity injection, but Runtime-v1 and Runtime-v2 response envelopes must match the actual
+configured identity, request correlation, and route-specific result kind before projection.

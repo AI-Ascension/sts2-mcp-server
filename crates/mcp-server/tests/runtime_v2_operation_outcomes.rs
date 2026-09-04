@@ -92,6 +92,20 @@ fn duplicate_replays_and_reconcile_keep_the_same_operation_identity() {
         "/v2/instances/instance-1/operations/op-timeout"
     );
     assert!(server.gateway().requests[2].body.is_none());
+    for (name, value) in [
+        ("x-sts2-instance-id", "instance-1"),
+        ("x-sts2-session-id", "session-1"),
+        ("x-sts2-lease-id", "lease-1"),
+        ("x-sts2-lease-epoch", "1"),
+    ] {
+        assert_eq!(
+            server.gateway().requests[2]
+                .headers
+                .get(name)
+                .map(String::as_str),
+            Some(value)
+        );
+    }
 }
 
 #[test]
