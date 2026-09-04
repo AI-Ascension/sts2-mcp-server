@@ -76,6 +76,9 @@ impl RpcRequest {
             .get("params")
             .cloned()
             .unwrap_or_else(|| JsonValue::Object(BTreeMap::new()));
+        if !matches!(params, JsonValue::Object(_) | JsonValue::Array(_)) {
+            return Err("request params must be structured");
+        }
         Ok(Self {
             id,
             method: method.to_owned(),

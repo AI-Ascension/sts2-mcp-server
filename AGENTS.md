@@ -30,7 +30,7 @@ directly, depend on host/game-mod implementation crates, or proxy arbitrary down
 
 ## Safety and provenance
 
-Preserve existing files and user work. This scaffold is not a Git repository; do not initialize Git,
+Preserve existing files and user work in this Git repository; do not
 stage, commit, push, merge, publish, deploy, install, launch a game, call a provider, or mutate a profile
 or save unless separately authorized. Never add proprietary host assemblies, credentials, personal paths,
 saves, or generated build output. Do not copy or transliterate a reference implementation.

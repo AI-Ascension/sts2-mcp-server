@@ -27,7 +27,9 @@ fn run() -> Result<(), String> {
         let Some(frame) = read_frame(&mut input)? else {
             return Ok(());
         };
-        let response = server.handle_frame(&frame);
+        let Some(response) = server.handle_message(&frame) else {
+            continue;
+        };
         output
             .write_all(response.as_bytes())
             .and_then(|_| output.write_all(b"\n"))

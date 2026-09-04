@@ -6,8 +6,8 @@
 | --- | --- | --- |
 | Unit | policy parsing, diagnostics, framing, validation, and pure mapping decisions | checker and MCP unit tests are present |
 | Protocol | exact MCP serialization and copied POC mapping | two-tool local fixtures are present |
-| Component | bounded transport, mapping, auth, timeout, cancellation, fake gateway | deterministic fake-gateway seam is present; live transport is future |
-| Integration | real disposable process/socket composition | future and authorized only |
+| Component | bounded transport, mapping, auth, timeout, cancellation, fake gateway | fake-gateway mapping and real stdio notification tests are present; cancellation effects are not established |
+| Integration | real disposable process/socket composition | documented Runtime-v1 component evidence is separate from local unit tests; new runs require authorization |
 | Host | game-mod/host load and effect behavior | owned by other targets |
 | Release smoke | exact package bytes in a clean environment | not started |
 
@@ -51,6 +51,13 @@ facts, `inferred` for reasoned consequences, `proposed` for new decisions, and `
 external precondition or runtime lane is absent. A skipped check remains visible and is not a pass.
 
 ## Runtime profile checks
+
+`json_notifications.rs` checks raw Unicode and surrogate-pair round trips, duplicate-key and
+leading-zero rejection, and a 64-value nesting limit before recursive parsing. It also exercises the
+actual binary's stdin/stdout to prove notifications produce no output, not even a blank line. The
+integer-only boundary remains intentional; this is not general-purpose JSON-number support.
+Notifications do not dispatch request-only tools. The synchronous transport still does not interrupt
+an in-flight gateway call on cancellation; notification silence is not evidence of cancellation.
 
 `runtime_mapping.rs` confirms the two runtime tool calls, fixed routes, complete action envelope,
 effect-witness projection, and structured stale-generation preservation. `runtime_artifact.rs`

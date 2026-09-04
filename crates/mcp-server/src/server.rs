@@ -29,10 +29,21 @@ impl<G: GatewayAdapter> McpServer<G> {
         Self { gateway, catalog }
     }
 
+    /// Compatibility entry point: an empty string means no notification response.
+    /// Transports should use `handle_message` and emit no bytes for `None`.
     pub fn handle_frame(&mut self, frame: &str) -> String {
+        self.handle_message(frame).unwrap_or_default()
+    }
+
+    /// Notifications produce no response and never dispatch request-only tools.
+    pub fn handle_message(&mut self, frame: &str) -> Option<String> {
         match FrameCodec::decode(frame) {
-            Ok(request) => FrameCodec::encode(&self.dispatch(request)),
-            Err(error) => FrameCodec::encode(&RpcResponse::failure(None, frame_error(error))),
+            Ok(Some(request)) => Some(FrameCodec::encode(&self.dispatch(request))),
+            Ok(None) => None,
+            Err(error) => Some(FrameCodec::encode(&RpcResponse::failure(
+                None,
+                frame_error(error),
+            ))),
         }
     }
 
