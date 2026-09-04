@@ -16,15 +16,26 @@ pub enum FrameError {
 pub struct FrameCodec;
 
 impl FrameCodec {
-    pub(crate) fn decode(frame: &str) -> Result<RpcRequest, FrameError> {
+    pub(crate) fn decode(frame: &str) -> Result<Option<RpcRequest>, FrameError> {
         if frame.len() > MAX_FRAME_BYTES {
             return Err(FrameError::TooLarge);
         }
         if frame.contains(['\n', '\r']) {
             return Err(FrameError::MultipleLines);
         }
-        let value = json::parse(frame).map_err(|_| FrameError::InvalidJson)?;
-        RpcRequest::from_json(value).map_err(|_| FrameError::InvalidRequest)
+        let mut value = json::parse(frame).map_err(|_| FrameError::InvalidJson)?;
+        let notification = if let json::JsonValue::Object(object) = &mut value {
+            if !object.contains_key("id") {
+                object.insert(String::from("id"), json::JsonValue::Number(0));
+                true
+            } else {
+                false
+            }
+        } else {
+            false
+        };
+        let request = RpcRequest::from_json(value).map_err(|_| FrameError::InvalidRequest)?;
+        Ok(if notification { None } else { Some(request) })
     }
 
     pub(crate) fn encode(response: &RpcResponse) -> String {

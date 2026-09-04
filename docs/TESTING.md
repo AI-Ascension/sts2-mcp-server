@@ -52,6 +52,13 @@ external precondition or runtime lane is absent. A skipped check remains visible
 
 ## Runtime profile checks
 
+`json_notifications.rs` checks raw Unicode and surrogate-pair round trips, duplicate-key and
+leading-zero rejection, and a 64-value nesting limit before recursive parsing. It also exercises the
+actual binary's stdin/stdout to prove notifications produce no output, not even a blank line. The
+integer-only boundary remains intentional; this is not general-purpose JSON-number support.
+Notifications do not dispatch request-only tools. The synchronous transport still does not interrupt
+an in-flight gateway call on cancellation; notification silence is not evidence of cancellation.
+
 `runtime_mapping.rs` confirms the two runtime tool calls, fixed routes, complete action envelope,
 effect-witness projection, and structured stale-generation preservation. `runtime_artifact.rs`
 confirms the copied manifest and schema bytes. The runtime binary has bounded stdin frame and HTTP

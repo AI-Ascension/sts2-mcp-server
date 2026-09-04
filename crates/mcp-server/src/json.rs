@@ -3,6 +3,12 @@
 use std::collections::BTreeMap;
 use std::fmt;
 
+#[path = "json_string.rs"]
+mod string;
+use string::write_string;
+#[path = "json_unicode.rs"]
+mod unicode;
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum JsonValue {
     Null,
@@ -74,24 +80,6 @@ impl JsonValue {
     }
 }
 
-fn write_string(output: &mut String, value: &str) {
-    output.push('"');
-    for character in value.chars() {
-        match character {
-            '"' => output.push_str("\\\""),
-            '\\' => output.push_str("\\\\"),
-            '\n' => output.push_str("\\n"),
-            '\r' => output.push_str("\\r"),
-            '\t' => output.push_str("\\t"),
-            character if character.is_control() => {
-                output.push_str(&format!("\\u{:04x}", character as u32));
-            }
-            character => output.push(character),
-        }
-    }
-    output.push('"');
-}
-
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub(crate) struct JsonParseError {
     position: usize,
@@ -116,6 +104,7 @@ pub(crate) fn parse(input: &str) -> Result<JsonValue, JsonParseError> {
     let mut parser = Parser {
         bytes: input.as_bytes(),
         position: 0,
+        depth: 0,
     };
     let value = parser.value()?;
     parser.whitespace();
@@ -136,12 +125,17 @@ pub fn parse_json(input: &str) -> Result<JsonValue, String> {
 struct Parser<'a> {
     bytes: &'a [u8],
     position: usize,
+    depth: usize,
 }
 
 impl Parser<'_> {
     fn value(&mut self) -> Result<JsonValue, JsonParseError> {
+        if self.depth >= 64 {
+            return Err(self.error("JSON nesting exceeds the limit"));
+        }
+        self.depth += 1;
         self.whitespace();
-        match self.peek() {
+        let result = match self.peek() {
             Some(b'n') => self.literal(b"null", JsonValue::Null),
             Some(b't') => self.literal(b"true", JsonValue::Bool(true)),
             Some(b'f') => self.literal(b"false", JsonValue::Bool(false)),
@@ -151,7 +145,9 @@ impl Parser<'_> {
             Some(b'-' | b'0'..=b'9') => self.number(),
             Some(_) => Err(self.error("unexpected JSON value")),
             None => Err(self.error("expected JSON value")),
-        }
+        };
+        self.depth -= 1;
+        result
     }
 
     fn literal(&mut self, expected: &[u8], value: JsonValue) -> Result<JsonValue, JsonParseError> {
@@ -178,7 +174,16 @@ impl Parser<'_> {
                 Some(b'\\') => value.push(self.escape()?),
                 Some(byte) if byte < 0x20 => return Err(self.error("control byte in JSON string")),
                 Some(byte) if byte < 0x80 => value.push(byte as char),
-                Some(_) => return Err(self.error("non-ASCII JSON must use an escape")),
+                Some(_) => {
+                    let tail = std::str::from_utf8(&self.bytes[self.position - 1..])
+                        .map_err(|_| self.error("invalid UTF-8 string"))?;
+                    let character = tail
+                        .chars()
+                        .next()
+                        .ok_or_else(|| self.error("invalid string"))?;
+                    self.position += character.len_utf8() - 1;
+                    value.push(character);
+                }
                 None => return Err(self.error("unterminated JSON string")),
             }
         }
@@ -200,23 +205,6 @@ impl Parser<'_> {
         }
     }
 
-    fn unicode_escape(&mut self) -> Result<char, JsonParseError> {
-        let mut value = 0_u32;
-        for _ in 0..4 {
-            let byte = self
-                .take()
-                .ok_or_else(|| self.error("unfinished unicode escape"))?;
-            value = value * 16
-                + match byte {
-                    b'0'..=b'9' => u32::from(byte - b'0'),
-                    b'a'..=b'f' => u32::from(byte - b'a' + 10),
-                    b'A'..=b'F' => u32::from(byte - b'A' + 10),
-                    _ => return Err(self.error("invalid unicode escape")),
-                };
-        }
-        char::from_u32(value).ok_or_else(|| self.error("invalid unicode scalar"))
-    }
-
     fn number(&mut self) -> Result<JsonValue, JsonParseError> {
         let start = self.position;
         if self.peek() == Some(b'-') {
@@ -228,6 +216,9 @@ impl Parser<'_> {
         }
         if self.position == digits {
             return Err(self.error("JSON number has no digits"));
+        }
+        if self.position - digits > 1 && self.bytes[digits] == b'0' {
+            return Err(self.error("leading zero in JSON number"));
         }
         if matches!(self.peek(), Some(b'.' | b'e' | b'E')) {
             return Err(self.error("only integer JSON numbers are supported"));
@@ -274,7 +265,9 @@ impl Parser<'_> {
                 return Err(self.error("expected object colon"));
             }
             let value = self.value()?;
-            values.insert(key, value);
+            if values.insert(key, value).is_some() {
+                return Err(self.error("duplicate JSON object key"));
+            }
             self.whitespace();
             match self.take() {
                 Some(b',') => {}
