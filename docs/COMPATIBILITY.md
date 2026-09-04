@@ -71,8 +71,9 @@ operation-ID schema excludes `/`, which the current fixed reconciliation path ca
 and the mapping also rejects the bare segments `.` and `..` before dispatch so no dot segment reaches
 the route; other shared identity fields retain their existing syntax. Existing slash-containing operation IDs
 cannot be reconciled through this adapter and require owner-side investigation, not resubmission.
-The process defaults to `runtime-v1`; `STS2_RUNTIME_PROFILE=runtime-v2` selects Runtime-v2 and any
-other value fails closed. Runtime-v2 supplied instance/session/lease/epoch fields must match the
+The process defaults to `runtime-v1`; `STS2_RUNTIME_PROFILE=runtime-v2` selects Runtime-v2, and
+`runtime-v3-gameplay` selects the earlier gameplay profile below. Other values fail closed.
+Runtime-v2 supplied instance/session/lease/epoch fields must match the
 configured gateway identity before forwarding; Runtime-v1 retains its compatibility injection path.
 
 Runtime-v2 separates the tool argument `mcp_session_id` from the gateway envelope `session_id`.
