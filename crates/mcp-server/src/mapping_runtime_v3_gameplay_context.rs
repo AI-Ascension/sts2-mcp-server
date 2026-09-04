@@ -10,6 +10,19 @@ use crate::server::McpServer;
 
 use super::super::{non_empty_string, safe_header_value, safe_segment};
 
+pub(super) fn authority_headers(context: &RuntimeV3GameplayContext) -> BTreeMap<String, String> {
+    let mut headers = super::super::headers(&context.mcp_session_id, &context.correlation_id);
+    for (name, value) in [
+        ("x-sts2-instance-id", context.instance_id.clone()),
+        ("x-sts2-session-id", context.session_id.clone()),
+        ("x-sts2-lease-id", context.lease_id.clone()),
+        ("x-sts2-lease-epoch", context.lease_epoch.to_string()),
+    ] {
+        headers.insert(String::from(name), value);
+    }
+    headers
+}
+
 pub(super) fn request_context<G: GatewayAdapter>(
     server: &McpServer<G>,
     arguments: &BTreeMap<String, JsonValue>,

@@ -147,6 +147,16 @@ fn v3_state_and_reconcile_use_their_fixed_routes() {
         server.gateway().requests[1].path,
         "/v3/instances/instance-1/operations/op-card"
     );
+    for request in &server.gateway().requests {
+        for (key, value) in [
+            ("x-sts2-instance-id", "instance-1"),
+            ("x-sts2-session-id", "session-1"),
+            ("x-sts2-lease-id", "lease-1"),
+            ("x-sts2-lease-epoch", "1"),
+        ] {
+            assert_eq!(request.headers.get(key).map(String::as_str), Some(value));
+        }
+    }
 }
 
 #[test]

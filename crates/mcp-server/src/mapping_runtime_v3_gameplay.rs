@@ -13,14 +13,14 @@ use crate::protocol_artifact_runtime_v3_gameplay::{
 };
 use crate::server::McpServer;
 
-use super::{headers, invalid_params, non_empty_string, response};
+use super::{invalid_params, non_empty_string, response};
 
 #[path = "mapping_runtime_v3_gameplay_context.rs"]
 mod context;
 #[path = "mapping_runtime_v3_gameplay_envelope.rs"]
 mod envelope;
 
-use context::{nonnegative_integer, optional_target, request_context};
+use context::{authority_headers, nonnegative_integer, optional_target, request_context};
 
 const SUBMIT_ARGUMENTS: [&str; 9] = [
     "instance_id",
@@ -119,7 +119,7 @@ fn state_call<G: GatewayAdapter>(
     let gateway_request = GatewayRequest {
         method: GatewayMethod::Get,
         path: format!("/v3/instances/{}/state", context.instance_id),
-        headers: headers(&context.mcp_session_id, correlation_id),
+        headers: authority_headers(&context),
         body: None,
         correlation: Correlation {
             mcp_session_id: context.mcp_session_id.clone(),
@@ -160,7 +160,7 @@ fn submit_action_call<G: GatewayAdapter>(
     let gateway_request = GatewayRequest {
         method: GatewayMethod::Post,
         path: format!("/v3/instances/{}/action", context.instance_id),
-        headers: headers(&context.mcp_session_id, correlation_id),
+        headers: authority_headers(&context),
         body: Some(envelope::action_request(&context, card_index, target_id)),
         correlation: Correlation {
             mcp_session_id: context.mcp_session_id.clone(),
@@ -192,7 +192,7 @@ fn reconcile_action_call<G: GatewayAdapter>(
             "/v3/instances/{}/operations/{}",
             context.instance_id, context.operation_id
         ),
-        headers: headers(&context.mcp_session_id, correlation_id),
+        headers: authority_headers(&context),
         body: None,
         correlation: Correlation {
             mcp_session_id: context.mcp_session_id.clone(),
