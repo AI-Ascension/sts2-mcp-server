@@ -52,6 +52,13 @@ external precondition or runtime lane is absent. A skipped check remains visible
 
 ## Runtime profile checks
 
+`runtime_v1_shape.rs` exercises every required response field, closed root/nested objects, state
+null fields, accepted/rejected result combinations, and matching witness/envelope generations.
+Its three MIT response fixtures are copied from `sts2-protocol` commit
+`40bdfc30cedcc11eea001ad28f4a6e58c788f98a`, `artifacts/runtime-v1/golden/` (schema digest
+`a76086d7a68668fd4cff53999369d2b450b0d6623827393882f458f2aa1f93eb`). Their exact legacy MCP
+projections remain unchanged. These are synthetic protocol-owner goldens, not host-effect evidence.
+
 `json_notifications.rs` checks raw Unicode and surrogate-pair round trips, duplicate-key and
 leading-zero rejection, and a 64-value nesting limit before recursive parsing. It also exercises the
 actual binary's stdin/stdout to prove notifications produce no output, not even a blank line. The
