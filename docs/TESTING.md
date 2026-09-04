@@ -59,6 +59,11 @@ Its three MIT response fixtures are copied from `sts2-protocol` commit
 `a76086d7a68668fd4cff53999369d2b450b0d6623827393882f458f2aa1f93eb`). Their exact legacy MCP
 projections remain unchanged. These are synthetic protocol-owner goldens, not host-effect evidence.
 
+`runtime_v2_uncertainty.rs` checks that invalid action receipts remain unknown without retry or
+untrusted payload leakage; state-read failures report missing observation rather than inventing an
+operation. Operation IDs containing `/` are rejected before submission, because they cannot be
+looked up as one segment of the current gateway reconciliation route.
+
 `json_notifications.rs` checks raw Unicode and surrogate-pair round trips, duplicate-key and
 leading-zero rejection, and a 64-value nesting limit before recursive parsing. It also exercises the
 actual binary's stdin/stdout to prove notifications produce no output, not even a blank line. The

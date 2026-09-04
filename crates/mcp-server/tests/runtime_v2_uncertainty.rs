@@ -5,7 +5,34 @@
 mod support;
 
 use sts2_mcp_server::{GatewayError, GatewayResponse, JsonValue, McpServer, ToolCatalog};
-use support::{RecordingGateway, submit_call};
+use support::{RecordingGateway, state_call, submit_call};
+
+#[test]
+fn failed_state_read_is_not_fabricated_as_an_operation_outcome() {
+    for failure in [
+        GatewayError::Timeout,
+        GatewayError::Unavailable,
+        GatewayError::MalformedResponse,
+    ] {
+        let mut server = McpServer::with_catalog(
+            RecordingGateway::new([Err(failure)]),
+            ToolCatalog::runtime_v2(),
+        );
+        let response = server.handle_frame(&state_call(
+            "state-1",
+            "instance-1",
+            "session-1",
+            "lease-1",
+            1,
+            4,
+        ));
+        assert!(response.contains("gateway state read unavailable"));
+        assert!(response.contains("\"isError\":true"));
+        assert!(!response.contains("operation_id"));
+        assert!(!response.contains("end_turn"));
+        assert_eq!(server.gateway().requests.len(), 1);
+    }
+}
 
 #[test]
 fn malformed_end_turn_response_remains_unknown_without_retry() {
