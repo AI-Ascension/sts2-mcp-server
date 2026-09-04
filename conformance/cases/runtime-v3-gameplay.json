@@ -1,0 +1,30 @@
+{
+  "case_id": "CT-RUNTIME-V3-GAMEPLAY-001",
+  "contract": "sts2.protocol/runtime-v3-gameplay",
+  "profile": "runtime-v3-gameplay",
+  "schema": "schemas/runtime-v3-gameplay.schema.json",
+  "artifacts": ["artifacts/runtime-v3-gameplay/manifest.json", "artifacts/runtime-v3-gameplay/schema.json"],
+  "checksums": "artifacts/runtime-v3-gameplay/SHA256SUMS",
+  "consumers": ["sts2-game-mod", "sts2-game-core", "sts2-gateway", "sts2-harness", "sts2-mcp-server"],
+  "contract_assertions": {
+    "action_id": "play_card",
+    "card_index_range": [0, 64],
+    "target_id_is_optional": true,
+    "legal_phase": "combat/player_turn",
+    "settlement_witness": "play_card_settled",
+    "settlement_requires_fresh_collection_or_energy_change": true,
+    "outcomes": ["accepted", "settled", "rejected", "unknown", "cancelled"],
+    "accepted_is_admission_only": true,
+    "unknown_requires_reconciliation": true,
+    "cancelled_requires_no_mutation": true,
+    "operation_id_is_stable": true,
+    "duplicate_replays_without_second_mutation": true,
+    "conflicting_operation_reuse_error": "idempotency_conflict"
+  },
+  "fixtures": [
+    {"id": "state", "response": "artifacts/runtime-v3-gameplay/golden/state-response.json", "expected_status": "snapshot"},
+    {"id": "legal", "request": "artifacts/runtime-v3-gameplay/golden/action-request.json", "admission": "artifacts/runtime-v3-gameplay/golden/action-accepted.json", "settlement": "artifacts/runtime-v3-gameplay/golden/action-settled.json", "expected_status": "settled"},
+    {"id": "stale_generation", "response": "artifacts/runtime-v3-gameplay/golden/stale-response.json", "expected_status": "rejected"},
+    {"id": "reconcile", "request": "artifacts/runtime-v3-gameplay/golden/reconcile-request.json", "response": "artifacts/runtime-v3-gameplay/golden/reconcile-settled.json", "expected_status": "settled", "operation_id": "op-card-1"}
+  ]
+}

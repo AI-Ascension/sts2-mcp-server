@@ -98,6 +98,20 @@ fn uncertain_play_card_is_reported_without_a_mutation_retry() {
 }
 
 #[test]
+fn malformed_play_card_response_keeps_operation_outcome_unknown() {
+    let mut server = McpServer::with_catalog(
+        RecordingGateway::new([Err(sts2_mcp_server::GatewayError::MalformedResponse)]),
+        ToolCatalog::runtime_v3_gameplay(),
+    );
+    let response =
+        server.handle_frame(&submit_call("request-bad", 4, "op-bad", 3, Some("enemy-1")));
+    assert!(response.contains("\"isError\":true"));
+    assert!(response.contains("status\\\":\\\"unknown"), "{response}");
+    assert!(response.contains("enemy-1"));
+    assert_eq!(server.gateway().requests.len(), 1);
+}
+
+#[test]
 fn v3_state_and_reconcile_use_their_fixed_routes() {
     let mut server = McpServer::with_catalog(
         RecordingGateway::new([
@@ -133,6 +147,91 @@ fn v3_state_and_reconcile_use_their_fixed_routes() {
         server.gateway().requests[1].path,
         "/v3/instances/instance-1/operations/op-card"
     );
+}
+
+#[test]
+fn reconcile_accepts_the_recorded_card_and_target_without_resubmission() {
+    let mut body = result(
+        "reconcile",
+        5,
+        "op-card",
+        "reconcile_response",
+        "settled",
+        Some("enemy-1"),
+    );
+    set_card(&mut body, "action", 3);
+    set_card(&mut body, "effect_witness", 3);
+    let mut server = McpServer::with_catalog(
+        RecordingGateway::new([Ok(GatewayResponse { status: 200, body })]),
+        ToolCatalog::runtime_v3_gameplay(),
+    );
+    let response = server.handle_frame(&reconcile_call("reconcile", 4, "op-card"));
+    assert!(response.contains("\"isError\":false"), "{response}");
+    assert!(response.contains("enemy-1"));
+    assert_eq!(server.gateway().requests.len(), 1);
+    assert_eq!(server.gateway().requests[0].method, GatewayMethod::Get);
+    assert!(server.gateway().requests[0].body.is_none());
+}
+
+#[test]
+fn reconcile_rejects_witness_action_conflicts_and_out_of_bound_cards() {
+    for (card, witness_card) in [(3, 0), (65, 65)] {
+        let mut body = result(
+            "reconcile",
+            5,
+            "op-card",
+            "reconcile_response",
+            "settled",
+            Some("enemy-1"),
+        );
+        set_card(&mut body, "action", card);
+        set_card(&mut body, "effect_witness", witness_card);
+        let mut server = McpServer::with_catalog(
+            RecordingGateway::new([Ok(GatewayResponse { status: 200, body })]),
+            ToolCatalog::runtime_v3_gameplay(),
+        );
+        let response = server.handle_frame(&reconcile_call("reconcile", 4, "op-card"));
+        assert!(response.contains("\"isError\":true"), "{response}");
+    }
+}
+
+#[test]
+fn submit_still_rejects_a_different_action_in_the_receipt() {
+    let body = result(
+        "submit",
+        5,
+        "op-card",
+        "action_response",
+        "settled",
+        Some("enemy-1"),
+    );
+    let mut server = McpServer::with_catalog(
+        RecordingGateway::new([Ok(GatewayResponse { status: 200, body })]),
+        ToolCatalog::runtime_v3_gameplay(),
+    );
+    let response = server.handle_frame(&submit_call("submit", 4, "op-card", 3, Some("enemy-1")));
+    assert!(response.contains("\"isError\":true"), "{response}");
+}
+
+#[test]
+fn unavailable_reconciliation_never_invents_a_default_card_receipt() {
+    let mut server = McpServer::with_catalog(
+        RecordingGateway::new([Err(sts2_mcp_server::GatewayError::Timeout)]),
+        ToolCatalog::runtime_v3_gameplay(),
+    );
+    let response = server.handle_frame(&reconcile_call("reconcile", 4, "op-card"));
+    assert!(response.contains("\"isError\":true"));
+    assert!(response.contains("outcome remains unknown"));
+    assert!(!response.contains("card_index"));
+    assert_eq!(server.gateway().requests.len(), 1);
+}
+
+fn set_card(body: &mut JsonValue, field: &str, card: i64) {
+    if let JsonValue::Object(object) = body
+        && let Some(JsonValue::Object(value)) = object.get_mut(field)
+    {
+        value.insert(String::from("card_index"), JsonValue::Number(card));
+    }
 }
 
 fn submit_call(

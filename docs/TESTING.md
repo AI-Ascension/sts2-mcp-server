@@ -113,3 +113,10 @@ out-of-range delays. Gateway support for this guidance is an independent consume
 A pure configuration-selection test covers the standalone `mcp-session-1` default, explicit distinct
 and same-session overrides, empty values, and invalid-Unicode configuration without mutating shared
 process environment. This verifies default selection, not cross-process readiness.
+
+`runtime_v3_gameplay_artifact` verifies the complete earlier protocol PR #7 artifact checksums,
+all eight schema goldens and the producer's targeted reconciliation response through MCP.
+`runtime_v3_gameplay_mapping` covers nonzero-card/target reconciliation, mismatched witnesses,
+exact dispatch payload correlation and uncertainty without a fabricated read receipt.
+`runtime_v2_uncertainty` covers malformed transport/envelope results after submission; these
+remain unknown under the original operation ID without mutation retries or raw-payload leakage.

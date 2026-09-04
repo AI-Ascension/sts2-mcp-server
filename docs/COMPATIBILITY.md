@@ -121,3 +121,17 @@ Runtime-v2 HTTP 429 guidance preserves only bounded `error_code`, `retryable: tr
 `retry_after_ms` between zero and 60,000 milliseconds. Invalid guidance fails closed and private
 fields are omitted. The adapter never automatically redispatches; synthetic tests cover valid and
 out-of-range delays. Gateway support for this guidance is an independent consumer integration gate.
+
+## Earlier Runtime-v3 gameplay proposal
+
+`STS2_RUNTIME_PROFILE=runtime-v3-gameplay` selects the three-tool bounded `play_card` profile.
+It consumes protocol PR #7's `c961bbde893f0422f80233d14ea9ae8b648ee9032136e5370aa5f6b949f6575e`
+schema, copied from `11a7979f7368c78c10924337228991d16c9ec92a`. Its intended gateway dependency is
+gateway PR #6. This is not compatible with the broader same-named protocol PR #8 / gateway PR #7 /
+MCP PR #8 proposal. Reconcile the competing profiles before selecting an integrated merge order.
+
+Reconciliation validates the stored action and matching witness under the requested identity and
+operation fence, without inventing card index zero or a null target. Submission responses still
+must echo the submitted action exactly. A failed reconciliation read returns a tool error preserving
+uncertainty, not a fabricated operation receipt. Canonical artifact/schema/golden and fake-mapping
+tests establish source-level contract agreement only; live gameplay remains unverified.

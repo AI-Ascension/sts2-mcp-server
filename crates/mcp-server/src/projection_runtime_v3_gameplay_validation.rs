@@ -182,7 +182,10 @@ fn validate_result(
     let action = object
         .get("action")
         .ok_or("runtime-v3 gameplay action is missing")?;
-    validate_action(action, context)?;
+    // Reconciliation queries an existing operation, not a default card/target.
+    // Its authenticated receipt supplies the action; submission must still echo
+    // the exact action we sent. The witness below always binds to that action.
+    validate_action(action, (kind == "action_response").then_some(context))?;
     let generation = bounded(object.get("generation"))?;
     let observation = object
         .get("observation")
@@ -222,7 +225,7 @@ fn validate_result(
                 return Err("runtime-v3 gameplay settled observation is stale");
             }
             require_null_value(error_code)?;
-            validate_witness(witness, generation, context)
+            validate_witness(witness, generation, action)
         }
         "rejected" | "cancelled" => {
             validate_observation(observation)?;

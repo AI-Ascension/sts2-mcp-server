@@ -78,7 +78,7 @@ pub(super) fn validate_observation(value: &JsonValue) -> Result<(), &'static str
 
 pub(super) fn validate_action(
     value: &JsonValue,
-    context: &RuntimeV3GameplayContext,
+    context: Option<&RuntimeV3GameplayContext>,
 ) -> Result<(), &'static str> {
     let object = value
         .as_object()
@@ -87,9 +87,13 @@ pub(super) fn validate_action(
         || !ACTION_FIELDS.iter().all(|key| object.contains_key(*key))
         || object.get("action_id").and_then(JsonValue::as_string)
             != Some(RUNTIME_V3_GAMEPLAY_ACTION_ID)
-        || bounded_max(object.get("card_index"), RUNTIME_V3_GAMEPLAY_MAX_CARD_INDEX)?
-            != context.card_index
-        || optional_identity(object.get("target_id"))? != context.target_id
+    {
+        return Err("runtime-v3 gameplay action shape is invalid");
+    }
+    let card_index = bounded_max(object.get("card_index"), RUNTIME_V3_GAMEPLAY_MAX_CARD_INDEX)?;
+    let target_id = optional_identity(object.get("target_id"))?;
+    if let Some(context) = context
+        && (card_index != context.card_index || target_id != context.target_id)
     {
         return Err("runtime-v3 gameplay action does not match the request");
     }
@@ -99,7 +103,7 @@ pub(super) fn validate_action(
 pub(super) fn validate_witness(
     value: &JsonValue,
     generation: i64,
-    context: &RuntimeV3GameplayContext,
+    action: &JsonValue,
 ) -> Result<(), &'static str> {
     let object = value
         .as_object()
@@ -109,9 +113,10 @@ pub(super) fn validate_witness(
         || object.get("kind").and_then(JsonValue::as_string)
             != Some(RUNTIME_V3_GAMEPLAY_EFFECT_KIND)
         || bounded_max(object.get("generation"), RUNTIME_V3_GAMEPLAY_MAX_GENERATION)? != generation
-        || bounded_max(object.get("card_index"), RUNTIME_V3_GAMEPLAY_MAX_CARD_INDEX)?
-            != context.card_index
-        || optional_identity(object.get("target_id"))? != context.target_id
+        || action.as_object().is_none_or(|action| {
+            object.get("card_index") != action.get("card_index")
+                || object.get("target_id") != action.get("target_id")
+        })
     {
         return Err("runtime-v3 gameplay settlement witness does not match the request");
     }

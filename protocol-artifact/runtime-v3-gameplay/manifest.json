@@ -1,0 +1,19 @@
+{
+  "artifact": "sts2-protocol/runtime-v3-gameplay",
+  "protocol_version": "runtime-v3-gameplay",
+  "schema": "schema.json",
+  "schema_digest": "c961bbde893f0422f80233d14ea9ae8b648ee9032136e5370aa5f6b949f6575e",
+  "provenance": {"source": "schemas/runtime-v3-gameplay.schema.json", "generator": "hand-authored", "license": "MIT"},
+  "consumers": ["sts2-game-core", "sts2-game-mod", "sts2-gateway", "sts2-harness", "sts2-mcp-server"],
+  "goldens": [
+    "golden/state-request.json",
+    "golden/state-response.json",
+    "golden/action-request.json",
+    "golden/action-accepted.json",
+    "golden/action-settled.json",
+    "golden/stale-response.json",
+    "golden/reconcile-request.json",
+    "golden/reconcile-settled.json"
+  ],
+  "checksums": "SHA256SUMS"
+}

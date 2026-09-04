@@ -210,10 +210,23 @@ fn forward<G: GatewayAdapter>(
     expected_kind: &str,
 ) -> RpcResponse {
     match server.gateway.forward(request) {
-        Ok(response) => response::gateway_success_v3(id, response, context, expected_kind),
-        Err(error @ (GatewayError::Timeout | GatewayError::Unavailable)) => {
-            uncertain_result(id, context, expected_kind, error)
+        Ok(response)
+            if response.status != 429
+                && crate::projection::project_runtime_v3_gameplay_gateway_body(
+                    &response.body,
+                    context,
+                    expected_kind,
+                )
+                .is_err() =>
+        {
+            uncertain_result(id, context, expected_kind, GatewayError::MalformedResponse)
         }
+        Ok(response) => response::gateway_success_v3(id, response, context, expected_kind),
+        Err(
+            error @ (GatewayError::Timeout
+            | GatewayError::Unavailable
+            | GatewayError::MalformedResponse),
+        ) => uncertain_result(id, context, expected_kind, error),
         Err(error) => gateway_error_result(id, error),
     }
 }
@@ -224,7 +237,15 @@ fn uncertain_result(
     expected_kind: &str,
     error: GatewayError,
 ) -> RpcResponse {
+    if expected_kind != "action_response" {
+        return super::tool_result(
+            id,
+            "gateway read unavailable; operation outcome remains unknown; no observation or receipt was obtained",
+            true,
+        );
+    }
     let error_code = match error {
+        GatewayError::MalformedResponse => "sts2.runtime/unknown_after_invalid_response",
         GatewayError::Timeout | GatewayError::Unavailable => {
             "sts2.runtime/unknown_after_disconnect"
         }
