@@ -68,3 +68,17 @@ timeout or disconnect is an `unknown` operation outcome and requires reconciliat
 The process defaults to `runtime-v1`; `STS2_RUNTIME_PROFILE=runtime-v2` selects Runtime-v2 and any
 other value fails closed. Runtime-v2 supplied instance/session/lease/epoch fields must match the
 configured gateway identity before forwarding; Runtime-v1 retains its compatibility injection path.
+
+The executable gateway address must be a numeric loopback socket address with a nonzero port
+(for example `127.0.0.1:15525` or `[::1]:15525`); DNS names and remote endpoints are unsupported.
+Connect, request writes, and response reads share a five-second total exchange deadline, with connect
+additionally limited to two seconds. Responses require HTTP/1.1, a final 200–599 status, one decimal
+Content-Length, and `application/json` (optionally UTF-8 charset); duplicate headers, transfer/content
+encodings, and headers exceeding 8 KiB including the terminator fail closed. Bodies remain capped at
+64 KiB. These are source and loopback-test guarantees, not downstream readiness evidence.
+
+The Runtime-v2 mapping carries the caller's instance/session/lease/epoch as explicit authority
+headers even for bodyless reconciliation. Before connecting, the executable rejects mismatches with
+its configured gateway authority instead of silently replacing them. Runtime-v1 keeps its documented
+configured-identity injection, but Runtime-v1 and Runtime-v2 response envelopes must match the actual
+configured identity, request correlation, and route-specific result kind before projection.

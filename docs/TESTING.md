@@ -67,3 +67,14 @@ adapter paths and builds with the pinned Rust toolchain.
 A controlled component lane may run this process against the real gateway and a synthetic downstream;
 that confirms MCP/gateway transport and mapping only. It does not prove the managed mod, Godot
 main-thread execution, STS2 host compatibility, a disposable game profile, or gameplay mutation.
+
+The executable HTTP unit tests use ephemeral loopback listeners, not a live gateway or game. They
+cover slow-drip headers/bodies against one total deadline, an unread request writer, expired deadlines,
+strict JSON content type and Content-Length framing, duplicate headers, unsupported encodings,
+truncation, header-size limits, and outbound header injection. Configuration tests reject DNS names,
+non-loopback addresses, port zero, and control/non-ASCII token bytes.
+
+The executable binding tests reject missing/mismatched bodyless authority before any connection and
+reject foreign response instance/session/lease/epoch, wrong correlation, or wrong route-specific kind.
+The Runtime-v2 mapping regression verifies that reconciliation preserves all four authority headers
+without adding a mutation body.

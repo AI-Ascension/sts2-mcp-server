@@ -11,7 +11,7 @@ use crate::protocol::{
 use crate::protocol_artifact_runtime_v2::{RUNTIME_V2_ACTION_ID, RUNTIME_V2_MAX_GENERATION};
 use crate::server::McpServer;
 
-use super::{headers, invalid_params, non_empty_string, response};
+use super::{invalid_params, non_empty_string, response};
 
 #[path = "mapping_runtime_v2_envelope.rs"]
 mod envelope;
@@ -111,7 +111,7 @@ fn state_call<G: GatewayAdapter>(
     let gateway_request = GatewayRequest {
         method: GatewayMethod::Get,
         path: format!("/v2/instances/{}/state", context.instance_id),
-        headers: headers(&context.session_id, correlation_id),
+        headers: authority_headers(&context),
         body: Some(envelope::request_envelope(
             &context,
             "state_request",
@@ -148,7 +148,7 @@ fn submit_action_call<G: GatewayAdapter>(
     let gateway_request = GatewayRequest {
         method: GatewayMethod::Post,
         path: format!("/v2/instances/{}/action", context.instance_id),
-        headers: headers(&context.session_id, correlation_id),
+        headers: authority_headers(&context),
         body: Some(envelope::request_envelope(
             &context,
             "action_request",
@@ -185,7 +185,7 @@ fn reconcile_action_call<G: GatewayAdapter>(
             "/v2/instances/{}/operations/{}",
             context.instance_id, context.operation_id
         ),
-        headers: headers(&context.session_id, correlation_id),
+        headers: authority_headers(&context),
         body: None,
         correlation: Correlation {
             mcp_session_id: context.session_id.clone(),
@@ -193,6 +193,19 @@ fn reconcile_action_call<G: GatewayAdapter>(
         },
     };
     forward(server, id, gateway_request, &context, "reconcile_response")
+}
+
+fn authority_headers(context: &RuntimeV2Context) -> BTreeMap<String, String> {
+    let mut headers = super::headers(&context.session_id, &context.correlation_id);
+    for (name, value) in [
+        ("x-sts2-instance-id", context.instance_id.clone()),
+        ("x-sts2-session-id", context.session_id.clone()),
+        ("x-sts2-lease-id", context.lease_id.clone()),
+        ("x-sts2-lease-epoch", context.lease_epoch.to_string()),
+    ] {
+        headers.insert(String::from(name), value);
+    }
+    headers
 }
 
 fn request_context(
