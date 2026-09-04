@@ -133,3 +133,15 @@ The standalone process defaults its MCP session to `mcp-session-1`, independentl
 session default `session-1`. Explicit `STS2_MCP_SESSION_ID` values remain authoritative; same-session
 setups must configure both variables. [ADR 0011](decisions/0011-composition-mcp-session-default.md)
 records the configuration compatibility change.
+## Runtime-v3 and co-op semantic mapping
+
+ADR 0009 adds a separate Runtime-v3 profile with exactly six tools: observe, legal actions,
+dispatch, wait, reobserve, and recover. The adapter carries bounded identity/generation context,
+maps each call to one fixed gateway route, retains typed status and transition witnesses, and turns
+timeout or disconnect uncertainty into a recovery-required unknown result. It exposes no raw host
+object, arbitrary route, shell, coordinate, or process tool.
+
+The additive co-op mapping is read-only synchronization metadata. It validates two-to-four unique
+peers, exactly one local peer, generation agreement, known missing peers, and safe identifiers before
+projection; it cannot authorize a mutation while peers disagree or are disconnected. Gateway lease
+and host legality remain outside MCP ownership.

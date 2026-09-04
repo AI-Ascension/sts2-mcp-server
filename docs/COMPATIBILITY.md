@@ -121,3 +121,8 @@ Runtime-v2 HTTP 429 guidance preserves only bounded `error_code`, `retryable: tr
 `retry_after_ms` between zero and 60,000 milliseconds. Invalid guidance fails closed and private
 fields are omitted. The adapter never automatically redispatches; synthetic tests cover valid and
 out-of-range delays. Gateway support for this guidance is an independent consumer integration gate.
+
+The `runtime-v3-gameplay-mcp` profile is additive and source-derived. Its exact six-tool catalog,
+semantic route mapping, fair-play response projection, and unknown/recovery handling are covered by
+local tests. The co-op synchronization mapping is read-only source/test evidence; live MCP/gateway,
+provider, host, and multiplayer compatibility remain `unverified`.

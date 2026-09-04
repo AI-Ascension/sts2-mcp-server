@@ -18,6 +18,11 @@ exists.
 - Rejected the bare operation-ID segments `.` and `..` before Runtime-v2 dispatch (fail-closed, in
   addition to the existing `/` rejection), and made two loopback tests portable to Windows socket
   semantics without changing product code.
+
+- Added the exact six-tool Runtime-v3 semantic catalog, bounded fair-play projection, fixed gateway
+  mapping, fail-closed timeout handling, and additive read-only co-op synchronization mapping. Live
+  MCP/gateway/provider and target-game settlement remain unverified.
+
 - Added the separate `runtime-v2-mcp` catalog and fixed `submit_action`/`reconcile_action` mapping for
   the argument-free `end_turn` operation, including full-envelope projection, fencing, uncertainty,
   and deterministic accepted/settled/rejected/unknown/cancelled/idempotency tests.

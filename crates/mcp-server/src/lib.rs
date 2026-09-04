@@ -8,13 +8,16 @@ mod projection;
 mod protocol;
 mod protocol_artifact;
 mod protocol_artifact_runtime_v2;
+mod protocol_artifact_runtime_v3_gameplay;
 mod server;
 mod transport;
 
 pub use catalog::{
-    CapabilityCatalog, GET_STATE_TOOL, RECONCILE_ACTION_TOOL, SUBMIT_ACTION_TOOL, ToolCatalog,
-    ToolDescriptor,
+    CapabilityCatalog, DISPATCH_ACTION_TOOL, GET_STATE_TOOL, LEGAL_ACTIONS_TOOL, OBSERVE_TOOL,
+    RECOVER_TOOL, RECONCILE_ACTION_TOOL, REOBSERVE_TOOL, SUBMIT_ACTION_TOOL,
+    WAIT_FOR_TRANSITION_TOOL, ToolCatalog, ToolDescriptor,
 };
+pub use catalog::COOP_SYNCHRONIZATION_TOOL;
 pub use gateway::{
     Correlation, GatewayAdapter, GatewayError, GatewayMethod, GatewayRequest, GatewayResponse,
 };
@@ -34,6 +37,12 @@ pub use protocol_artifact_runtime_v2::{
     RUNTIME_V2_MAX_GENERATION, RUNTIME_V2_MAX_TURN_INDEX, RUNTIME_V2_PLAYER_TURN_PHASE,
     RUNTIME_V2_PROTOCOL_VERSION, RUNTIME_V2_SCHEMA_DIGEST, RUNTIME_V2_SCHEMA_SOURCE,
     RuntimeV2ArtifactError, verify_runtime_v2_artifact,
+};
+pub use protocol_artifact_runtime_v3_gameplay::{
+    RUNTIME_V3_GAMEPLAY_ARTIFACT, RUNTIME_V3_GAMEPLAY_GENERATOR,
+    RUNTIME_V3_GAMEPLAY_MAX_GENERATION, RUNTIME_V3_GAMEPLAY_MAX_WAIT_MILLIS,
+    RUNTIME_V3_GAMEPLAY_PROTOCOL_VERSION, RUNTIME_V3_GAMEPLAY_SCHEMA_DIGEST,
+    RUNTIME_V3_GAMEPLAY_SCHEMA_SOURCE,
 };
 pub use server::{MCP_PROTOCOL_VERSION, McpServer, SERVER_NAME, SERVER_VERSION};
 pub use transport::{FrameCodec, FrameError, MAX_FRAME_BYTES};

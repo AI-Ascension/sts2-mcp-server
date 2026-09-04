@@ -3,7 +3,7 @@
 use crate::json;
 use crate::protocol::{RpcRequest, RpcResponse};
 
-pub const MAX_FRAME_BYTES: usize = 16 * 1024;
+pub const MAX_FRAME_BYTES: usize = 256 * 1024;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum FrameError {

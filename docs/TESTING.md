@@ -112,3 +112,9 @@ out-of-range delays. Gateway support for this guidance is an independent consume
 A pure configuration-selection test covers the standalone `mcp-session-1` default, explicit distinct
 and same-session overrides, empty values, and invalid-Unicode configuration without mutating shared
 process environment. This verifies default selection, not cross-process readiness.
+## Runtime-v3 and co-op checks
+
+The Runtime-v3 tests assert the exact six advertised tools, fixed semantic paths, bounded action
+shapes, generation/identity fencing, redaction, stale handling, and no-fallback timeout behavior.
+The co-op tests assert peer-set and synchronization validation and reject unknown or duplicate
+missing peers. They are source/test evidence, not live provider, host, or multiplayer evidence.
