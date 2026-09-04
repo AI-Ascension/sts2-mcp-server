@@ -51,7 +51,8 @@ pub(super) fn request_context<G: GatewayAdapter>(
         || !safe_header_value(mcp_session_id)
         || !safe_header_value(session_id)
         || !safe_header_value(lease_id)
-        || (require_operation_id && !safe_header_value(operation_id))
+        || (require_operation_id
+            && (!safe_header_value(operation_id) || operation_id.contains('/')))
     {
         return Err("Runtime-v3 gameplay identity is unsafe or oversized");
     }

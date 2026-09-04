@@ -244,6 +244,22 @@ fn set_card(body: &mut JsonValue, field: &str, card: i64) {
     }
 }
 
+#[test]
+fn slash_operation_ids_are_rejected_before_mutation_or_read() {
+    let mut server = McpServer::with_catalog(
+        RecordingGateway::new([]),
+        ToolCatalog::runtime_v3_gameplay(),
+    );
+    for call in [
+        submit_call("submit", 4, "namespace/op-card", 0, None),
+        reconcile_call("read", 4, "namespace/op-card"),
+    ] {
+        let response = server.handle_frame(&call);
+        assert!(response.contains("unsafe or oversized"), "{response}");
+    }
+    assert!(server.gateway().requests.is_empty());
+}
+
 fn submit_call(
     id: &str,
     generation: i64,

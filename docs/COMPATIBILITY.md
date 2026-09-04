@@ -135,3 +135,8 @@ operation fence, without inventing card index zero or a null target. Submission 
 must echo the submitted action exactly. A failed reconciliation read returns a tool error preserving
 uncertainty, not a fabricated operation receipt. Canonical artifact/schema/golden and fake-mapping
 tests establish source-level contract agreement only; live gameplay remains unverified.
+
+V2 and this earlier V3 MCP route subset reject slash-containing operation IDs before submission:
+the gateway's fixed operation-read endpoint does not address such IDs. Lease and target identifiers
+retain their own protocol bounds. This is an adapter route restriction, not a change to the frozen
+protocol schema; use a stable operation ID representable by both submission and reconciliation.

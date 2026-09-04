@@ -7,6 +7,7 @@ use super::{
 use crate::json::JsonValue;
 
 const OPERATION_ID_PATTERN: &str = "^[A-Za-z0-9_.:/-]{1,128}$";
+const ROUTE_OPERATION_ID_PATTERN: &str = "^[A-Za-z0-9_.:-]{1,128}$";
 const PROFILE_REVISION: &str = "runtime-v3-gameplay-mcp";
 const ACTION_ID: &str = "play_card";
 const MAX_CARD_INDEX: i64 = 64;
@@ -123,7 +124,7 @@ fn context_properties(include_operation: bool, include_action: bool) -> JsonValu
     if include_operation {
         properties.push((
             String::from("operation_id"),
-            bounded_string(OPERATION_ID_PATTERN),
+            bounded_string(ROUTE_OPERATION_ID_PATTERN),
         ));
     }
     if include_action {
