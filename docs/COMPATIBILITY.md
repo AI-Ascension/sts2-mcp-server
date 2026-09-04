@@ -149,3 +149,24 @@ or reconcile them; merging both independently does not establish compatible game
 
 Configured instance/session/lease/correlation identifiers retain the adapter's 128-byte HTTP bound.
 Runtime-v3 body-only state, operation and action identifiers follow the canonical 512-byte bound.
+
+`STS2_MCP_SESSION_ID` configures the caller's MCP correlation namespace separately from
+`STS2_SESSION_ID`, the authenticated gateway session. It defaults to the gateway session only for
+backward compatibility. The process validates the tool's supplied MCP session before mapping and
+places the configured gateway session in envelopes; distinct namespaces are not forced to equal.
+This shared binding correction is inherited from the earlier adapter proposal without importing its
+incompatible gameplay contract.
+
+The executable gateway address must be a numeric loopback socket address with a nonzero port
+(for example `127.0.0.1:15525` or `[::1]:15525`); DNS names and remote endpoints are unsupported.
+Connect, request writes, and response reads share a five-second total exchange deadline, with connect
+additionally limited to two seconds. Responses require HTTP/1.1, a final 200–599 status, one decimal
+Content-Length, and `application/json` (optionally UTF-8 charset); duplicate headers, transfer/content
+encodings, and headers exceeding 8 KiB including the terminator fail closed. Bodies remain capped at
+128 KiB in this semantic profile branch. These are source and loopback-test guarantees, not downstream readiness evidence.
+
+The Runtime-v2 mapping carries the caller's instance/session/lease/epoch as explicit authority
+headers even for bodyless reconciliation. Before connecting, the executable rejects mismatches with
+its configured gateway authority instead of silently replacing them. Runtime-v1 keeps its documented
+configured-identity injection, but Runtime-v1 and Runtime-v2 response envelopes must match the actual
+configured identity, request correlation, and route-specific result kind before projection.

@@ -122,7 +122,7 @@ fn legal_actions_call<G: GatewayAdapter>(
         );
     }
     let context =
-        match context::RuntimeV3GameplayContext::parse(arguments, correlation_id, true, false) {
+        match context::RuntimeV3GameplayContext::parse(server, arguments, correlation_id, true, false) {
             Ok(context) => context,
             Err(message) => return invalid_params(id, message),
         };
@@ -182,7 +182,7 @@ fn call_read<G: GatewayAdapter>(
         return invalid_params(id, "Runtime-v3 read arguments contain an unsupported field");
     }
     let context =
-        match context::RuntimeV3GameplayContext::parse(arguments, correlation_id, false, false) {
+        match context::RuntimeV3GameplayContext::parse(server, arguments, correlation_id, false, false) {
             Ok(context) => context,
             Err(message) => return invalid_params(id, message),
         };
@@ -212,10 +212,10 @@ fn gateway_request(
     GatewayRequest {
         method,
         path,
-        headers: headers(context.session_id(), context.correlation_id()),
+        headers: headers(&context.mcp_session_id, context.correlation_id()),
         body: Some(body),
         correlation: Correlation {
-            mcp_session_id: String::from(context.session_id()),
+            mcp_session_id: context.mcp_session_id.clone(),
             mcp_request_id: id,
         },
     }

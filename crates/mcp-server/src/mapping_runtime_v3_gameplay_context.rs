@@ -3,6 +3,8 @@
 use std::collections::BTreeMap;
 
 use crate::json::JsonValue;
+use crate::gateway::GatewayAdapter;
+use crate::server::McpServer;
 use crate::projection::RuntimeV3GameplayProjectionContext;
 
 const MAX_GENERATION: i64 = 9_007_199_254_740_991;
@@ -12,19 +14,26 @@ pub(super) struct RuntimeV3GameplayContext {
     pub(super) projection: RuntimeV3GameplayProjectionContext,
     pub(super) state_id: Option<String>,
     pub(super) operation_id: Option<String>,
+    pub(super) mcp_session_id: String,
 }
 
 impl RuntimeV3GameplayContext {
-    pub(super) fn parse(
+    pub(super) fn parse<G: GatewayAdapter>(
+        server: &McpServer<G>,
         arguments: &BTreeMap<String, JsonValue>,
         correlation_id: &str,
         require_state_id: bool,
         require_operation_id: bool,
     ) -> Result<Self, &'static str> {
         let instance_id = string_argument(arguments, "instance_id")?;
-        let session_id = string_argument(arguments, "mcp_session_id")?;
+        let mcp_session_id = string_argument(arguments, "mcp_session_id")?;
+        if server.mcp_session_id().is_some_and(|expected| expected != mcp_session_id) {
+            return Err("MCP session identity does not match the configured session");
+        }
+        let session_id = server.gateway_session_id().unwrap_or(mcp_session_id);
         let lease_id = string_argument(arguments, "lease_id")?;
         if !crate::mapping::safe_segment(instance_id)
+            || !crate::mapping::safe_header_value(mcp_session_id)
             || !crate::mapping::safe_header_value(session_id)
             || !crate::mapping::safe_header_value(lease_id)
             || !crate::mapping::safe_header_value(correlation_id)
@@ -58,6 +67,7 @@ impl RuntimeV3GameplayContext {
             },
             state_id,
             operation_id,
+            mcp_session_id: String::from(mcp_session_id),
         })
     }
 

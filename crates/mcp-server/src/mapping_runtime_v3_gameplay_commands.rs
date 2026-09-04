@@ -49,7 +49,7 @@ pub(super) fn dispatch_call<G: GatewayAdapter>(
         );
     }
     let context =
-        match context::RuntimeV3GameplayContext::parse(arguments, correlation_id, true, true) {
+        match context::RuntimeV3GameplayContext::parse(server, arguments, correlation_id, true, true) {
             Ok(context) => context,
             Err(message) => return invalid_params(id, message),
         };
@@ -99,7 +99,7 @@ pub(super) fn wait_call<G: GatewayAdapter>(
         );
     }
     let context =
-        match context::RuntimeV3GameplayContext::parse(arguments, correlation_id, false, true) {
+        match context::RuntimeV3GameplayContext::parse(server, arguments, correlation_id, false, true) {
             Ok(context) => context,
             Err(message) => return invalid_params(id, message),
         };
@@ -138,7 +138,7 @@ pub(super) fn recover_call<G: GatewayAdapter>(
         return invalid_params(id, "sts2.recover arguments contain an unsupported field");
     }
     let context =
-        match context::RuntimeV3GameplayContext::parse(arguments, correlation_id, false, false) {
+        match context::RuntimeV3GameplayContext::parse(server, arguments, correlation_id, false, false) {
             Ok(context) => context,
             Err(message) => return invalid_params(id, message),
         };
