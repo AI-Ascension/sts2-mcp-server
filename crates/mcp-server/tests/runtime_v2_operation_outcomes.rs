@@ -175,6 +175,7 @@ fn settled_without_a_fresh_witness_is_not_reported_as_settled() {
         "op-1",
     ));
     assert!(response.contains("\"isError\":true"));
-    assert!(response.contains("Runtime-v2 envelope"));
+    assert!(response.contains("unknown_after_invalid_response"));
+    assert!(contains_result_field(&response, "status", "unknown"));
     assert_eq!(server.gateway().requests.len(), 1);
 }

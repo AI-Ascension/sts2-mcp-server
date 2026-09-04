@@ -16,6 +16,10 @@ use super::{invalid_params, non_empty_string, response};
 #[path = "mapping_runtime_v2_envelope.rs"]
 mod envelope;
 
+#[path = "mapping_runtime_v2_outcome.rs"]
+mod outcome;
+use outcome::{gateway_error_result, uncertain_result};
+
 const SUBMIT_ARGUMENTS: [&str; 7] = [
     "instance_id",
     "mcp_session_id",
@@ -228,7 +232,8 @@ fn request_context(
     if !super::safe_segment(instance_id)
         || !super::safe_header_value(session_id)
         || !super::safe_header_value(lease_id)
-        || (require_operation_id && !super::safe_header_value(operation_id))
+        || (require_operation_id
+            && (!super::safe_header_value(operation_id) || operation_id.contains('/')))
     {
         return Err("Runtime-v2 identity is unsafe or oversized");
     }
@@ -265,43 +270,23 @@ fn forward<G: GatewayAdapter>(
     expected_kind: &str,
 ) -> RpcResponse {
     match server.gateway.forward(request) {
-        Ok(response) => response::gateway_success_v2(id, response, context, expected_kind),
-        Err(error @ (GatewayError::Timeout | GatewayError::Unavailable)) => {
-            uncertain_result(id, context, expected_kind, error)
+        Ok(response)
+            if response.status != 429
+                && crate::projection::project_runtime_v2_gateway_body(
+                    &response.body,
+                    context,
+                    expected_kind,
+                )
+                .is_err() =>
+        {
+            uncertain_result(id, context, expected_kind, GatewayError::MalformedResponse)
         }
+        Ok(response) => response::gateway_success_v2(id, response, context, expected_kind),
+        Err(
+            error @ (GatewayError::Timeout
+            | GatewayError::Unavailable
+            | GatewayError::MalformedResponse),
+        ) => uncertain_result(id, context, expected_kind, error),
         Err(error) => gateway_error_result(id, error),
     }
-}
-
-fn uncertain_result(
-    id: RequestId,
-    context: &RuntimeV2Context,
-    expected_kind: &str,
-    error: GatewayError,
-) -> RpcResponse {
-    let error_code = match error {
-        GatewayError::Timeout | GatewayError::Unavailable => {
-            "sts2.runtime/unknown_after_disconnect"
-        }
-        _ => "sts2.runtime/unknown",
-    };
-    let body = envelope::result_envelope(context, expected_kind, "unknown", error_code, None, None);
-    response::gateway_success_v2(
-        id,
-        crate::gateway::GatewayResponse { status: 504, body },
-        context,
-        expected_kind,
-    )
-}
-
-fn gateway_error_result(id: RequestId, error: GatewayError) -> RpcResponse {
-    let (code, message) = match error {
-        GatewayError::Unauthorized => (-32001, "gateway authorization failed"),
-        GatewayError::NotFound => (-32004, "gateway target was not found"),
-        GatewayError::Unavailable => (-32003, "gateway is unavailable"),
-        GatewayError::Timeout => (-32008, "gateway request timed out"),
-        GatewayError::MalformedResponse => (-32002, "gateway returned an invalid response"),
-        GatewayError::Rejected => (-32005, "gateway rejected the request"),
-    };
-    super::tool_result(id, format!("gateway error {code}: {message}"), true)
 }

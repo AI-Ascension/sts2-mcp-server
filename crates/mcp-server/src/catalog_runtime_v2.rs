@@ -8,6 +8,7 @@ use crate::json::JsonValue;
 use crate::protocol_artifact_runtime_v2::{RUNTIME_V2_ACTION_ID, RUNTIME_V2_MAX_GENERATION};
 
 const OPERATION_ID_PATTERN: &str = "^[A-Za-z0-9_.:/-]{1,128}$";
+const ROUTE_OPERATION_ID_PATTERN: &str = "^[A-Za-z0-9_.:-]{1,128}$";
 
 pub(super) fn build() -> super::ToolCatalog {
     let state_schema = state_schema();
@@ -140,7 +141,7 @@ fn context_properties(include_operation: bool, include_action: bool) -> JsonValu
     if include_operation {
         properties.push((
             String::from("operation_id"),
-            bounded_string(OPERATION_ID_PATTERN),
+            bounded_string(ROUTE_OPERATION_ID_PATTERN),
         ));
     }
     if include_action {
