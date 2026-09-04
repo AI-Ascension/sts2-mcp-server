@@ -7,7 +7,7 @@ use std::time::Duration;
 
 use sts2_mcp_server::{
     GatewayAdapter, GatewayError, GatewayMethod, GatewayRequest, GatewayResponse, JsonValue,
-    RUNTIME_V2_PROTOCOL_VERSION, ToolCatalog, parse_json,
+    RUNTIME_V2_PROTOCOL_VERSION, RUNTIME_V3_GAMEPLAY_PROTOCOL_VERSION, ToolCatalog, parse_json,
 };
 
 const MAX_BODY_BYTES: usize = 16 * 1024;
@@ -19,6 +19,7 @@ pub(crate) struct RuntimeConfig {
     pub(crate) instance_id: String,
     pub(crate) caller_id: String,
     pub(crate) session_id: String,
+    pub(crate) mcp_session_id: String,
     pub(crate) lease_id: String,
     pub(crate) lease_epoch: i64,
 }
@@ -30,6 +31,7 @@ impl RuntimeConfig {
         let instance_id = required_or_default("STS2_INSTANCE_ID", "instance-1")?;
         let caller_id = required_or_default("STS2_CALLER_ID", "harness")?;
         let session_id = required_or_default("STS2_SESSION_ID", "session-1")?;
+        let mcp_session_id = required_or_default("STS2_MCP_SESSION_ID", &session_id)?;
         let lease_id = required_or_default("STS2_LEASE_ID", "lease-1")?;
         let lease_epoch = required_or_default("STS2_LEASE_EPOCH", "1")?
             .parse::<i64>()
@@ -41,6 +43,7 @@ impl RuntimeConfig {
             ("STS2_INSTANCE_ID", &instance_id),
             ("STS2_CALLER_ID", &caller_id),
             ("STS2_SESSION_ID", &session_id),
+            ("STS2_MCP_SESSION_ID", &mcp_session_id),
             ("STS2_LEASE_ID", &lease_id),
         ] {
             if !safe_header_value(value) {
@@ -61,6 +64,7 @@ impl RuntimeConfig {
             instance_id,
             caller_id,
             session_id,
+            mcp_session_id,
             lease_id,
             lease_epoch,
         })
@@ -87,7 +91,11 @@ impl RuntimeGatewayAdapter {
             object.get("protocol_version"),
             Some(JsonValue::String(value)) if value == RUNTIME_V2_PROTOCOL_VERSION
         );
-        if is_runtime_v2 {
+        let is_runtime_v3 = matches!(
+            object.get("protocol_version"),
+            Some(JsonValue::String(value)) if value == RUNTIME_V3_GAMEPLAY_PROTOCOL_VERSION
+        );
+        if is_runtime_v2 || is_runtime_v3 {
             if object.get("instance_id")
                 != Some(&JsonValue::string(self.config.instance_id.as_str()))
                 || object.get("session_id")
@@ -125,6 +133,12 @@ impl RuntimeGatewayAdapter {
 
 impl GatewayAdapter for RuntimeGatewayAdapter {
     fn forward(&mut self, request: GatewayRequest) -> Result<GatewayResponse, GatewayError> {
+        if request.correlation.mcp_session_id != self.config.mcp_session_id
+            || request.headers.get("x-mcp-session-id").map(String::as_str)
+                != Some(self.config.mcp_session_id.as_str())
+        {
+            return Err(GatewayError::Rejected);
+        }
         let body = self.body(&request)?;
         let address = self
             .config
@@ -194,18 +208,23 @@ impl GatewayAdapter for RuntimeGatewayAdapter {
             std::str::from_utf8(&response.body).map_err(|_| GatewayError::MalformedResponse)?,
         )
         .map_err(|_| GatewayError::MalformedResponse)?;
-        match response.status {
-            401 => Err(GatewayError::Unauthorized),
-            404 => Err(GatewayError::NotFound),
-            408 | 504 => Err(GatewayError::Timeout),
-            502 | 503 => Err(GatewayError::Unavailable),
-            400 | 409 | 413 | 422 if is_runtime_result(&body) => Ok(GatewayResponse {
-                status: response.status,
-                body,
-            }),
-            400 | 409 | 413 | 422 => Err(GatewayError::Rejected),
-            status => Ok(GatewayResponse { status, body }),
-        }
+        classify_gateway_response(response.status, body)
+    }
+}
+
+fn classify_gateway_response(
+    status: u16,
+    body: JsonValue,
+) -> Result<GatewayResponse, GatewayError> {
+    match status {
+        401 => Err(GatewayError::Unauthorized),
+        403 => Err(GatewayError::Forbidden),
+        404 => Err(GatewayError::NotFound),
+        408 | 504 => Err(GatewayError::Timeout),
+        502 | 503 => Err(GatewayError::Unavailable),
+        400 | 409 | 413 | 422 if is_runtime_result(&body) => Ok(GatewayResponse { status, body }),
+        400 | 409 | 413 | 422 => Err(GatewayError::Rejected),
+        status => Ok(GatewayResponse { status, body }),
     }
 }
 
@@ -372,8 +391,9 @@ pub(crate) fn catalog_for_profile(profile: Option<&str>) -> Result<ToolCatalog, 
     match profile.unwrap_or("runtime-v1") {
         "runtime-v1" => Ok(ToolCatalog::runtime_v1()),
         "runtime-v2" => Ok(ToolCatalog::runtime_v2()),
+        "runtime-v3-gameplay" => Ok(ToolCatalog::runtime_v3_gameplay()),
         value => Err(format!(
-            "STS2_RUNTIME_PROFILE must be runtime-v1 or runtime-v2, got {value}"
+            "STS2_RUNTIME_PROFILE must be runtime-v1, runtime-v2, or runtime-v3-gameplay, got {value}"
         )),
     }
 }
@@ -390,6 +410,7 @@ mod tests {
             instance_id: String::from("configured-instance"),
             caller_id: String::from("caller"),
             session_id: String::from("configured-session"),
+            mcp_session_id: String::from("configured-mcp-session"),
             lease_id: String::from("configured-lease"),
             lease_epoch: 7,
         }
@@ -402,7 +423,7 @@ mod tests {
             headers: BTreeMap::new(),
             body: Some(body),
             correlation: Correlation {
-                mcp_session_id: String::from("configured-session"),
+                mcp_session_id: String::from("configured-mcp-session"),
                 mcp_request_id: sts2_mcp_server::RequestId::String(String::from("request-1")),
             },
         }
@@ -418,7 +439,11 @@ mod tests {
             catalog_for_profile(Some("runtime-v2")).map(|catalog| catalog.revision),
             Ok(String::from("runtime-v2-mcp"))
         );
-        assert!(catalog_for_profile(Some("runtime-v3")).is_err());
+        assert_eq!(
+            catalog_for_profile(Some("runtime-v3-gameplay")).map(|catalog| catalog.revision),
+            Ok(String::from("runtime-v3-gameplay-mcp"))
+        );
+        assert!(catalog_for_profile(Some("runtime-v4")).is_err());
     }
 
     #[test]
@@ -433,6 +458,24 @@ mod tests {
             String::from("kind"),
             JsonValue::string("reconcile_request"),
         )])));
+    }
+
+    #[test]
+    fn forbidden_gateway_response_maps_to_typed_scope_error() {
+        let response = classify_gateway_response(
+            403,
+            JsonValue::object([
+                (
+                    String::from("error_code"),
+                    JsonValue::string("insufficient_scope"),
+                ),
+                (
+                    String::from("private_detail"),
+                    JsonValue::string("do-not-forward"),
+                ),
+            ]),
+        );
+        assert_eq!(response, Err(GatewayError::Forbidden));
     }
 
     #[test]

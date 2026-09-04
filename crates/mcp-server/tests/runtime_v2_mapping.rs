@@ -4,7 +4,8 @@
 mod support;
 
 use sts2_mcp_server::{
-    GatewayMethod, GatewayResponse, JsonValue, McpServer, RUNTIME_V2_ACTION_ID, ToolCatalog,
+    GatewayError, GatewayMethod, GatewayResponse, JsonValue, McpServer, RUNTIME_V2_ACTION_ID,
+    ToolCatalog,
 };
 use support::{
     RecordingGateway, accepted, contains_result_field, observation, rejected, result, settled,
@@ -21,6 +22,112 @@ fn runtime_v2_catalog_exposes_state_submit_and_reconcile() {
     assert!(catalog.contains("reconcile_action"));
     assert_eq!(catalog.matches("\"name\"").count(), 3);
     assert!(catalog.contains("runtime-v2-mcp"));
+}
+
+#[test]
+fn gateway_overload_preserves_typed_retry_guidance_at_mcp_boundary() {
+    let mut server = McpServer::with_catalog(
+        RecordingGateway::new([Ok(GatewayResponse {
+            status: 429,
+            body: JsonValue::object([
+                (
+                    String::from("error_code"),
+                    JsonValue::string("runtime_v2_queue_capacity"),
+                ),
+                (String::from("retryable"), JsonValue::Bool(true)),
+                (String::from("retry_after_ms"), JsonValue::Number(1000)),
+            ]),
+        })]),
+        ToolCatalog::runtime_v2(),
+    );
+    let response = server.handle_frame(&submit_call(
+        "request-overloaded",
+        "instance-1",
+        "session-1",
+        "lease-1",
+        1,
+        4,
+        "op-overloaded",
+    ));
+    assert!(response.contains("\"isError\":true"));
+    assert!(response.contains("runtime_v2_queue_capacity"));
+    assert!(response.contains(r#"\"retryable\":true"#));
+    assert!(response.contains(r#"\"retry_after_ms\":1000"#));
+    assert!(!response.contains("invalid Runtime-v2 envelope"));
+}
+
+#[test]
+fn forbidden_gateway_scope_maps_to_stable_v2_tool_error() {
+    let mut server = McpServer::with_catalog(
+        RecordingGateway::new([Err(GatewayError::Forbidden)]),
+        ToolCatalog::runtime_v2(),
+    );
+    let response = server.handle_frame(&state_call(
+        "request-forbidden",
+        "instance-1",
+        "session-1",
+        "lease-1",
+        1,
+        4,
+    ));
+    assert!(response.contains("\"isError\":true"));
+    assert!(response.contains("gateway error -32007: gateway scope authorization failed"));
+    assert_eq!(server.gateway().requests.len(), 1);
+}
+
+#[test]
+fn configured_mcp_and_gateway_sessions_remain_distinct_at_the_mapping_boundary() {
+    let mut server = McpServer::with_catalog_and_sessions(
+        RecordingGateway::new([Ok(GatewayResponse {
+            status: 200,
+            body: state_response("request-bound", 4),
+        })]),
+        ToolCatalog::runtime_v2(),
+        "session-1",
+        "mcp-session-1",
+    );
+    let response = server.handle_frame(&state_call(
+        "request-bound",
+        "instance-1",
+        "mcp-session-1",
+        "lease-1",
+        1,
+        4,
+    ));
+    assert!(response.contains("\"isError\":false"));
+    let request = &server.gateway().requests[0];
+    assert_eq!(
+        request.headers.get("x-mcp-session-id"),
+        Some(&String::from("mcp-session-1"))
+    );
+    assert_eq!(request.correlation.mcp_session_id, "mcp-session-1");
+    assert_eq!(
+        request.body.as_ref().and_then(|body| match body {
+            JsonValue::Object(object) => object.get("session_id"),
+            _ => None,
+        }),
+        Some(&JsonValue::string("session-1"))
+    );
+}
+
+#[test]
+fn configured_mcp_session_mismatch_is_rejected_before_gateway_access() {
+    let mut server = McpServer::with_catalog_and_sessions(
+        RecordingGateway::new([]),
+        ToolCatalog::runtime_v2(),
+        "session-1",
+        "mcp-session-1",
+    );
+    let response = server.handle_frame(&state_call(
+        "request-wrong-mcp",
+        "instance-1",
+        "other-mcp-session",
+        "lease-1",
+        1,
+        4,
+    ));
+    assert!(response.contains("MCP session identity does not match"));
+    assert!(server.gateway().requests.is_empty());
 }
 
 #[test]

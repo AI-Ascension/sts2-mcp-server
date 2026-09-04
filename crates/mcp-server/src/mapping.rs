@@ -20,6 +20,8 @@ mod response;
 mod runtime;
 #[path = "mapping_runtime_v2.rs"]
 mod runtime_v2;
+#[path = "mapping_runtime_v3_gameplay.rs"]
+mod runtime_v3_gameplay;
 
 pub(crate) fn tools_call<G: GatewayAdapter>(
     server: &mut McpServer<G>,
@@ -27,6 +29,9 @@ pub(crate) fn tools_call<G: GatewayAdapter>(
 ) -> RpcResponse {
     if server.catalog.is_runtime_v2() {
         return runtime_v2::tools_call(server, request);
+    }
+    if server.catalog.is_runtime_v3_gameplay() {
+        return runtime_v3_gameplay::tools_call(server, request);
     }
     let Some(params) = request.params.as_object() else {
         return RpcResponse::failure(
@@ -174,6 +179,7 @@ fn forward<G: GatewayAdapter>(
 fn gateway_error_result(id: RequestId, error: GatewayError) -> RpcResponse {
     let (code, message) = match error {
         GatewayError::Unauthorized => (-32001, "gateway authorization failed"),
+        GatewayError::Forbidden => (-32007, "gateway scope authorization failed"),
         GatewayError::NotFound => (-32004, "gateway target was not found"),
         GatewayError::Unavailable => (-32003, "gateway is unavailable"),
         GatewayError::Timeout => (-32008, "gateway request timed out"),

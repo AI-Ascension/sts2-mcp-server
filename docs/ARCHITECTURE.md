@@ -92,7 +92,8 @@ and rejects malformed or oversized responses.
 Before a result reaches MCP content, the adapter requires the runtime protocol version, exact schema
 digest, provenance, identity, epoch, generation, action, observation, status, and witness shape to
 match its allowlist. HTTP 409 is preserved when it contains a valid structured stale action result;
-other gateway rejection statuses become sanitized MCP tool errors. The MCP server remains a thin
+HTTP 401 and 403 become distinct sanitized MCP authorization errors; other gateway rejection statuses
+become sanitized MCP tool errors. The MCP server remains a thin
 adapter: it owns neither gateway lease authority nor host/game semantics.
 
 The process and mapping are source/build-confirmed. The authorized host trace confirms the real
@@ -115,7 +116,13 @@ Both calls carry the complete copied Runtime-v2 envelope to the gateway. Valid g
 all envelope fields, including the exact status and `error_code` origin. Unknown envelope fields,
 metadata drift, identity mismatch, invalid fences, malformed observations, and invalid witnesses fail
 closed. Timeout or disconnect uncertainty becomes an `unknown` result and is never retried automatically.
+An authenticated gateway `429` overload is handled before gameplay-envelope projection and emits an
+MCP tool error containing only the allowlisted typed `error_code`, `retryable`, and bounded
+`retry_after_ms` fields; arbitrary overload payload fields are not forwarded.
 `accepted` is admission only. The adapter reports `settled` only for a downstream `settled` result with
 a fresh observation whose generation advances past the request and a matching `turn_end_settled`
-witness. It does not infer settlement from an acknowledgement or from a state read. Runtime-v1's
-catalog, routes, and projection remain unchanged.
+witness. It does not infer settlement from an acknowledgement or from a state read. The executable
+binds `STS2_MCP_SESSION_ID` separately from `STS2_SESSION_ID`: the former is checked in the MCP
+tool argument, correlation, and `x-mcp-session-id` header, while the latter remains the envelope's
+gateway session. The frozen Runtime-v2 artifact is unchanged, and the MCP-session header is not
+forwarded to the game-mod. Runtime-v1's catalog, routes, and projection remain unchanged.

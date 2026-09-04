@@ -17,6 +17,7 @@ pub(crate) struct RuntimeV2Context {
     pub(crate) correlation_id: String,
     pub(crate) instance_id: String,
     pub(crate) session_id: String,
+    pub(crate) mcp_session_id: String,
     pub(crate) lease_id: String,
     pub(crate) lease_epoch: i64,
     pub(crate) generation: i64,

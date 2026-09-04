@@ -96,6 +96,7 @@ pub(super) fn validate_kind_shape(
                 effect_witness,
                 generation,
                 request_generation,
+                kind,
             )
         }
         _ => Err("runtime-v2 gateway kind is not allowlisted"),
@@ -109,6 +110,7 @@ fn validate_result(
     effect_witness: &JsonValue,
     generation: i64,
     request_generation: i64,
+    kind: &str,
 ) -> Result<(), &'static str> {
     let Some(status) = status.as_string() else {
         return Err("runtime-v2 result status must be a string");
@@ -146,8 +148,12 @@ fn validate_result(
             )
         }
         "settled" => {
-            if generation <= request_generation {
-                return Err("runtime-v2 settled result does not contain a fresh generation");
+            if (kind == "action_response" && generation <= request_generation)
+                || (kind == "reconcile_response" && generation < request_generation)
+            {
+                return Err(
+                    "runtime-v2 settled result does not contain a non-regressing generation",
+                );
             }
             let observation = validate_observation(observation)?;
             if observation_generation(observation)? != generation {

@@ -55,8 +55,12 @@ external precondition or runtime lane is absent. A skipped check remains visible
 `runtime_mapping.rs` confirms the two runtime tool calls, fixed routes, complete action envelope,
 effect-witness projection, and structured stale-generation preservation. `runtime_artifact.rs`
 confirms the copied manifest and schema bytes. The runtime binary has bounded stdin frame and HTTP
-adapter paths and builds with the pinned Rust toolchain.
+adapter paths, configured MCP-session propagation, and pre-forward session rejection, and builds with
+the pinned Rust toolchain.
 
 A controlled component lane may run this process against the real gateway and a synthetic downstream;
-that confirms MCP/gateway transport and mapping only. It does not prove the managed mod, Godot
-main-thread execution, STS2 host compatibility, a disposable game profile, or gameplay mutation.
+that confirms MCP/gateway transport and mapping only. Gateway `401` and `403` responses remain
+distinct typed MCP authorization errors, and the `403` response body is not forwarded to tool content.
+A gateway `429` overload must remain an MCP tool error while preserving only its typed error code and bounded retry guidance. It does not prove
+the managed mod, Godot main-thread execution, STS2 host compatibility, a disposable game profile, or
+gameplay mutation.
