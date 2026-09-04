@@ -2,6 +2,9 @@
 
 use std::collections::VecDeque;
 
+#[path = "../src/protocol_artifact_runtime_v2_hash.rs"]
+mod hash;
+
 use sts2_mcp_server::{
     COOP_SYNCHRONIZATION_TOOL, GatewayAdapter, GatewayError, GatewayMethod, GatewayRequest,
     GatewayResponse, JsonValue, McpServer, ToolCatalog,
@@ -29,7 +32,7 @@ fn response() -> JsonValue {
         ),
         (
             String::from("schema_digest"),
-            JsonValue::string("2c34d013315fbf2e16de03dbe2bd4c43d4c13c744292548cc46ea960af5e1fa2"),
+            JsonValue::string("85e0028c1ae20e49542791da165eeabaaea0cc2023626b5094b6660ebcc0cc81"),
         ),
         (
             String::from("provenance"),
@@ -127,4 +130,41 @@ fn co_op_sync_rejects_extra_input_before_gateway() {
     );
     assert!(server.handle_frame(&frame).contains("-32602"));
     assert!(server.gateway().requests.is_empty());
+}
+
+#[test]
+fn co_op_peer_count_must_match_the_declared_peer_set() {
+    let mut body = response();
+    if let JsonValue::Object(root) = &mut body
+        && let Some(JsonValue::Object(sync)) = root.get_mut("synchronization")
+    {
+        sync.insert(String::from("peer_count"), JsonValue::Number(3));
+    }
+    let gateway = FakeGateway {
+        requests: Vec::new(),
+        responses: VecDeque::from([Ok(GatewayResponse { status: 200, body })]),
+    };
+    let mut server = McpServer::with_catalog(gateway, ToolCatalog::coop_gameplay());
+    let result = server.handle_frame(&call(
+        "\"instance_id\":\"instance-1\",\"mcp_session_id\":\"session-1\",\"lease_id\":\"lease-1\",\"lease_epoch\":1,\"generation\":4",
+    ));
+    assert!(result.contains("\"isError\":true"), "{result}");
+}
+
+#[test]
+fn synchronization_fixture_matches_the_pinned_protocol_prototype() -> Result<(), String> {
+    let text = include_str!("../../../schemas/coop-gameplay-v1.schema.json");
+    assert_eq!(
+        hash::sha256_hex(text.as_bytes()),
+        "85e0028c1ae20e49542791da165eeabaaea0cc2023626b5094b6660ebcc0cc81"
+    );
+    let schema: serde_json::Value =
+        serde_json::from_str(text).map_err(|error| error.to_string())?;
+    let validator = jsonschema::draft202012::options()
+        .build(&schema)
+        .map_err(|error| error.to_string())?;
+    let fixture: serde_json::Value =
+        serde_json::from_str(&response().to_json()).map_err(|error| error.to_string())?;
+    assert!(validator.is_valid(&fixture));
+    Ok(())
 }

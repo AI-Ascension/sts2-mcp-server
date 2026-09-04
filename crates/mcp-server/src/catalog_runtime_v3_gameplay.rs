@@ -81,9 +81,13 @@ fn context_schema(required_extra: &[&str], optional_extra: &[&str]) -> JsonValue
     ];
     let schema_for = |key: &str| -> JsonValue {
         match key {
-            "state_id" | "operation_id" => bounded_string(IDENTITY_PATTERN),
+            "state_id" | "operation_id" => payload_identity(),
             "action" => legal_action_schema(),
-            "wait_for_millis" => bounded_counter(MAX_WAIT_MILLIS),
+            "wait_for_millis" => JsonValue::object([
+                (String::from("type"), JsonValue::string("integer")),
+                (String::from("minimum"), JsonValue::Number(1)),
+                (String::from("maximum"), JsonValue::Number(MAX_WAIT_MILLIS)),
+            ]),
             "recovery_kind" => JsonValue::object([
                 (String::from("type"), JsonValue::string("string")),
                 (
@@ -107,7 +111,7 @@ fn context_schema(required_extra: &[&str], optional_extra: &[&str]) -> JsonValue
             JsonValue::object([(
                 String::from("anyOf"),
                 JsonValue::Array(vec![
-                    bounded_string(IDENTITY_PATTERN),
+                    payload_identity(),
                     JsonValue::object([(String::from("type"), JsonValue::string("null"))]),
                 ]),
             )])
@@ -136,6 +140,15 @@ fn bounded_string(pattern: &str) -> JsonValue {
     ])
 }
 
+fn payload_identity() -> JsonValue {
+    JsonValue::object([
+        (String::from("type"), JsonValue::string("string")),
+        (String::from("minLength"), JsonValue::Number(1)),
+        (String::from("maxLength"), JsonValue::Number(512)),
+        (String::from("pattern"), JsonValue::string(IDENTITY_PATTERN)),
+    ])
+}
+
 fn bounded_counter(maximum: i64) -> JsonValue {
     JsonValue::object([
         (String::from("type"), JsonValue::string("integer")),
@@ -158,7 +171,7 @@ fn legal_action_schema() -> JsonValue {
         (
             String::from("properties"),
             JsonValue::object([
-                (String::from("action_id"), bounded_string(IDENTITY_PATTERN)),
+                (String::from("action_id"), payload_identity()),
                 (String::from("action"), action_payload_schema()),
             ]),
         ),
@@ -204,13 +217,13 @@ fn action_payload_schema() -> JsonValue {
                     String::from("kind"),
                     JsonValue::object([(String::from("const"), JsonValue::string("play_card"))]),
                 ),
-                (String::from("card_id"), bounded_string(IDENTITY_PATTERN)),
+                (String::from("card_id"), payload_identity()),
                 (
                     String::from("target_id"),
                     JsonValue::object([(
                         String::from("anyOf"),
                         JsonValue::Array(vec![
-                            bounded_string(IDENTITY_PATTERN),
+                            payload_identity(),
                             JsonValue::object([(String::from("type"), JsonValue::string("null"))]),
                         ]),
                     )]),
@@ -254,7 +267,7 @@ fn one_argument_action_schema(kind: &str, field: &str) -> JsonValue {
                     String::from("kind"),
                     JsonValue::object([(String::from("const"), JsonValue::string(kind))]),
                 ),
-                (String::from(field), bounded_string(IDENTITY_PATTERN)),
+                (String::from(field), payload_identity()),
             ]),
         ),
     ])

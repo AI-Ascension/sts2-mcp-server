@@ -66,7 +66,7 @@ fn root(
         ),
         (
             String::from("schema_digest"),
-            JsonValue::string("fbfb18279b0c7ebb350ef0ce0d56547fa11e83985b13380cb2b0f1dba4cb56e9"),
+            JsonValue::string("b37c80f583aeaf4f81ede2083bcfb4129196baf5eb092470e8738173c4b7226c"),
         ),
         (
             String::from("provenance"),
@@ -339,5 +339,9 @@ fn result_operation_identity_must_match_the_requested_operation() {
     );
     let output = server.handle_frame(&call(DISPATCH_ACTION_TOOL, &arguments));
     assert!(output.contains("\"isError\":true"));
-    assert!(output.contains("not a valid Runtime-v3 gameplay envelope"));
+    assert!(output.contains("unknown_after_invalid_response"));
+    assert!(!output.contains("other-operation"));
 }
+
+#[path = "runtime_v3_gameplay_regressions/mod.rs"]
+mod regressions;

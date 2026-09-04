@@ -38,10 +38,10 @@ impl RuntimeV3GameplayContext {
             optional_string_argument(arguments, "operation_id", require_operation_id)?;
         if state_id
             .as_deref()
-            .is_some_and(|value| !crate::mapping::safe_header_value(value))
+            .is_some_and(|value| !safe_payload_identity(value))
             || operation_id
                 .as_deref()
-                .is_some_and(|value| !crate::mapping::safe_header_value(value))
+                .is_some_and(|value| !safe_payload_identity(value))
         {
             return Err("Runtime-v3 state or operation identity is unsafe or oversized");
         }
@@ -53,6 +53,7 @@ impl RuntimeV3GameplayContext {
                 lease_id: String::from(lease_id),
                 lease_epoch,
                 generation,
+                state_id: state_id.clone(),
                 operation_id: operation_id.clone(),
             },
             state_id,
@@ -86,6 +87,14 @@ fn string_argument<'a>(
         .and_then(JsonValue::as_string)
         .filter(|value| !value.is_empty())
         .ok_or("Runtime-v3 identity argument must be a non-empty string")
+}
+
+fn safe_payload_identity(value: &str) -> bool {
+    !value.is_empty()
+        && value.len() <= 512
+        && value
+            .bytes()
+            .all(|byte| byte.is_ascii_alphanumeric() || b"._:/-".contains(&byte))
 }
 
 fn optional_string_argument(

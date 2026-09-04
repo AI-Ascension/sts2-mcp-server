@@ -2,7 +2,6 @@
 
 use std::collections::BTreeMap;
 
-use crate::catalog::MAX_IDENTIFIER_BYTES;
 use crate::json::JsonValue;
 
 const MAX_ACTIONS: usize = 256;
@@ -135,7 +134,7 @@ fn exact_keys(object: &BTreeMap<String, JsonValue>, keys: &[&str]) -> bool {
 
 fn safe_identifier(value: &str) -> bool {
     !value.is_empty()
-        && value.len() <= MAX_IDENTIFIER_BYTES
+        && value.len() <= 512
         && value
             .bytes()
             .all(|byte| byte.is_ascii_alphanumeric() || b"._:/-".contains(&byte))

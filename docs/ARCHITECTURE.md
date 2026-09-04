@@ -141,6 +141,13 @@ maps each call to one fixed gateway route, retains typed status and transition w
 timeout or disconnect uncertainty into a recovery-required unknown result. It exposes no raw host
 object, arbitrary route, shell, coordinate, or process tool.
 
+Legal-action responses must match the state and generation used to request the catalog. Observation
+and reobservation reads may discover newer host generations. A settled dispatch witness must start
+at the dispatch generation and name the returned state; wait/recovery retain operation-bound receipts
+without requiring their settlement generation to exceed a caller's subsequently refreshed generation.
+The host remains responsible for independent action-completion evidence; envelope validation alone
+cannot establish that an effect occurred.
+
 The additive co-op mapping is read-only synchronization metadata. It validates two-to-four unique
 peers, exactly one local peer, generation agreement, known missing peers, and safe identifiers before
 projection; it cannot authorize a mutation while peers disagree or are disconnected. Gateway lease

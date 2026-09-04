@@ -15,6 +15,7 @@ pub(crate) struct RuntimeV3GameplayProjectionContext {
     pub(crate) lease_id: String,
     pub(crate) lease_epoch: i64,
     pub(crate) generation: i64,
+    pub(crate) state_id: Option<String>,
     pub(crate) operation_id: Option<String>,
 }
 

@@ -5,7 +5,7 @@ use crate::json::JsonValue;
 use super::context::RuntimeV3GameplayContext;
 
 const PROTOCOL_VERSION: &str = "runtime-v3-gameplay";
-const SCHEMA_DIGEST: &str = "fbfb18279b0c7ebb350ef0ce0d56547fa11e83985b13380cb2b0f1dba4cb56e9";
+const SCHEMA_DIGEST: &str = "b37c80f583aeaf4f81ede2083bcfb4129196baf5eb092470e8738173c4b7226c";
 const ARTIFACT: &str = "sts2-protocol/runtime-v3-gameplay";
 const SOURCE: &str = "schemas/runtime-v3-gameplay.schema.json";
 const GENERATOR: &str = "hand-authored";

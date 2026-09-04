@@ -64,7 +64,7 @@ pub(super) fn build() -> super::ToolCatalog {
         tools: vec![ToolDescriptor {
             name: String::from(SYNC_TOOL),
             description: String::from(
-                "Read bounded co-op peer synchronization; disagreement suspends mutation.",
+                "Read bounded co-op synchronization metadata; this tool does not authorize actions.",
             ),
             input_schema: JsonValue::object([
                 (String::from("type"), JsonValue::string("object")),

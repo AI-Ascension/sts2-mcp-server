@@ -126,3 +126,26 @@ The `runtime-v3-gameplay-mcp` profile is additive and source-derived. Its exact 
 semantic route mapping, fair-play response projection, and unknown/recovery handling are covered by
 local tests. The co-op synchronization mapping is read-only source/test evidence; live MCP/gateway,
 provider, host, and multiplayer compatibility remain `unverified`.
+
+### Reviewed proposed artifact migration
+
+This branch consumes protocol PR #8 producer `82507361890c1bdce6cffeaf7e616d93e53a7d99`:
+Runtime-v3 gameplay schema digest
+`b37c80f583aeaf4f81ede2083bcfb4129196baf5eb092470e8738173c4b7226c` replaces the earlier
+unpublished proposal `fbfb18279b0c7ebb350ef0ce0d56547fa11e83985b13380cb2b0f1dba4cb56e9`.
+Mixed proposal versions fail closed; producer and consumers must update together. The copied schema,
+manifest, conformance inventory and four producer goldens are checksum-verified in tests. Tests send
+all six tool request envelopes through the producer schema and compare a canonical dispatch request
+and settled receipt at both adapter boundaries. These are synthetic contract checks, not host evidence.
+
+The co-op source prototype schema digest is
+`85e0028c1ae20e49542791da165eeabaaea0cc2023626b5094b6660ebcc0cc81`. It has no released bundle
+and no executable profile selector here; its separate library catalog does not add tools to the six-tool
+Runtime-v3 executable profile or implement a multiplayer mutation barrier.
+
+Protocol #7 and MCP #7 use a different, older gameplay contract with the same proposed profile name.
+They are alternative proposals, not prerequisites inherited by this branch. A maintainer must select
+or reconcile them; merging both independently does not establish compatible gameplay.
+
+Configured instance/session/lease/correlation identifiers retain the adapter's 128-byte HTTP bound.
+Runtime-v3 body-only state, operation and action identifiers follow the canonical 512-byte bound.
