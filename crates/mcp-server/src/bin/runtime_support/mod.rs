@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: MIT
 
-use std::collections::BTreeMap;
-use std::io::{Read, Write};
-use std::net::{TcpStream, ToSocketAddrs};
-use std::time::Duration;
+use std::net::{SocketAddr, TcpStream};
+use std::time::{Duration, Instant};
+
+mod http;
+use http::{ReadError, read_response, write_request};
 
 use sts2_mcp_server::{
     GatewayAdapter, GatewayError, GatewayMethod, GatewayRequest, GatewayResponse, JsonValue,
@@ -11,10 +12,9 @@ use sts2_mcp_server::{
 };
 
 const MAX_BODY_BYTES: usize = 16 * 1024;
-const MAX_RESPONSE_BYTES: usize = 64 * 1024;
 
 pub(crate) struct RuntimeConfig {
-    pub(crate) gateway_address: String,
+    pub(crate) gateway_address: SocketAddr,
     pub(crate) gateway_token: String,
     pub(crate) instance_id: String,
     pub(crate) caller_id: String,
@@ -25,7 +25,10 @@ pub(crate) struct RuntimeConfig {
 
 impl RuntimeConfig {
     pub(crate) fn from_environment() -> Result<Self, String> {
-        let gateway_address = required_or_default("STS2_GATEWAY_ADDR", "127.0.0.1:15525")?;
+        let gateway_address = gateway_address(&required_or_default(
+            "STS2_GATEWAY_ADDR",
+            "127.0.0.1:15525",
+        )?)?;
         let gateway_token = required("STS2_GATEWAY_TOKEN")?;
         let instance_id = required_or_default("STS2_INSTANCE_ID", "instance-1")?;
         let caller_id = required_or_default("STS2_CALLER_ID", "harness")?;
@@ -47,10 +50,7 @@ impl RuntimeConfig {
                 return Err(format!("{name} is empty, unsafe, or oversized"));
             }
         }
-        if gateway_token.is_empty()
-            || gateway_token.len() > 256
-            || gateway_token.bytes().any(|byte| byte.is_ascii_whitespace())
-        {
+        if !safe_token(&gateway_token) {
             return Err(String::from(
                 "STS2_GATEWAY_TOKEN is empty, unsafe, or oversized",
             ));
@@ -126,21 +126,10 @@ impl RuntimeGatewayAdapter {
 impl GatewayAdapter for RuntimeGatewayAdapter {
     fn forward(&mut self, request: GatewayRequest) -> Result<GatewayResponse, GatewayError> {
         let body = self.body(&request)?;
-        let address = self
-            .config
-            .gateway_address
-            .to_socket_addrs()
-            .map_err(|_| GatewayError::Unavailable)?
-            .next()
-            .ok_or(GatewayError::Unavailable)?;
-        let mut stream = TcpStream::connect_timeout(&address, Duration::from_secs(2))
-            .map_err(|_| GatewayError::Unavailable)?;
-        stream
-            .set_read_timeout(Some(Duration::from_secs(5)))
-            .map_err(|_| GatewayError::Unavailable)?;
-        stream
-            .set_write_timeout(Some(Duration::from_secs(5)))
-            .map_err(|_| GatewayError::Unavailable)?;
+        let deadline = Instant::now() + Duration::from_secs(5);
+        let mut stream =
+            TcpStream::connect_timeout(&self.config.gateway_address, Duration::from_secs(2))
+                .map_err(|error| map_io(http::classify_io(error)))?;
         let method = match request.method {
             GatewayMethod::Get => "GET",
             GatewayMethod::Post => "POST",
@@ -150,7 +139,10 @@ impl GatewayAdapter for RuntimeGatewayAdapter {
             String::from("Authorization"),
             format!("Bearer {}", self.config.gateway_token),
         );
-        headers.insert(String::from("Host"), self.config.gateway_address.clone());
+        headers.insert(
+            String::from("Host"),
+            self.config.gateway_address.to_string(),
+        );
         headers.insert(
             String::from("x-sts2-instance-id"),
             self.config.instance_id.clone(),
@@ -182,14 +174,19 @@ impl GatewayAdapter for RuntimeGatewayAdapter {
                 String::from("application/json"),
             );
         }
-        write_request(&mut stream, method, &request.path, &headers, &body)
-            .map_err(|_| GatewayError::Unavailable)?;
-        let response = read_response(&mut stream).map_err(|error| match error {
-            ReadError::Timeout => GatewayError::Timeout,
-            ReadError::Malformed => GatewayError::MalformedResponse,
-            ReadError::Oversized => GatewayError::Rejected,
-            ReadError::Unavailable => GatewayError::Unavailable,
+        write_request(
+            &mut stream,
+            method,
+            &request.path,
+            &headers,
+            &body,
+            deadline,
+        )
+        .map_err(|error| match error {
+            ReadError::Malformed | ReadError::Oversized => GatewayError::Rejected,
+            error => map_io(error),
         })?;
+        let response = read_response(&mut stream, deadline).map_err(map_io)?;
         let body = parse_json(
             std::str::from_utf8(&response.body).map_err(|_| GatewayError::MalformedResponse)?,
         )
@@ -224,119 +221,33 @@ fn is_runtime_result(body: &JsonValue) -> bool {
     )
 }
 
-fn write_request(
-    stream: &mut TcpStream,
-    method: &str,
-    path: &str,
-    headers: &BTreeMap<String, String>,
-    body: &[u8],
-) -> std::io::Result<()> {
-    let mut request = format!("{method} {path} HTTP/1.1\r\n");
-    for (name, value) in headers {
-        request.push_str(name);
-        request.push_str(": ");
-        request.push_str(value);
-        request.push_str("\r\n");
-    }
-    request.push_str("Connection: close\r\n\r\n");
-    stream.write_all(request.as_bytes())?;
-    stream.write_all(body)
-}
-
-struct HttpResponse {
-    status: u16,
-    body: Vec<u8>,
-}
-
-enum ReadError {
-    Timeout,
-    Malformed,
-    Oversized,
-    Unavailable,
-}
-
-fn read_response(stream: &mut TcpStream) -> Result<HttpResponse, ReadError> {
-    let mut bytes = Vec::new();
-    let mut buffer = [0_u8; 2048];
-    let header_end = loop {
-        if let Some(end) = bytes.windows(4).position(|window| window == b"\r\n\r\n") {
-            break end;
-        }
-        if bytes.len() >= 8 * 1024 {
-            return Err(ReadError::Oversized);
-        }
-        let read = stream.read(&mut buffer).map_err(classify_io)?;
-        if read == 0 {
-            return Err(ReadError::Malformed);
-        }
-        bytes.extend_from_slice(&buffer[..read]);
-    };
-    let header = std::str::from_utf8(&bytes[..header_end]).map_err(|_| ReadError::Malformed)?;
-    let mut lines = header.split("\r\n");
-    let status_line = lines.next().ok_or(ReadError::Malformed)?;
-    let mut parts = status_line.split_ascii_whitespace();
-    if parts.next() != Some("HTTP/1.1") {
-        return Err(ReadError::Malformed);
-    }
-    let status = parts
-        .next()
-        .ok_or(ReadError::Malformed)?
-        .parse::<u16>()
-        .map_err(|_| ReadError::Malformed)?;
-    let mut content_length = None;
-    for line in lines {
-        let Some((name, value)) = line.split_once(':') else {
-            return Err(ReadError::Malformed);
-        };
-        if name.eq_ignore_ascii_case("content-length") {
-            if content_length.is_some() {
-                return Err(ReadError::Malformed);
-            }
-            content_length = Some(
-                value
-                    .trim()
-                    .parse::<usize>()
-                    .map_err(|_| ReadError::Malformed)?,
-            );
-        }
-    }
-    let content_length = content_length.ok_or(ReadError::Malformed)?;
-    if content_length > MAX_RESPONSE_BYTES {
-        return Err(ReadError::Oversized);
-    }
-    let body_start = header_end + 4;
-    let available = bytes.len().saturating_sub(body_start);
-    if available > content_length {
-        return Err(ReadError::Malformed);
-    }
-    let mut body = bytes[body_start..].to_vec();
-    while body.len() < content_length {
-        let remaining = content_length - body.len();
-        let read_capacity = remaining.min(buffer.len());
-        let read = stream
-            .read(&mut buffer[..read_capacity])
-            .map_err(classify_io)?;
-        if read == 0 {
-            return Err(ReadError::Malformed);
-        }
-        body.extend_from_slice(&buffer[..read]);
-    }
-    Ok(HttpResponse { status, body })
-}
-
-fn classify_io(error: std::io::Error) -> ReadError {
-    if matches!(
-        error.kind(),
-        std::io::ErrorKind::TimedOut | std::io::ErrorKind::WouldBlock
-    ) {
-        ReadError::Timeout
-    } else {
-        ReadError::Unavailable
+fn map_io(error: ReadError) -> GatewayError {
+    match error {
+        ReadError::Timeout => GatewayError::Timeout,
+        ReadError::Malformed => GatewayError::MalformedResponse,
+        ReadError::Oversized => GatewayError::MalformedResponse,
+        ReadError::Unavailable => GatewayError::Unavailable,
     }
 }
 
 fn required(name: &str) -> Result<String, String> {
     std::env::var(name).map_err(|_| format!("{name} is required"))
+}
+
+fn gateway_address(value: &str) -> Result<SocketAddr, String> {
+    let address: SocketAddr = value
+        .parse()
+        .map_err(|_| String::from("STS2_GATEWAY_ADDR must be a numeric loopback socket address"))?;
+    if !address.ip().is_loopback() || address.port() == 0 {
+        return Err(String::from(
+            "STS2_GATEWAY_ADDR must be loopback with a nonzero port",
+        ));
+    }
+    Ok(address)
+}
+
+fn safe_token(value: &str) -> bool {
+    !value.is_empty() && value.len() <= 256 && value.bytes().all(|byte| byte.is_ascii_graphic())
 }
 
 fn required_or_default(name: &str, default: &str) -> Result<String, String> {
@@ -381,11 +292,12 @@ pub(crate) fn catalog_for_profile(profile: Option<&str>) -> Result<ToolCatalog, 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::collections::BTreeMap;
     use sts2_mcp_server::Correlation;
 
     fn config() -> RuntimeConfig {
         RuntimeConfig {
-            gateway_address: String::from("127.0.0.1:15525"),
+            gateway_address: SocketAddr::from(([127, 0, 0, 1], 15525)),
             gateway_token: String::from("token"),
             instance_id: String::from("configured-instance"),
             caller_id: String::from("caller"),
@@ -393,6 +305,33 @@ mod tests {
             lease_id: String::from("configured-lease"),
             lease_epoch: 7,
         }
+    }
+
+    #[test]
+    fn gateway_configuration_rejects_dns_remote_zero_port_and_unsafe_tokens() {
+        for value in [
+            "localhost:15525",
+            "192.0.2.1:15525",
+            "0.0.0.0:15525",
+            "[::]:15525",
+            "127.0.0.1:0",
+            "127.0.0.1:80\r\nX: a",
+        ] {
+            assert!(gateway_address(value).is_err(), "{value:?}");
+        }
+        assert!(gateway_address("127.0.0.1:15525").is_ok());
+        assert!(gateway_address("[::1]:15525").is_ok());
+        for value in [
+            "",
+            "token\0",
+            "token\u{7f}",
+            "tokené",
+            "token word",
+            "token\r\n",
+        ] {
+            assert!(!safe_token(value));
+        }
+        assert!(safe_token("token-safe_123.=/+"));
     }
 
     fn request(body: JsonValue) -> GatewayRequest {
