@@ -17,8 +17,11 @@ fn main() {
 fn run() -> Result<(), String> {
     let config = runtime_http::RuntimeConfig::from_environment()?;
     let catalog = runtime_http::catalog_from_environment()?;
+    let gateway_session_id = config.session_id.clone();
+    let mcp_session_id = config.mcp_session_id.clone();
     let adapter = runtime_http::RuntimeGatewayAdapter::new(config);
-    let mut server = McpServer::with_catalog(adapter, catalog);
+    let mut server =
+        McpServer::with_catalog_and_sessions(adapter, catalog, gateway_session_id, mcp_session_id);
     let stdin = io::stdin();
     let mut input = stdin.lock();
     let stdout = io::stdout();

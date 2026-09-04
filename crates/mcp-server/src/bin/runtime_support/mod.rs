@@ -20,6 +20,7 @@ pub(crate) struct RuntimeConfig {
     pub(crate) instance_id: String,
     pub(crate) caller_id: String,
     pub(crate) session_id: String,
+    pub(crate) mcp_session_id: String,
     pub(crate) lease_id: String,
     pub(crate) lease_epoch: i64,
 }
@@ -34,6 +35,7 @@ impl RuntimeConfig {
         let instance_id = required_or_default("STS2_INSTANCE_ID", "instance-1")?;
         let caller_id = required_or_default("STS2_CALLER_ID", "harness")?;
         let session_id = required_or_default("STS2_SESSION_ID", "session-1")?;
+        let mcp_session_id = required_or_default("STS2_MCP_SESSION_ID", &session_id)?;
         let lease_id = required_or_default("STS2_LEASE_ID", "lease-1")?;
         let lease_epoch = required_or_default("STS2_LEASE_EPOCH", "1")?
             .parse::<i64>()
@@ -45,6 +47,7 @@ impl RuntimeConfig {
             ("STS2_INSTANCE_ID", &instance_id),
             ("STS2_CALLER_ID", &caller_id),
             ("STS2_SESSION_ID", &session_id),
+            ("STS2_MCP_SESSION_ID", &mcp_session_id),
             ("STS2_LEASE_ID", &lease_id),
         ] {
             if !safe_header_value(value) {
@@ -62,6 +65,7 @@ impl RuntimeConfig {
             instance_id,
             caller_id,
             session_id,
+            mcp_session_id,
             lease_id,
             lease_epoch,
         })

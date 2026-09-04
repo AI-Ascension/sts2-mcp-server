@@ -108,7 +108,7 @@ fn state_call<G: GatewayAdapter>(
     if !super::has_only_arguments(arguments, &STATE_ARGUMENTS) {
         return invalid_params(id, "get_state arguments contain an unsupported field");
     }
-    let context = match request_context(arguments, correlation_id, false) {
+    let context = match request_context(server, arguments, correlation_id, false) {
         Ok(context) => context,
         Err(message) => return invalid_params(id, message),
     };
@@ -123,7 +123,7 @@ fn state_call<G: GatewayAdapter>(
             false,
         )),
         correlation: Correlation {
-            mcp_session_id: context.session_id.clone(),
+            mcp_session_id: context.mcp_session_id.clone(),
             mcp_request_id: id.clone(),
         },
     };
@@ -139,7 +139,7 @@ fn submit_action_call<G: GatewayAdapter>(
     if !super::has_only_arguments(arguments, &SUBMIT_ARGUMENTS) {
         return invalid_params(id, "submit_action arguments contain an unsupported field");
     }
-    let context = match request_context(arguments, correlation_id, true) {
+    let context = match request_context(server, arguments, correlation_id, true) {
         Ok(context) => context,
         Err(message) => return invalid_params(id, message),
     };
@@ -160,7 +160,7 @@ fn submit_action_call<G: GatewayAdapter>(
             true,
         )),
         correlation: Correlation {
-            mcp_session_id: context.session_id.clone(),
+            mcp_session_id: context.mcp_session_id.clone(),
             mcp_request_id: id.clone(),
         },
     };
@@ -179,7 +179,7 @@ fn reconcile_action_call<G: GatewayAdapter>(
             "reconcile_action arguments contain an unsupported field",
         );
     }
-    let context = match request_context(arguments, correlation_id, true) {
+    let context = match request_context(server, arguments, correlation_id, true) {
         Ok(context) => context,
         Err(message) => return invalid_params(id, message),
     };
@@ -192,7 +192,7 @@ fn reconcile_action_call<G: GatewayAdapter>(
         headers: authority_headers(&context),
         body: None,
         correlation: Correlation {
-            mcp_session_id: context.session_id.clone(),
+            mcp_session_id: context.mcp_session_id.clone(),
             mcp_request_id: id.clone(),
         },
     };
@@ -200,7 +200,7 @@ fn reconcile_action_call<G: GatewayAdapter>(
 }
 
 fn authority_headers(context: &RuntimeV2Context) -> BTreeMap<String, String> {
-    let mut headers = super::headers(&context.session_id, &context.correlation_id);
+    let mut headers = super::headers(&context.mcp_session_id, &context.correlation_id);
     for (name, value) in [
         ("x-sts2-instance-id", context.instance_id.clone()),
         ("x-sts2-session-id", context.session_id.clone()),
@@ -212,15 +212,22 @@ fn authority_headers(context: &RuntimeV2Context) -> BTreeMap<String, String> {
     headers
 }
 
-fn request_context(
+fn request_context<G: GatewayAdapter>(
+    server: &McpServer<G>,
     arguments: &BTreeMap<String, JsonValue>,
     correlation_id: &str,
     require_operation_id: bool,
 ) -> Result<RuntimeV2Context, &'static str> {
     let instance_id = non_empty_string(arguments, "instance_id")
         .ok_or("instance_id must be a non-empty string")?;
-    let session_id = non_empty_string(arguments, "mcp_session_id")
+    let mcp_session_id = non_empty_string(arguments, "mcp_session_id")
         .ok_or("mcp_session_id must be a non-empty string")?;
+    if let Some(expected) = server.mcp_session_id()
+        && expected != mcp_session_id
+    {
+        return Err("MCP session identity does not match the configured session");
+    }
+    let session_id = server.gateway_session_id().unwrap_or(mcp_session_id);
     let lease_id =
         non_empty_string(arguments, "lease_id").ok_or("lease_id must be a non-empty string")?;
     let operation_id = if require_operation_id {
@@ -230,6 +237,7 @@ fn request_context(
         ""
     };
     if !super::safe_segment(instance_id)
+        || !super::safe_header_value(mcp_session_id)
         || !super::safe_header_value(session_id)
         || !super::safe_header_value(lease_id)
         || (require_operation_id
@@ -243,6 +251,7 @@ fn request_context(
         correlation_id: String::from(correlation_id),
         instance_id: String::from(instance_id),
         session_id: String::from(session_id),
+        mcp_session_id: String::from(mcp_session_id),
         lease_id: String::from(lease_id),
         lease_epoch,
         generation,
