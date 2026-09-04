@@ -228,7 +228,8 @@ fn validate_result(
             }
             validate_result_observation(object, generation)?;
             require_null(object, "error_code")?;
-            validate_transition(object.get("transition"), generation)?
+            validate_transition(object.get("transition"), generation)?;
+            Ok(())
         }
         "rejected" | "cancelled" => {
             validate_result_observation(object, generation)?;

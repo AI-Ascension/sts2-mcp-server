@@ -5,7 +5,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use crate::catalog::COOP_SYNCHRONIZATION_TOOL;
 use crate::gateway::{Correlation, GatewayAdapter, GatewayError, GatewayMethod, GatewayRequest};
 use crate::json::JsonValue;
-use crate::protocol::{INVALID_PARAMS, METHOD_NOT_FOUND, RequestId, RpcError, RpcRequest, RpcResponse};
+use crate::protocol::{METHOD_NOT_FOUND, RequestId, RpcError, RpcRequest, RpcResponse};
 use crate::server::McpServer;
 
 use super::{has_only_arguments, headers, invalid_params, safe_header_value, safe_segment, tool_result};
@@ -103,7 +103,7 @@ fn project_response(body: &JsonValue, correlation: &str, instance: &str, session
         (String::from("shared_vote"), JsonValue::Null),
         (String::from("shared_effect"), JsonValue::Null),
         (String::from("ally_target"), JsonValue::Null),
-        (String::from("synchronization"), sync.clone()),
+        (String::from("synchronization"), JsonValue::Object(sync.clone())),
     ]))
 }
 
