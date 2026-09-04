@@ -23,3 +23,4 @@ markdown_max = 700
 "crates/mcp-server/src/bin/runtime_support/mod.rs" = "Existing runtime support executable boundary remains one composition unit; split with its next transport revision."
 "crates/mcp-server/src/projection_runtime_v3_gameplay_shape.rs" = "Handwritten Runtime-v3 shape validator is retained as one contract mirror; split with schema generation tooling."
 "crates/mcp-server/src/mapping_runtime_v3_gameplay.rs" = "Handwritten Runtime-v3 semantic mapping remains one adapter unit; split with the next protocol or gateway revision."
+"crates/mcp-server/src/mapping_coop_gameplay.rs" = "Handwritten co-op semantic mapping remains one adapter unit; split with the next protocol or gateway revision."

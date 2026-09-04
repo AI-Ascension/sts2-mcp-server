@@ -189,7 +189,7 @@ fn validate_kind_shape(
             require_null(object, "wait_for_millis")?;
             require_null(object, "recovery")
         }
-        _ => return Err("Runtime-v3 response kind is not allowlisted"),
+        _ => Err("Runtime-v3 response kind is not allowlisted"),
     }
 }
 
@@ -275,10 +275,11 @@ fn validate_observation(
     }
     validate_identity_value(object.get("state_id"))?;
     bounded_number(object.get("generation"), MAX_GENERATION)?;
-    if let Some(value) = object.get("visible_seed") {
-        if !matches!(value, JsonValue::Null) && !value.as_string().is_some_and(safe_text) {
-            return Err("Runtime-v3 visible_seed is invalid");
-        }
+    if let Some(value) = object.get("visible_seed")
+        && !matches!(value, JsonValue::Null)
+        && !value.as_string().is_some_and(safe_text)
+    {
+        return Err("Runtime-v3 visible_seed is invalid");
     }
     validate_player(object.get("player"))?;
     validate_state(object.get("state"))?;

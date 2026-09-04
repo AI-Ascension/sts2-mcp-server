@@ -166,12 +166,13 @@ fn legal_action_schema() -> JsonValue {
 }
 
 fn action_payload_schema() -> JsonValue {
-    let mut variants = Vec::new();
-    variants.push(simple_action_schema("end_turn"));
-    variants.push(simple_action_schema("skip_reward"));
-    variants.push(simple_action_schema("rest"));
-    variants.push(simple_action_schema("confirm_victory"));
-    variants.push(simple_action_schema("save_quit"));
+    let mut variants = vec![
+        simple_action_schema("end_turn"),
+        simple_action_schema("skip_reward"),
+        simple_action_schema("rest"),
+        simple_action_schema("confirm_victory"),
+        simple_action_schema("save_quit"),
+    ];
     for (kind, field) in [
         ("start_run", "character_id"),
         ("select_map_node", "node_id"),
