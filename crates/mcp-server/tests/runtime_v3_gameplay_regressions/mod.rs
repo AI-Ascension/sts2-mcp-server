@@ -290,17 +290,37 @@ fn unknown_receipt_cannot_smuggle_unvalidated_state_payload() {
 #[test]
 fn configured_mcp_and_gateway_sessions_are_distinct_namespaces() {
     let mut server = McpServer::with_catalog_and_sessions(
-        RecordingGateway::new([Ok(GatewayResponse { status: 200, body: state_response(4) })]),
-        ToolCatalog::runtime_v3_gameplay(), "session-1", "mcp-session-1");
-    let arguments = context_arguments("").replace("\"mcp_session_id\":\"session-1\"",
-        "\"mcp_session_id\":\"mcp-session-1\"");
+        RecordingGateway::new([Ok(GatewayResponse {
+            status: 200,
+            body: state_response(4),
+        })]),
+        ToolCatalog::runtime_v3_gameplay(),
+        "session-1",
+        "mcp-session-1",
+    );
+    let arguments = context_arguments("").replace(
+        "\"mcp_session_id\":\"session-1\"",
+        "\"mcp_session_id\":\"mcp-session-1\"",
+    );
     let output = server.handle_frame(&call(OBSERVE_TOOL, &arguments));
     assert!(output.contains("\"isError\":false"), "{output}");
     let request = &server.gateway().requests[0];
     assert_eq!(request.correlation.mcp_session_id, "mcp-session-1");
-    assert_eq!(request.headers.get("x-mcp-session-id").map(String::as_str), Some("mcp-session-1"));
-    assert_eq!(request.body.as_ref().and_then(JsonValue::as_object)
-        .and_then(|object| object.get("session_id")), Some(&JsonValue::string("session-1")));
+    assert_eq!(
+        request.headers.get("x-mcp-session-id").map(String::as_str),
+        Some("mcp-session-1")
+    );
+    assert_eq!(
+        request
+            .body
+            .as_ref()
+            .and_then(|value| match value {
+                JsonValue::Object(object) => Some(object),
+                _ => None,
+            })
+            .and_then(|object| object.get("session_id")),
+        Some(&JsonValue::string("session-1"))
+    );
     let wrong = server.handle_frame(&call(OBSERVE_TOOL, &context_arguments("")));
     assert!(wrong.contains("-32602"), "{wrong}");
     assert_eq!(server.gateway().requests.len(), 1);

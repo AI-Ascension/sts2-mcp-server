@@ -121,11 +121,16 @@ fn legal_actions_call<G: GatewayAdapter>(
             "sts2.legal_actions arguments contain an unsupported field",
         );
     }
-    let context =
-        match context::RuntimeV3GameplayContext::parse(server, arguments, correlation_id, true, false) {
-            Ok(context) => context,
-            Err(message) => return invalid_params(id, message),
-        };
+    let context = match context::RuntimeV3GameplayContext::parse(
+        server,
+        arguments,
+        correlation_id,
+        true,
+        false,
+    ) {
+        Ok(context) => context,
+        Err(message) => return invalid_params(id, message),
+    };
     let body = envelope::request_envelope(
         &context,
         "legal_actions_request",
@@ -181,11 +186,16 @@ fn call_read<G: GatewayAdapter>(
     if !has_only_arguments(arguments, allowed) {
         return invalid_params(id, "Runtime-v3 read arguments contain an unsupported field");
     }
-    let context =
-        match context::RuntimeV3GameplayContext::parse(server, arguments, correlation_id, false, false) {
-            Ok(context) => context,
-            Err(message) => return invalid_params(id, message),
-        };
+    let context = match context::RuntimeV3GameplayContext::parse(
+        server,
+        arguments,
+        correlation_id,
+        false,
+        false,
+    ) {
+        Ok(context) => context,
+        Err(message) => return invalid_params(id, message),
+    };
     let body = envelope::request_envelope(&context, request_kind, None, None, None, None, None);
     let path_suffix = if request_kind == "reobserve_request" {
         "reobserve"

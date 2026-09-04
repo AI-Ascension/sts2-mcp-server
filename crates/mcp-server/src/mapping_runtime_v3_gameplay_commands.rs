@@ -48,11 +48,16 @@ pub(super) fn dispatch_call<G: GatewayAdapter>(
             "sts2.dispatch_action arguments contain an unsupported field",
         );
     }
-    let context =
-        match context::RuntimeV3GameplayContext::parse(server, arguments, correlation_id, true, true) {
-            Ok(context) => context,
-            Err(message) => return invalid_params(id, message),
-        };
+    let context = match context::RuntimeV3GameplayContext::parse(
+        server,
+        arguments,
+        correlation_id,
+        true,
+        true,
+    ) {
+        Ok(context) => context,
+        Err(message) => return invalid_params(id, message),
+    };
     let Some(action) = arguments.get("action") else {
         return invalid_params(id, "sts2.dispatch_action requires one LegalAction");
     };
@@ -98,11 +103,16 @@ pub(super) fn wait_call<G: GatewayAdapter>(
             "sts2.wait_for_transition arguments contain an unsupported field",
         );
     }
-    let context =
-        match context::RuntimeV3GameplayContext::parse(server, arguments, correlation_id, false, true) {
-            Ok(context) => context,
-            Err(message) => return invalid_params(id, message),
-        };
+    let context = match context::RuntimeV3GameplayContext::parse(
+        server,
+        arguments,
+        correlation_id,
+        false,
+        true,
+    ) {
+        Ok(context) => context,
+        Err(message) => return invalid_params(id, message),
+    };
     let Some(wait_for_millis) = bounded_wait(arguments) else {
         return invalid_params(
             id,
@@ -137,11 +147,16 @@ pub(super) fn recover_call<G: GatewayAdapter>(
     if !has_only_arguments(arguments, &RECOVER_ARGUMENTS) {
         return invalid_params(id, "sts2.recover arguments contain an unsupported field");
     }
-    let context =
-        match context::RuntimeV3GameplayContext::parse(server, arguments, correlation_id, false, false) {
-            Ok(context) => context,
-            Err(message) => return invalid_params(id, message),
-        };
+    let context = match context::RuntimeV3GameplayContext::parse(
+        server,
+        arguments,
+        correlation_id,
+        false,
+        false,
+    ) {
+        Ok(context) => context,
+        Err(message) => return invalid_params(id, message),
+    };
     let Some(kind) = arguments
         .get("recovery_kind")
         .and_then(JsonValue::as_string)

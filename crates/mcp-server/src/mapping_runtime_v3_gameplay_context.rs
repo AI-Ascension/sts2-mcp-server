@@ -2,10 +2,10 @@
 
 use std::collections::BTreeMap;
 
-use crate::json::JsonValue;
 use crate::gateway::GatewayAdapter;
-use crate::server::McpServer;
+use crate::json::JsonValue;
 use crate::projection::RuntimeV3GameplayProjectionContext;
+use crate::server::McpServer;
 
 const MAX_GENERATION: i64 = 9_007_199_254_740_991;
 
@@ -27,7 +27,10 @@ impl RuntimeV3GameplayContext {
     ) -> Result<Self, &'static str> {
         let instance_id = string_argument(arguments, "instance_id")?;
         let mcp_session_id = string_argument(arguments, "mcp_session_id")?;
-        if server.mcp_session_id().is_some_and(|expected| expected != mcp_session_id) {
+        if server
+            .mcp_session_id()
+            .is_some_and(|expected| expected != mcp_session_id)
+        {
             return Err("MCP session identity does not match the configured session");
         }
         let session_id = server.gateway_session_id().unwrap_or(mcp_session_id);
