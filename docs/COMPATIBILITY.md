@@ -152,10 +152,15 @@ Runtime-v3 body-only state, operation and action identifiers follow the canonica
 
 `STS2_MCP_SESSION_ID` configures the caller's MCP correlation namespace separately from
 `STS2_SESSION_ID`, the authenticated gateway session. It defaults to the gateway session only for
-backward compatibility. The process validates the tool's supplied MCP session before mapping and
+backward compatibility. Runtime-v2/v3 validate the tool's supplied MCP session before mapping and
 places the configured gateway session in envelopes; distinct namespaces are not forced to equal.
 This shared binding correction is inherited from the earlier adapter proposal without importing its
 incompatible gameplay contract.
+
+An HTTP 408/502/503/504 carrying a Runtime-v3 receipt is passed to the strict semantic projection,
+which preserves its known status and error origin. Only missing, malformed or uncorrelated receipts
+become synthesized transport/invalid-response uncertainty. A received host `settlement_unproven`
+receipt is not relabelled as a disconnect. Legacy profile HTTP error normalization remains unchanged.
 
 The executable gateway address must be a numeric loopback socket address with a nonzero port
 (for example `127.0.0.1:15525` or `[::1]:15525`); DNS names and remote endpoints are unsupported.

@@ -210,6 +210,18 @@ impl GatewayAdapter for RuntimeGatewayAdapter {
             binding::response(&self.config, &body, &correlation, kind)?;
         }
         match response.status {
+            408 | 502 | 503 | 504
+                if is_runtime_result(&body)
+                    && matches!(&body, JsonValue::Object(object)
+                    if object.get("protocol_version") == Some(&JsonValue::string(RUNTIME_V3_GAMEPLAY_PROTOCOL_VERSION))) =>
+            {
+                // The semantic projection validates the full envelope before surfacing it.
+                // A received host uncertainty receipt is not a transport disconnect.
+                Ok(GatewayResponse {
+                    status: response.status,
+                    body,
+                })
+            }
             401 => Err(GatewayError::Unauthorized),
             403 => Err(GatewayError::Forbidden),
             404 => Err(GatewayError::NotFound),
