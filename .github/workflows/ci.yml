@@ -28,10 +28,10 @@ jobs:
         run: |
           git diff --check
           for tool in sts2.observe sts2.legal_actions sts2.dispatch_action sts2.wait_for_transition sts2.reobserve sts2.recover; do
-            rg -q "$tool" crates/mcp-server/src/catalog_runtime_v3_gameplay.rs
+            grep -Fq "$tool" crates/mcp-server/src/catalog_runtime_v3_gameplay.rs
           done
-          rg -q 'sts2.coop_synchronization' crates/mcp-server/src/catalog_coop_gameplay.rs
-          if rg -n 'shell|raw_memory|host_object|process_command' crates/mcp-server/src/catalog_runtime_v3_gameplay.rs; then exit 1; fi
+          grep -Fq 'sts2.coop_synchronization' crates/mcp-server/src/catalog_coop_gameplay.rs
+          if grep -En 'shell|raw_memory|host_object|process_command' crates/mcp-server/src/catalog_runtime_v3_gameplay.rs; then exit 1; fi
 
       - name: Install pinned Rust toolchain
         run: rustup toolchain install 1.97.1 --profile minimal --component clippy --component rustfmt --no-self-update
