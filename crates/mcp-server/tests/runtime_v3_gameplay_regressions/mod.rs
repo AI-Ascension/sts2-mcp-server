@@ -256,3 +256,33 @@ fn body_only_identifiers_use_the_protocol_bound_not_the_http_header_bound() {
     assert!(output.contains("-32602"), "{output}");
     assert_eq!(server.gateway().requests.len(), 1);
 }
+
+#[test]
+fn unknown_receipt_cannot_smuggle_unvalidated_state_payload() {
+    let body = root(
+        "dispatch_action_response",
+        4,
+        JsonValue::object([(
+            String::from("raw_memory"),
+            JsonValue::string("private-payload"),
+        )]),
+        JsonValue::string("operation-1"),
+        JsonValue::Null,
+        JsonValue::Null,
+        JsonValue::Null,
+        JsonValue::string("unknown"),
+        JsonValue::Null,
+        JsonValue::string("sts2.runtime/unknown"),
+        JsonValue::Null,
+    );
+    let arguments = context_arguments(
+        ",\"state_id\":\"combat-1\",\"operation_id\":\"operation-1\",\
+         \"action\":{\"action_id\":\"end-turn\",\"action\":{\"kind\":\"end_turn\"}}",
+    );
+    let output = project_call(DISPATCH_ACTION_TOOL, &arguments, body);
+    assert!(!output.contains("private-payload"), "{output}");
+    assert!(
+        output.contains("unknown_after_invalid_response"),
+        "{output}"
+    );
+}

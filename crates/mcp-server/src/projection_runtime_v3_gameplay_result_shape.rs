@@ -2,8 +2,9 @@
 
 use super::observation::validate_observation;
 use super::{
-    MAX_GENERATION, bounded_number, observation_generation, project_legal_actions,
-    require_error_code, require_null, safe_identifier, validate_identity_value,
+    MAX_GENERATION, bounded_number, observation_generation, optional_identity,
+    project_legal_actions, require_error_code, require_null, safe_identifier,
+    validate_identity_value,
 };
 use crate::json::JsonValue;
 use std::collections::BTreeMap;
@@ -116,6 +117,7 @@ pub(super) fn validate_result(
     }
     match status {
         "unknown" => {
+            optional_identity(object.get("state_id"))?;
             require_null(object, "observation")?;
             require_null(object, "legal_actions")?;
             require_error_code(object)?;
