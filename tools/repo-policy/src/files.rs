@@ -205,7 +205,11 @@ fn ignored_directory(relative: &Path, policy: &Policy) -> bool {
     relative
         .file_name()
         .and_then(|name| name.to_str())
-        .is_some_and(|name| policy.ignored_directories.contains(name))
+        .is_some_and(|name| {
+            let rust_binary_source =
+                name == "bin" && relative.ancestors().any(|path| path.ends_with("src/bin"));
+            policy.ignored_directories.contains(name) && !rust_binary_source
+        })
         || ignored_prefix(relative, policy)
 }
 
@@ -225,6 +229,10 @@ pub(crate) fn relative_text(root: &Path, path: &Path) -> String {
 }
 
 #[cfg(test)]
+#[path = "files_tests.rs"]
+mod traversal_tests;
+
+#[cfg(test)]
 mod tests {
     use std::path::{Path, PathBuf};
 
@@ -233,6 +241,18 @@ mod tests {
 
     #[test]
     fn distinguishes_source_and_test_size_categories() {
+        assert_eq!(
+            size_category(Path::new(
+                "crates/mcp-server/src/bin/runtime_support/http.rs"
+            )),
+            Some(SizeCategory::RustProduction)
+        );
+        assert_eq!(
+            size_category(Path::new(
+                "crates/mcp-server/src/bin/runtime_support/http_tests.rs"
+            )),
+            Some(SizeCategory::RustTest)
+        );
         assert_eq!(
             size_category(Path::new("crates/core/src/lib.rs")),
             Some(SizeCategory::RustProduction)

@@ -23,9 +23,8 @@ pub(super) fn admit(config: &RuntimeConfig, request: &GatewayRequest) -> Result<
     // Runtime-v1 retains its documented configured identity injection. Newer profiles
     // must not silently substitute authority, including for bodyless observation calls.
     if version != "v1" {
-        if request.correlation.mcp_session_id != config.session_id {
-            return Err(GatewayError::Rejected);
-        }
+        // MCP correlation sessions are a separate namespace; only explicit gateway
+        // authority headers/body fields are compared with configured gateway identity.
         for (name, expected) in [
             ("x-sts2-instance-id", config.instance_id.as_str()),
             ("x-sts2-session-id", config.session_id.as_str()),

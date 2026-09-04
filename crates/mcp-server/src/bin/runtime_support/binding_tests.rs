@@ -93,7 +93,7 @@ fn bodyless_authority_mismatch_is_rejected_before_connect() {
     }
     let mut changed = request();
     changed.correlation.mcp_session_id = String::from("foreign-session");
-    assert_eq!(adapter.forward(changed), Err(GatewayError::Rejected));
+    assert_eq!(admit(&config(), &changed), Ok(()));
     let mut changed = request();
     changed.path = String::from("/v2/instances/foreign/operations/operation");
     assert_eq!(adapter.forward(changed), Err(GatewayError::Rejected));

@@ -31,7 +31,12 @@ strict mode promotes a preferred-budget warning to an error.
 | `LANG001` | Python source and package metadata are prohibited |
 | `LIC001-003` | MIT root/license declarations and source SPDX headers exist |
 
-The checker skips ignored build/editor/vendor directories and symlinks. It checks the initialized MCP
+The checker skips ignored build/editor/vendor directories and symlinks. The generated-output `bin`
+ignore does not exclude Rust `src/bin` entrypoints or their nested support modules. Files named
+`*_test.rs` or `*_tests.rs` use test budgets even within `src/bin`; ordinary binary modules use the
+production budgets. Disposable-tree regressions verify collection and SPDX, language, and size checks
+for these executable sources while generated-output exclusions remain effective.
+It checks the initialized MCP
 crate as ordinary Rust source but does not prove runtime
 behavior, MCP conformance, gateway authorization, dependency graph ownership, host compatibility,
 secrets absence outside scanned files, or release readiness. Those require future target-owned tests and

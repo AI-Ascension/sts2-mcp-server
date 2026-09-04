@@ -18,8 +18,7 @@
 Status: Wave 2 codebase initialization plus bounded runtime seams. The target-owned MCP seam includes
 the two-tool `poc-v1` mapping, the separate `runtime-v1` process profile, and the deterministic
 `runtime-v2` gameplay-operation mapping. Runtime-v2 source/fake tests are confirmed; live host
-settlement and gameplay mutation remain unverified. It is intentionally not initialized as a Git
-repository.
+settlement and gameplay mutation remain unverified.
 
 ## Owner and consumers
 
