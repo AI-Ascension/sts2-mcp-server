@@ -299,7 +299,7 @@ fn timeout_on_dispatch_is_unknown_and_is_not_retried() {
          \"action\":{\"action_id\":\"end-turn\",\"action\":{\"kind\":\"end_turn\"}}",
     );
     let response = server.handle_frame(&call(DISPATCH_ACTION_TOOL, &arguments));
-    assert!(response.contains("\"status\":\"unknown\""));
+    assert!(response.contains("\\\"status\\\":\\\"unknown\\\""));
     assert!(response.contains("unknown_after_disconnect"));
     assert_eq!(server.gateway().requests.len(), 1);
 }
@@ -312,8 +312,8 @@ fn timeout_on_wait_is_an_unknown_timeout_result() {
     );
     let arguments = context_arguments(",\"operation_id\":\"operation-1\",\"wait_for_millis\":1000");
     let response = server.handle_frame(&call(WAIT_FOR_TRANSITION_TOOL, &arguments));
-    assert!(response.contains("\"status\":\"unknown\""));
-    assert!(response.contains("\"wait_outcome\":\"timeout\""));
+    assert!(response.contains("\\\"status\\\":\\\"unknown\\\""));
+    assert!(response.contains("\\\"wait_outcome\\\":\\\"timeout\\\""));
     assert_eq!(server.gateway().requests.len(), 1);
 }
 
