@@ -45,6 +45,7 @@ fn call(tool: &str, arguments: &str) -> String {
     )
 }
 
+#[allow(clippy::too_many_arguments)]
 fn root(
     kind: &str,
     generation: i64,
@@ -204,7 +205,7 @@ fn catalog_exposes_only_the_six_semantic_operations() {
 }
 
 #[test]
-fn observe_maps_the_complete_identity_bound_request_to_the_v3_route() {
+fn observe_maps_the_complete_identity_bound_request_to_the_v3_route() -> Result<(), String> {
     let mut server = McpServer::with_catalog(
         RecordingGateway::new([Ok(GatewayResponse {
             status: 200,
@@ -223,11 +224,12 @@ fn observe_maps_the_complete_identity_bound_request_to_the_v3_route() {
     assert_eq!(request.method, GatewayMethod::Get);
     assert_eq!(request.path, "/v3/instances/instance-1/state");
     let Some(JsonValue::Object(body)) = request.body.as_ref() else {
-        panic!("expected a Runtime-v3 envelope");
+        return Err(String::from("expected a Runtime-v3 envelope"));
     };
     assert_eq!(body.get("kind"), Some(&JsonValue::string("state_request")));
     assert_eq!(body.get("generation"), Some(&JsonValue::Number(4)));
     assert_eq!(body.get("lease_epoch"), Some(&JsonValue::Number(1)));
+    Ok(())
 }
 
 #[test]
