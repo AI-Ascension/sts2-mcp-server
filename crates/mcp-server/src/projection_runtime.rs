@@ -15,6 +15,7 @@ pub(crate) fn project_runtime_gateway_body(body: &JsonValue) -> Result<JsonValue
         return Err("runtime gateway response must be an object");
     };
     validate_runtime_envelope(object)?;
+    validate_response_shape(object)?;
     let mut projection = Vec::new();
     if let Some(value) = object.get("kind") {
         let Some(kind) = value.as_string() else {
@@ -84,6 +85,26 @@ pub(crate) fn project_runtime_gateway_body(body: &JsonValue) -> Result<JsonValue
 }
 
 fn validate_runtime_envelope(object: &BTreeMap<String, JsonValue>) -> Result<(), &'static str> {
+    const REQUIRED: [&str; 15] = [
+        "protocol_version",
+        "schema_digest",
+        "provenance",
+        "correlation_id",
+        "instance_id",
+        "session_id",
+        "lease_id",
+        "lease_epoch",
+        "generation",
+        "kind",
+        "observation",
+        "action",
+        "status",
+        "error_code",
+        "effect_witness",
+    ];
+    if object.len() != REQUIRED.len() || REQUIRED.iter().any(|key| !object.contains_key(*key)) {
+        return Err("runtime gateway envelope contains unknown or missing fields");
+    }
     if object
         .get("protocol_version")
         .and_then(JsonValue::as_string)
@@ -131,6 +152,9 @@ fn project_runtime_observation(value: &JsonValue) -> Result<JsonValue, &'static 
     let Some(object) = value.as_object() else {
         return Err("runtime gateway observation must be an object");
     };
+    if object.len() != 4 {
+        return Err("runtime observation contains unknown or missing fields");
+    }
     let host_ready = match object.get("host_ready") {
         Some(JsonValue::Bool(value)) => *value,
         _ => return Err("runtime observation host_ready must be a boolean"),
@@ -208,4 +232,53 @@ fn project_runtime_effect_witness(value: &JsonValue) -> Result<JsonValue, &'stat
         ),
         (String::from("generation"), JsonValue::Number(generation)),
     ]))
+}
+
+fn validate_response_shape(object: &BTreeMap<String, JsonValue>) -> Result<(), &'static str> {
+    // Required-field closure is checked before this function; missing is never null.
+    let is_null = |key| object.get(key) == Some(&JsonValue::Null);
+    match object.get("kind").and_then(JsonValue::as_string) {
+        Some("state_response") => {
+            if ["action", "status", "error_code", "effect_witness"]
+                .iter()
+                .any(|key| !is_null(*key))
+            {
+                return Err("runtime state response contains action result fields");
+            }
+        }
+        Some("action_response") => {
+            project_runtime_action(object.get("action").ok_or("missing runtime action")?)?;
+            match object.get("status").and_then(JsonValue::as_string) {
+                Some("accepted") => {
+                    if !is_null("error_code") {
+                        return Err("runtime accepted result contains an error");
+                    }
+                    let witness = object
+                        .get("effect_witness")
+                        .ok_or("missing runtime witness")?;
+                    project_runtime_effect_witness(witness)?;
+                    if witness
+                        .as_object()
+                        .and_then(|value| value.get("generation"))
+                        != object.get("generation")
+                    {
+                        return Err("runtime witness generation does not match the envelope");
+                    }
+                }
+                Some("rejected") => {
+                    if !is_null("effect_witness")
+                        || !object
+                            .get("error_code")
+                            .and_then(JsonValue::as_string)
+                            .is_some_and(safe_identifier)
+                    {
+                        return Err("runtime rejected result requires an error and no witness");
+                    }
+                }
+                _ => return Err("runtime action response status is unsupported"),
+            }
+        }
+        _ => return Err("runtime gateway response kind is unsupported"),
+    }
+    Ok(())
 }

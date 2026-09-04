@@ -15,6 +15,8 @@ pub const MCP_PROTOCOL_VERSION: &str = "2025-06-18";
 pub struct McpServer<G> {
     pub(crate) gateway: G,
     pub(crate) catalog: ToolCatalog,
+    pub(crate) gateway_session_id: Option<String>,
+    pub(crate) mcp_session_id: Option<String>,
 }
 
 impl<G: GatewayAdapter> McpServer<G> {
@@ -22,11 +24,38 @@ impl<G: GatewayAdapter> McpServer<G> {
         Self {
             gateway,
             catalog: ToolCatalog::default(),
+            gateway_session_id: None,
+            mcp_session_id: None,
         }
     }
 
     pub fn with_catalog(gateway: G, catalog: ToolCatalog) -> Self {
-        Self { gateway, catalog }
+        Self {
+            gateway,
+            catalog,
+            gateway_session_id: None,
+            mcp_session_id: None,
+        }
+    }
+
+    /// Binds the process to one gateway session and one MCP session.
+    ///
+    /// The two values intentionally remain separate: the gateway session is
+    /// placed in the Runtime-v2 envelope, while the MCP session is carried in
+    /// the adapter correlation/header seam. Callers must validate both values
+    /// before constructing the server.
+    pub fn with_catalog_and_sessions(
+        gateway: G,
+        catalog: ToolCatalog,
+        gateway_session_id: impl Into<String>,
+        mcp_session_id: impl Into<String>,
+    ) -> Self {
+        Self {
+            gateway,
+            catalog,
+            gateway_session_id: Some(gateway_session_id.into()),
+            mcp_session_id: Some(mcp_session_id.into()),
+        }
     }
 
     /// Compatibility entry point: an empty string means no notification response.
@@ -53,6 +82,14 @@ impl<G: GatewayAdapter> McpServer<G> {
 
     pub fn gateway(&self) -> &G {
         &self.gateway
+    }
+
+    pub(crate) fn gateway_session_id(&self) -> Option<&str> {
+        self.gateway_session_id.as_deref()
+    }
+
+    pub(crate) fn mcp_session_id(&self) -> Option<&str> {
+        self.mcp_session_id.as_deref()
     }
 
     fn dispatch(&mut self, request: RpcRequest) -> RpcResponse {

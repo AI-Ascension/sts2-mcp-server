@@ -13,6 +13,7 @@ fn config() -> RuntimeConfig {
         instance_id: String::from("instance"),
         caller_id: String::from("caller"),
         session_id: String::from("session"),
+        mcp_session_id: String::from("session"),
         lease_id: String::from("lease"),
         lease_epoch: 1,
     }
