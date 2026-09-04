@@ -6,8 +6,8 @@
 | --- | --- | --- |
 | Unit | policy parsing, diagnostics, framing, validation, and pure mapping decisions | checker and MCP unit tests are present |
 | Protocol | exact MCP serialization and copied POC mapping | two-tool local fixtures are present |
-| Component | bounded transport, mapping, auth, timeout, cancellation, fake gateway | deterministic fake-gateway seam is present; live transport is future |
-| Integration | real disposable process/socket composition | future and authorized only |
+| Component | bounded transport, mapping, auth, timeout, cancellation, fake gateway | fake-gateway mapping and real stdio notification tests are present; cancellation effects are not established |
+| Integration | real disposable process/socket composition | documented Runtime-v1 component evidence is separate from local unit tests; new runs require authorization |
 | Host | game-mod/host load and effect behavior | owned by other targets |
 | Release smoke | exact package bytes in a clean environment | not started |
 
