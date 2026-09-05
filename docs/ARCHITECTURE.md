@@ -119,3 +119,12 @@ closed. Timeout or disconnect uncertainty becomes an `unknown` result and is nev
 a fresh observation whose generation advances past the request and a matching `turn_end_settled`
 witness. It does not infer settlement from an acknowledgement or from a state read. Runtime-v1's
 catalog, routes, and projection remain unchanged.
+
+The executable validates the configured MCP session in both correlation metadata and the MCP
+header before connecting, independently of gateway-session authority. HTTP 403 becomes a typed
+scope-denial error, so authorization rejection does not become an uncertain gameplay operation.
+
+Runtime-v2 HTTP 429 guidance preserves only bounded `error_code`, `retryable: true`, and
+`retry_after_ms` between zero and 60,000 milliseconds. Invalid guidance fails closed and private
+fields are omitted. The adapter never automatically redispatches; synthetic tests cover valid and
+out-of-range delays. Gateway support for this guidance is an independent consumer integration gate.

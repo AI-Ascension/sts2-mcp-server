@@ -206,6 +206,7 @@ impl GatewayAdapter for RuntimeGatewayAdapter {
         }
         match response.status {
             401 => Err(GatewayError::Unauthorized),
+            403 => Err(GatewayError::Forbidden),
             404 => Err(GatewayError::NotFound),
             408 | 504 => Err(GatewayError::Timeout),
             502 | 503 => Err(GatewayError::Unavailable),

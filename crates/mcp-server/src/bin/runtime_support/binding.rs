@@ -4,6 +4,12 @@ use super::{RuntimeConfig, safe_header_value};
 use sts2_mcp_server::{GatewayError, GatewayMethod, GatewayRequest, JsonValue};
 
 pub(super) fn admit(config: &RuntimeConfig, request: &GatewayRequest) -> Result<(), GatewayError> {
+    if request.correlation.mcp_session_id != config.mcp_session_id
+        || request.headers.get("x-mcp-session-id").map(String::as_str)
+            != Some(config.mcp_session_id.as_str())
+    {
+        return Err(GatewayError::Rejected);
+    }
     let version = request
         .path
         .split('/')

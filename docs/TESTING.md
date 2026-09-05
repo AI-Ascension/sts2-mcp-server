@@ -98,3 +98,13 @@ The executable binding tests reject missing/mismatched bodyless authority before
 reject foreign response instance/session/lease/epoch, wrong correlation, or wrong route-specific kind.
 The Runtime-v2 mapping regression verifies that reconciliation preserves all four authority headers
 without adding a mutation body.
+
+The executable binding tests reject missing or foreign MCP-session headers and correlation before
+connecting, while accepting distinct configured MCP and gateway sessions. A disposable loopback
+HTTP 403 peer verifies typed scope-denial classification without forwarding private denial details.
+These are source/component checks and establish no host settlement or provider evidence.
+
+Runtime-v2 HTTP 429 guidance preserves only bounded `error_code`, `retryable: true`, and
+`retry_after_ms` between zero and 60,000 milliseconds. Invalid guidance fails closed and private
+fields are omitted. The adapter never automatically redispatches; synthetic tests cover valid and
+out-of-range delays. Gateway support for this guidance is an independent consumer integration gate.
