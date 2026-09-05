@@ -18,11 +18,13 @@ exists.
 - Rejected the bare operation-ID segments `.` and `..` before Runtime-v2 dispatch (fail-closed, in
   addition to the existing `/` rejection), and made two loopback tests portable to Windows socket
   semantics without changing product code.
-- Preserved separate bound MCP/gateway sessions in the library co-op adapter and structured
-  operation uncertainty when a custom gateway returns an oversized Runtime-v3 mutation receipt.
+- Preserved structured operation uncertainty when a custom gateway returns an oversized
+  Runtime-v3 mutation receipt.
+- Split the co-op schema, library catalog, mapping, and tests into a separate unadmitted proposal;
+  its source is retained on review/mcp-coop-proposal-source-20260905 pending shared-contract admission.
 
 - Added the exact six-tool Runtime-v3 semantic catalog, bounded fair-play projection, fixed gateway
-  mapping, fail-closed timeout handling, and additive read-only co-op synchronization mapping. Live
+  mapping and fail-closed timeout handling. Live
   MCP/gateway/provider and target-game settlement remain unverified.
 
 - Added the separate `runtime-v2-mcp` catalog and fixed `submit_action`/`reconcile_action` mapping for

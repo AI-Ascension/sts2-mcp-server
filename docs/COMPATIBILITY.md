@@ -124,8 +124,7 @@ out-of-range delays. Gateway support for this guidance is an independent consume
 
 The `runtime-v3-gameplay-mcp` profile is additive and source-derived. Its exact six-tool catalog,
 semantic route mapping, fair-play response projection, and unknown/recovery handling are covered by
-local tests. The co-op synchronization mapping is read-only source/test evidence; live MCP/gateway,
-provider, host, and multiplayer compatibility remain `unverified`.
+local tests. Live MCP/gateway, provider, and host compatibility remain `unverified`.
 
 ### Reviewed proposed artifact migration
 
@@ -138,10 +137,9 @@ manifest, conformance inventory and four producer goldens are checksum-verified 
 all six tool request envelopes through the producer schema and compare a canonical dispatch request
 and settled receipt at both adapter boundaries. These are synthetic contract checks, not host evidence.
 
-The co-op source prototype schema digest is
-`85e0028c1ae20e49542791da165eeabaaea0cc2023626b5094b6660ebcc0cc81`. It has no released bundle
-and no executable profile selector here; its separate library catalog does not add tools to the six-tool
-Runtime-v3 executable profile or implement a multiplayer mutation barrier.
+Co-op is preserved in a separate unadmitted proposal with no exports, schema, or catalog in this
+profile. Its shared-contract admission lacks two named actual serialized-schema consumers. The source
+lineage is retained on review/mcp-coop-proposal-source-20260905; multiplayer support is unverified.
 
 Protocol #7 and MCP #7 use a different, older gameplay contract with the same proposed profile name.
 They are alternative proposals, not prerequisites inherited by this branch. A maintainer must select

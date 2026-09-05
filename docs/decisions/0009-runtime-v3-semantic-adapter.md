@@ -1,4 +1,4 @@
-# ADR 0009: Runtime-v3 and co-op MCP adapter
+# ADR 0009: Runtime-v3 MCP adapter
 
 - Status: Accepted as a source-level adapter profile
 - Date: 2026-09-04
@@ -6,8 +6,7 @@
 ## Context
 
 The model-facing surface needs semantic observations and current host-generated actions while MCP
-remains a thin transport adapter. Co-op synchronization is read-only coordination metadata; it
-cannot authorize a mutation during peer disagreement or an unknown shared effect.
+remains a thin transport adapter.
 
 ## Decision
 
@@ -19,11 +18,12 @@ unknown/recovery result and is never retried. Responses are projected through an
 with profile digest, identity, generation, status, and witness checks; raw host or arbitrary-route
 tools are not exposed.
 
-The additive co-op mapping exposes synchronization only through a bounded read path and rejects
-unknown peers, duplicate/missing identities, unsafe values, and unsupported fields before gateway
-forwarding. It does not duplicate gateway lease or host legality authority.
+Co-op was split into a separate unadmitted proposal, preserved on
+review/mcp-coop-proposal-source-20260905. It exports no code or schema here. Shared-contract admission
+requires at least two named actual serialized-contract consumers; source-only status does not waive
+that gate.
 
 ## Evidence
 
-Mapping, projection, catalog, co-op, and exact-six-tool tests are source-derived. Live MCP/gateway
+Mapping, projection, catalog, and exact-six-tool tests are source-derived. Live MCP/gateway
 transport, provider execution, host compatibility, and end-to-end settlement remain unverified.

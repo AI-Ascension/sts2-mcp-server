@@ -112,18 +112,17 @@ out-of-range delays. Gateway support for this guidance is an independent consume
 A pure configuration-selection test covers the standalone `mcp-session-1` default, explicit distinct
 and same-session overrides, empty values, and invalid-Unicode configuration without mutating shared
 process environment. This verifies default selection, not cross-process readiness.
-## Runtime-v3 and co-op checks
+
+## Runtime-v3 checks
 
 The Runtime-v3 tests assert the exact six advertised tools, fixed semantic paths, bounded action
 shapes, generation/identity fencing, redaction, stale handling, and no-fallback timeout behavior.
-The co-op tests assert peer-set and synchronization validation and reject unknown or duplicate
-missing peers. They are source/test evidence, not live provider, host, or multiplayer evidence.
+These are source/test checks, not live provider or host evidence.
 
 The review regressions additionally bind a legal-action catalog to its requested generation and
 state, bind settlement witnesses to the returned state and original dispatch generation, and retain
 an operation's existing settlement when waiting after a newer observation. Wait and recovery reads
-do not reinterpret their current observation generation as the original mutation generation. Co-op
-peer counts must equal the declared peer set; this is validation of metadata, not live synchronization.
+do not reinterpret their current observation generation as the original mutation generation.
 
 `runtime_v3_gameplay_artifact.rs` verifies the full copied package checksum inventory and validates
 all four producer goldens. The mapping regression suite schema-validates every advertised tool's
@@ -141,7 +140,6 @@ reject foreign response instance/session/lease/epoch, wrong correlation, or wron
 The Runtime-v2 mapping regression verifies that reconciliation preserves all four authority headers
 without adding a mutation body.
 
-Co-op library tests reject a foreign bound MCP session before forwarding and preserve distinct
-MCP correlation and gateway response sessions. Runtime-v3 regression tests construct a schema-valid
+Runtime-v3 regression tests construct a schema-valid
 oversized settlement receipt and verify one dispatch produces structured uncertainty retaining the
 operation identity. These checks use gateway doubles and do not establish host settlement.
