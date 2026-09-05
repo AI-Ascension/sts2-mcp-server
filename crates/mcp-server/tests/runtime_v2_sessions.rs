@@ -74,6 +74,9 @@ fn executable_uses_configured_mcp_session_and_gateway_session()
     });
     let mut child = Command::new(env!("CARGO_BIN_EXE_sts2-mcp-server"))
         .env_clear()
+        // Windows sockets cannot initialize in a child without `SystemRoot`;
+        // pass only that variable through (absent, and therefore a no-op, elsewhere).
+        .envs(std::env::var_os("SystemRoot").map(|root| ("SystemRoot", root)))
         .env("STS2_RUNTIME_PROFILE", "runtime-v2")
         .env("STS2_GATEWAY_TOKEN", "test-only")
         .env("STS2_GATEWAY_ADDR", address.to_string())
