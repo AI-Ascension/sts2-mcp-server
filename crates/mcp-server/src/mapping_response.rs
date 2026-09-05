@@ -9,7 +9,7 @@ use crate::projection::{
 };
 use crate::protocol::{RequestId, RpcResponse};
 
-const MAX_RESPONSE_BYTES: usize = 128 * 1024;
+pub(super) const MAX_RESPONSE_BYTES: usize = 128 * 1024;
 
 pub(super) fn gateway_success(
     id: RequestId,

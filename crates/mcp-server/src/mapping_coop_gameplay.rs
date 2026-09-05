@@ -50,12 +50,25 @@ pub(super) fn tools_call<G: GatewayAdapter>(
     let Some(instance_id) = arguments.get("instance_id").and_then(JsonValue::as_string) else {
         return invalid_params(request.id, "instance_id is required");
     };
-    let Some(session_id) = arguments
+    let Some(mcp_session_id) = arguments
         .get("mcp_session_id")
         .and_then(JsonValue::as_string)
     else {
         return invalid_params(request.id, "mcp_session_id is required");
     };
+    if server
+        .mcp_session_id()
+        .is_some_and(|expected| expected != mcp_session_id)
+    {
+        return invalid_params(
+            request.id,
+            "MCP session identity does not match the configured session",
+        );
+    }
+    let session_id = server
+        .gateway_session_id()
+        .unwrap_or(mcp_session_id)
+        .to_owned();
     let Some(lease_id) = arguments.get("lease_id").and_then(JsonValue::as_string) else {
         return invalid_params(request.id, "lease_id is required");
     };
@@ -71,7 +84,10 @@ pub(super) fn tools_call<G: GatewayAdapter>(
             "co-op generation or lease epoch exceeds its bound",
         );
     }
-    if !safe_segment(instance_id) || !safe_header_value(session_id) || !safe_header_value(lease_id)
+    if !safe_segment(instance_id)
+        || !safe_header_value(mcp_session_id)
+        || !safe_header_value(&session_id)
+        || !safe_header_value(lease_id)
     {
         return invalid_params(request.id, "co-op identity is unsafe or oversized");
     }
@@ -82,10 +98,10 @@ pub(super) fn tools_call<G: GatewayAdapter>(
     let gateway_request = GatewayRequest {
         method: GatewayMethod::Get,
         path: format!("/v1/instances/{instance_id}/coop/synchronization"),
-        headers: headers(session_id, &correlation_id),
+        headers: headers(mcp_session_id, &correlation_id),
         body: None,
         correlation: Correlation {
-            mcp_session_id: String::from(session_id),
+            mcp_session_id: String::from(mcp_session_id),
             mcp_request_id: request.id.clone(),
         },
     };
@@ -94,7 +110,7 @@ pub(super) fn tools_call<G: GatewayAdapter>(
             &response.body,
             &correlation_id,
             instance_id,
-            session_id,
+            &session_id,
             lease_id,
             lease_epoch,
             generation,

@@ -168,3 +168,34 @@ fn synchronization_fixture_matches_the_pinned_protocol_prototype() -> Result<(),
     assert!(validator.is_valid(&fixture));
     Ok(())
 }
+
+#[test]
+fn bound_co_op_sessions_preserve_separate_gateway_and_mcp_namespaces() {
+    let gateway = FakeGateway {
+        requests: Vec::new(),
+        responses: VecDeque::from([Ok(GatewayResponse {
+            status: 200,
+            body: response(),
+        })]),
+    };
+    let mut server = McpServer::with_catalog_and_sessions(
+        gateway,
+        ToolCatalog::coop_gameplay(),
+        "session-1",
+        "mcp-session-1",
+    );
+    let arguments = r#""instance_id":"instance-1","mcp_session_id":"mcp-session-1","lease_id":"lease-1","lease_epoch":1,"generation":4"#;
+    let foreign = arguments.replace("mcp-session-1", "foreign-session");
+    let rejected = server.handle_frame(&call(&foreign));
+    assert!(rejected.contains("-32602"), "{rejected}");
+    assert!(server.gateway().requests.is_empty());
+    let result = server.handle_frame(&call(arguments));
+    assert!(result.contains("\"isError\":false"), "{result}");
+    assert_eq!(server.gateway().requests.len(), 1);
+    let request = &server.gateway().requests[0];
+    assert_eq!(request.correlation.mcp_session_id, "mcp-session-1");
+    assert_eq!(
+        request.headers.get("x-mcp-session-id").map(String::as_str),
+        Some("mcp-session-1")
+    );
+}

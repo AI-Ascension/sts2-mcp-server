@@ -325,3 +325,55 @@ fn configured_mcp_and_gateway_sessions_are_distinct_namespaces() {
     assert!(wrong.contains("-32602"), "{wrong}");
     assert_eq!(server.gateway().requests.len(), 1);
 }
+
+#[test]
+fn oversized_valid_settlement_preserves_unknown_operation_without_retry() -> Result<(), String> {
+    let mut body = settled_response("dispatch_action_response", 4, 5, "combat-1");
+    let JsonValue::Object(root) = &mut body else {
+        return Err("missing root".into());
+    };
+    let actions = (0..256)
+        .map(|index| {
+            JsonValue::object([
+                (
+                    String::from("action_id"),
+                    JsonValue::string(format!("action-{index}")),
+                ),
+                (
+                    String::from("action"),
+                    JsonValue::object([
+                        (String::from("kind"), JsonValue::string("select_card")),
+                        (String::from("card_id"), JsonValue::string("a".repeat(512))),
+                    ]),
+                ),
+            ])
+        })
+        .collect();
+    root.insert(String::from("legal_actions"), JsonValue::Array(actions));
+    assert!(body.to_json().len() > 128 * 1024);
+    let schema: serde_json::Value = serde_json::from_str(include_str!(
+        "../../../../protocol-artifact/runtime-v3-gameplay/schema.json"
+    ))
+    .map_err(|error| error.to_string())?;
+    let validator = jsonschema::draft202012::options()
+        .build(&schema)
+        .map_err(|error| error.to_string())?;
+    let value: serde_json::Value =
+        serde_json::from_str(&body.to_json()).map_err(|error| error.to_string())?;
+    assert!(validator.is_valid(&value));
+    let mut server = McpServer::with_catalog(
+        RecordingGateway::new([Ok(GatewayResponse { status: 200, body })]),
+        ToolCatalog::runtime_v3_gameplay(),
+    );
+    let arguments = context_arguments(
+        r#", "state_id":"combat-1","operation_id":"operation-1","action":{"action_id":"end-turn","action":{"kind":"end_turn"}}"#,
+    );
+    let output = server.handle_frame(&call(DISPATCH_ACTION_TOOL, &arguments));
+    assert!(
+        output.contains("unknown_after_invalid_response"),
+        "{output}"
+    );
+    assert!(output.contains("operation-1"), "{output}");
+    assert_eq!(server.gateway().requests.len(), 1);
+    Ok(())
+}

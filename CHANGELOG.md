@@ -18,6 +18,8 @@ exists.
 - Rejected the bare operation-ID segments `.` and `..` before Runtime-v2 dispatch (fail-closed, in
   addition to the existing `/` rejection), and made two loopback tests portable to Windows socket
   semantics without changing product code.
+- Preserved separate bound MCP/gateway sessions in the library co-op adapter and structured
+  operation uncertainty when a custom gateway returns an oversized Runtime-v3 mutation receipt.
 
 - Added the exact six-tool Runtime-v3 semantic catalog, bounded fair-play projection, fixed gateway
   mapping, fail-closed timeout handling, and additive read-only co-op synchronization mapping. Live

@@ -247,7 +247,9 @@ fn forward<G: GatewayAdapter>(
                     &context.projection,
                     expected_kind,
                 )
-                .is_err() =>
+                .map_or(true, |body| {
+                    body.to_json().len() > response::MAX_RESPONSE_BYTES
+                }) =>
         {
             let body = envelope::unknown_response(
                 context,
