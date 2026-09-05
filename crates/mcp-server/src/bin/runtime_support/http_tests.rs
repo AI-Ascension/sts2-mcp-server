@@ -137,12 +137,20 @@ fn expired_deadline_and_blocked_writer_return_timeout() {
         write_bytes(&mut client, b"x", Instant::now()),
         Err(ReadError::Timeout)
     );
-    let bytes = vec![0; 16 * 1024 * 1024];
+    // A single oversized send can complete immediately on some platforms
+    // (Windows loopback copies the whole user buffer), so write in bounded
+    // chunks until the unread peer forces the writer to block.
+    let bytes = vec![0; 1024 * 1024];
     let start = Instant::now();
-    assert_eq!(
-        write_bytes(&mut client, &bytes, start + Duration::from_millis(60)),
-        Err(ReadError::Timeout)
-    );
+    let deadline = start + Duration::from_millis(60);
+    let mut outcome = Ok(());
+    for _ in 0..64 {
+        outcome = write_bytes(&mut client, &bytes, deadline);
+        if outcome.is_err() {
+            break;
+        }
+    }
+    assert_eq!(outcome, Err(ReadError::Timeout));
     assert!(start.elapsed() < Duration::from_millis(250));
 }
 
