@@ -24,12 +24,13 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Verify exact Runtime-v3 semantic surface
+      - name: Verify exact Runtime-v3 and co-op semantic surfaces
         run: |
           git diff --check
           for tool in sts2.observe sts2.legal_actions sts2.dispatch_action sts2.wait_for_transition sts2.reobserve sts2.recover; do
             grep -Fq "$tool" crates/mcp-server/src/catalog_runtime_v3_gameplay.rs
           done
+          grep -Fq 'sts2.coop_synchronization' crates/mcp-server/src/catalog_coop_gameplay.rs
           if grep -En 'shell|raw_memory|host_object|process_command' crates/mcp-server/src/catalog_runtime_v3_gameplay.rs; then exit 1; fi
 
       - name: Install pinned Rust toolchain

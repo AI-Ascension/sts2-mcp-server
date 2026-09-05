@@ -150,5 +150,12 @@ The host remains responsible for independent action-completion evidence; envelop
 cannot establish that an effect occurred.
 
 Co-op remains a separate unadmitted proposal, preserved on the review/mcp-coop-proposal-source-20260905
-source branch. This profile exports no co-op catalog, mapping, or schema. Admission requires at least
+source branch. The Runtime-v3 merge lane exports no co-op catalog, mapping, or schema. Admission requires at least
 two named actual serialized-contract consumers; a library prototype alone does not meet that gate.
+
+## Separate co-op proposal
+
+This proposal branch restores a read-only library synchronization mapping and bounded peer metadata
+projection. It has no executable profile selector or gateway route implementation. The shared
+contract remains unadmitted pending two named actual serialized-contract consumers;
+[ADR 0012](decisions/0012-coop-proposal-admission.md) records the blocker.

@@ -5,6 +5,9 @@ exists.
 
 ## Unreleased
 
+- Restored the co-op library catalog, synchronization mapping and tests on a separate blocked
+  proposal branch. Admission still requires two actual shared-schema consumers; see ADR 0012.
+
 - Default the standalone MCP session to `mcp-session-1` for harness/gateway composition; existing
   same-session configurations must set `STS2_MCP_SESSION_ID` explicitly.
 

@@ -1,0 +1,119 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "sts2-coop-gameplay-v1",
+  "title": "STS2 cooperative gameplay coordination",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["protocol_version", "schema_digest", "provenance", "correlation_id", "instance_id", "session_id", "lease_id", "lease_epoch", "generation", "kind", "players", "local_action", "shared_vote", "shared_effect", "ally_target", "synchronization"],
+  "properties": {
+    "protocol_version": {"const": "coop-gameplay-v1"},
+    "schema_digest": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "provenance": {
+      "type": "object", "additionalProperties": false,
+      "required": ["artifact", "source", "generator"],
+      "properties": {
+        "artifact": {"const": "sts2-protocol/coop-gameplay-v1"},
+        "source": {"const": "schemas/coop-gameplay-v1.schema.json"},
+        "generator": {"const": "hand-authored"}
+      }
+    },
+    "correlation_id": {"$ref": "#/$defs/identity"},
+    "instance_id": {"$ref": "#/$defs/identity"},
+    "session_id": {"$ref": "#/$defs/identity"},
+    "lease_id": {"$ref": "#/$defs/identity"},
+    "lease_epoch": {"$ref": "#/$defs/generation"},
+    "generation": {"$ref": "#/$defs/generation"},
+    "kind": {"enum": ["observation", "local_action_request", "shared_vote_request", "shared_effect_response", "synchronization_response", "recovery_required"]},
+    "players": {
+      "type": "array", "minItems": 2, "maxItems": 4, "uniqueItems": true,
+      "items": {"$ref": "#/$defs/player"},
+      "contains": {"properties": {"role": {"const": "local"}}},
+      "minContains": 1, "maxContains": 1
+    },
+    "local_action": {"anyOf": [{"$ref": "#/$defs/local_action"}, {"type": "null"}]},
+    "shared_vote": {"anyOf": [{"$ref": "#/$defs/shared_vote"}, {"type": "null"}]},
+    "shared_effect": {"anyOf": [{"$ref": "#/$defs/shared_effect"}, {"type": "null"}]},
+    "ally_target": {"anyOf": [{"$ref": "#/$defs/identity"}, {"type": "null"}]},
+    "synchronization": {"$ref": "#/$defs/synchronization"}
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"kind": {"enum": ["observation", "synchronization_response", "recovery_required"]}}},
+      "then": {"properties": {
+        "local_action": {"type": "null"}, "shared_vote": {"type": "null"},
+        "shared_effect": {"type": "null"}, "ally_target": {"type": "null"}
+      }}
+    },
+    {
+      "if": {"properties": {"kind": {"const": "local_action_request"}}},
+      "then": {"properties": {
+        "local_action": {"$ref": "#/$defs/local_action"},
+        "shared_vote": {"type": "null"}, "shared_effect": {"type": "null"},
+        "synchronization": {"properties": {"status": {"const": "synchronized"}}}
+      }}
+    },
+    {
+      "if": {"properties": {"kind": {"const": "shared_vote_request"}}},
+      "then": {"properties": {
+        "local_action": {"type": "null"}, "shared_vote": {"$ref": "#/$defs/shared_vote"},
+        "shared_effect": {"type": "null"}, "ally_target": {"type": "null"}
+      }}
+    },
+    {
+      "if": {"properties": {"kind": {"const": "shared_effect_response"}}},
+      "then": {"properties": {
+        "local_action": {"type": "null"}, "shared_vote": {"type": "null"},
+        "shared_effect": {"$ref": "#/$defs/shared_effect"}, "ally_target": {"type": "null"}
+      }}
+    },
+    {
+      "if": {"properties": {"kind": {"const": "recovery_required"}}},
+      "then": {"properties": {
+        "synchronization": {"properties": {"status": {"enum": ["disagreement", "disconnected"]}}}
+      }}
+    }
+  ],
+  "$comment": "Semantic validation additionally requires exact schema digest, unique peer IDs across roles, matching peer count and generation, known missing peers and vote/ally identities, and increasing effect generations ending at the message generation.",
+  "$defs": {
+    "identity": {"type": "string", "pattern": "^[A-Za-z0-9_.:/-]{1,512}$"},
+    "generation": {"type": "integer", "minimum": 0, "maximum": 9007199254740991},
+    "text": {"type": "string", "minLength": 1, "maxLength": 512, "pattern": "^[^\\u0000-\\u001F\\u007F]*$"},
+    "player": {
+      "type": "object", "additionalProperties": false,
+      "required": ["peer_id", "role"],
+      "properties": {"peer_id": {"$ref": "#/$defs/identity"}, "role": {"enum": ["local", "ally"]}}
+    },
+    "local_action": {
+      "type": "object", "additionalProperties": false,
+      "required": ["action_id", "kind"],
+      "properties": {"action_id": {"$ref": "#/$defs/identity"}, "kind": {"enum": ["play_card", "end_turn", "select_card"]}}
+    },
+    "shared_vote": {
+      "type": "object", "additionalProperties": false,
+      "required": ["vote_id", "proposal_id", "voter_id", "choice"],
+      "properties": {
+        "vote_id": {"$ref": "#/$defs/identity"}, "proposal_id": {"$ref": "#/$defs/identity"},
+        "voter_id": {"$ref": "#/$defs/identity"}, "choice": {"enum": ["approve", "reject", "abstain"]}
+      }
+    },
+    "shared_effect": {
+      "type": "object", "additionalProperties": false,
+      "required": ["effect_id", "kind", "from_generation", "to_generation"],
+      "properties": {
+        "effect_id": {"$ref": "#/$defs/identity"}, "kind": {"$ref": "#/$defs/identity"},
+        "from_generation": {"$ref": "#/$defs/generation"}, "to_generation": {"$ref": "#/$defs/generation"}
+      }
+    },
+    "synchronization": {
+      "type": "object", "additionalProperties": false,
+      "required": ["status", "generation", "peer_count", "missing_peers"],
+      "properties": {
+        "status": {"enum": ["synchronized", "disagreement", "disconnected"]},
+        "generation": {"$ref": "#/$defs/generation"}, "peer_count": {"type": "integer", "minimum": 2, "maximum": 4},
+        "missing_peers": {"type": "array", "maxItems": 4, "uniqueItems": true, "items": {"$ref": "#/$defs/identity"}}
+      },
+      "if": {"properties": {"status": {"const": "synchronized"}}},
+      "then": {"properties": {"missing_peers": {"maxItems": 0}}}
+    }
+  }
+}
