@@ -13,7 +13,7 @@ fn config() -> RuntimeConfig {
         instance_id: String::from("instance"),
         caller_id: String::from("caller"),
         session_id: String::from("session"),
-        mcp_session_id: String::from("session"),
+        mcp_session_id: String::from("mcp-session"),
         lease_id: String::from("lease"),
         lease_epoch: 1,
     }
@@ -60,6 +60,10 @@ fn request() -> GatewayRequest {
         method: GatewayMethod::Get,
         path: String::from("/v2/instances/instance/operations/operation"),
         headers: BTreeMap::from([
+            (
+                String::from("x-mcp-session-id"),
+                String::from("mcp-session"),
+            ),
             (String::from("x-sts2-instance-id"), String::from("instance")),
             (String::from("x-sts2-session-id"), String::from("session")),
             (String::from("x-sts2-lease-id"), String::from("lease")),
@@ -67,7 +71,7 @@ fn request() -> GatewayRequest {
         ]),
         body: None,
         correlation: Correlation {
-            mcp_session_id: String::from("session"),
+            mcp_session_id: String::from("mcp-session"),
             mcp_request_id: RequestId::String(String::from("request")),
         },
     }
@@ -94,7 +98,15 @@ fn bodyless_authority_mismatch_is_rejected_before_connect() {
     }
     let mut changed = request();
     changed.correlation.mcp_session_id = String::from("foreign-session");
-    assert_eq!(admit(&config(), &changed), Ok(()));
+    assert_eq!(adapter.forward(changed), Err(GatewayError::Rejected));
+    let mut changed = request();
+    changed.headers.remove("x-mcp-session-id");
+    assert_eq!(adapter.forward(changed), Err(GatewayError::Rejected));
+    let mut changed = request();
+    changed
+        .headers
+        .insert(String::from("x-mcp-session-id"), String::from("foreign"));
+    assert_eq!(adapter.forward(changed), Err(GatewayError::Rejected));
     let mut changed = request();
     changed.path = String::from("/v2/instances/foreign/operations/operation");
     assert_eq!(adapter.forward(changed), Err(GatewayError::Rejected));
@@ -138,4 +150,29 @@ fn response_is_bound_to_configured_identity_request_and_route() {
     request.path = String::from("/v1/instances/instance/action");
     request.method = GatewayMethod::Post;
     assert_eq!(response_kind(&config(), &request), Some("action_response"));
+}
+
+#[test]
+fn forbidden_scope_receipt_remains_a_sanitized_authorization_error() {
+    use std::io::{Read, Write};
+    use std::net::TcpListener;
+    use std::thread;
+    use std::time::Duration;
+
+    let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+    let mut config = config();
+    config.gateway_address = listener.local_addr().unwrap();
+    let worker = thread::spawn(move || {
+        let (mut socket, _) = listener.accept().unwrap();
+        socket
+            .set_read_timeout(Some(Duration::from_secs(1)))
+            .unwrap();
+        let mut bytes = [0; 8192];
+        assert!(socket.read(&mut bytes).unwrap() > 0);
+        let body = r#"{"error_code":"insufficient_scope","private_detail":"do-not-forward"}"#;
+        socket.write_all(format!("HTTP/1.1 403 Forbidden\r\nContent-Type: application/json\r\nContent-Length: {}\r\n\r\n{body}", body.len()).as_bytes()).unwrap();
+    });
+    let mut adapter = super::super::RuntimeGatewayAdapter::new(config);
+    assert_eq!(adapter.forward(request()), Err(GatewayError::Forbidden));
+    worker.join().unwrap();
 }

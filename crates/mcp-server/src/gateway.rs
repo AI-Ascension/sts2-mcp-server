@@ -35,6 +35,7 @@ pub struct GatewayResponse {
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum GatewayError {
     Unauthorized,
+    Forbidden,
     NotFound,
     Unavailable,
     Timeout,

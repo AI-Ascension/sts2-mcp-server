@@ -105,3 +105,18 @@ are unchanged; the packaging correction restores missing inventory entries. CI c
 checksum without ignoring missing files. These are inert MIT contract data, not protocol
 implementation dependencies or new host evidence. MCP continues to own framing, tool validation
 and fixed gateway mapping; the game-mod and host retain authoritative game state and effects.
+
+## Process session and denial mapping
+
+Executable requests must carry the configured MCP session in both correlation metadata and the
+`x-mcp-session-id` header. A gateway HTTP 403 response maps to the sanitized MCP scope error
+`-32007`; it is a known authorization denial, not an unknown operation requiring reconciliation.
+The copied Runtime-v2 bytes and generation/settlement validation remain unchanged.
+
+[ADR 0010](decisions/0010-runtime-v2-process-session-and-scope-errors.md) records the public
+`GatewayError::Forbidden` enum addition and its exhaustive-match compatibility consequence.
+
+Runtime-v2 HTTP 429 guidance preserves only bounded `error_code`, `retryable: true`, and
+`retry_after_ms` between zero and 60,000 milliseconds. Invalid guidance fails closed and private
+fields are omitted. The adapter never automatically redispatches; synthetic tests cover valid and
+out-of-range delays. Gateway support for this guidance is an independent consumer integration gate.

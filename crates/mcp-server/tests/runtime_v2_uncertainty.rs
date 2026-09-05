@@ -98,3 +98,64 @@ fn invalid_end_turn_envelope_is_unknown_and_does_not_leak_payload() {
     assert!(!response.contains("private-untrusted-payload"));
     assert_eq!(server.gateway().requests.len(), 1);
 }
+
+#[test]
+fn denied_scope_is_not_reported_as_an_unknown_operation() {
+    let mut server = McpServer::with_catalog(
+        RecordingGateway::new([Err(GatewayError::Forbidden)]),
+        ToolCatalog::runtime_v2(),
+    );
+    let response = server.handle_frame(&submit_call(
+        "request-1",
+        "instance-1",
+        "session-1",
+        "lease-1",
+        1,
+        4,
+        "op-1",
+    ));
+    assert!(response.contains("gateway scope authorization failed"));
+    assert!(response.contains("-32007"));
+    assert!(response.contains("\"isError\":true"));
+    assert!(!response.contains("unknown"));
+    assert_eq!(server.gateway().requests.len(), 1);
+}
+
+#[test]
+fn overload_guidance_is_bounded_and_never_redispatches() {
+    for delay in [0, 1000, 60_000, -1, 60_001] {
+        let body = JsonValue::object([
+            (
+                String::from("error_code"),
+                JsonValue::string("runtime_v2_operation_capacity"),
+            ),
+            (String::from("retryable"), JsonValue::Bool(true)),
+            (String::from("retry_after_ms"), JsonValue::Number(delay)),
+            (
+                String::from("private_detail"),
+                JsonValue::string("do-not-forward"),
+            ),
+        ]);
+        let mut server = McpServer::with_catalog(
+            RecordingGateway::new([Ok(GatewayResponse { status: 429, body })]),
+            ToolCatalog::runtime_v2(),
+        );
+        let response = server.handle_frame(&submit_call(
+            "request-1",
+            "instance-1",
+            "session-1",
+            "lease-1",
+            1,
+            4,
+            "op-1",
+        ));
+        assert!(response.contains("\"isError\":true"));
+        assert!(!response.contains("do-not-forward"));
+        assert!(!response.contains("unknown"));
+        assert_eq!(
+            response.contains("retry_after_ms"),
+            (0..=60_000).contains(&delay)
+        );
+        assert_eq!(server.gateway().requests.len(), 1);
+    }
+}
