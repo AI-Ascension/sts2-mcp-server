@@ -13,6 +13,7 @@ use sts2_mcp_server::{
 };
 
 const MAX_BODY_BYTES: usize = 16 * 1024;
+const DEFAULT_MCP_SESSION_ID: &str = "mcp-session-1";
 
 pub(crate) struct RuntimeConfig {
     pub(crate) gateway_address: SocketAddr,
@@ -35,7 +36,7 @@ impl RuntimeConfig {
         let instance_id = required_or_default("STS2_INSTANCE_ID", "instance-1")?;
         let caller_id = required_or_default("STS2_CALLER_ID", "harness")?;
         let session_id = required_or_default("STS2_SESSION_ID", "session-1")?;
-        let mcp_session_id = required_or_default("STS2_MCP_SESSION_ID", &session_id)?;
+        let mcp_session_id = required_or_default("STS2_MCP_SESSION_ID", DEFAULT_MCP_SESSION_ID)?;
         let lease_id = required_or_default("STS2_LEASE_ID", "lease-1")?;
         let lease_epoch = required_or_default("STS2_LEASE_EPOCH", "1")?
             .parse::<i64>()
@@ -265,7 +266,15 @@ fn safe_token(value: &str) -> bool {
 }
 
 fn required_or_default(name: &str, default: &str) -> Result<String, String> {
-    match std::env::var(name) {
+    configured_value(name, std::env::var(name), default)
+}
+
+fn configured_value(
+    name: &str,
+    supplied: Result<String, std::env::VarError>,
+    default: &str,
+) -> Result<String, String> {
+    match supplied {
         Ok(value) if !value.is_empty() => Ok(value),
         Ok(_) => Err(format!("{name} must not be empty")),
         Err(std::env::VarError::NotPresent) => Ok(String::from(default)),

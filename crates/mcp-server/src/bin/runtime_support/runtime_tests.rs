@@ -128,3 +128,26 @@ fn runtime_v1_body_keeps_configured_identity_injection() {
     assert!(String::from_utf8_lossy(&encoded).contains("configured-instance"));
     assert!(!String::from_utf8_lossy(&encoded).contains("wrong-instance"));
 }
+
+#[test]
+fn mcp_session_default_matches_composition_and_preserves_explicit_override() {
+    let select =
+        |supplied| configured_value("STS2_MCP_SESSION_ID", supplied, DEFAULT_MCP_SESSION_ID);
+    assert_eq!(
+        select(Err(std::env::VarError::NotPresent)),
+        Ok(String::from("mcp-session-1"))
+    );
+    for explicit in ["custom-mcp", "session-1"] {
+        assert_eq!(
+            select(Ok(String::from(explicit))),
+            Ok(String::from(explicit))
+        );
+    }
+    assert!(select(Ok(String::new())).is_err());
+    assert!(
+        select(Err(std::env::VarError::NotUnicode(
+            std::ffi::OsString::new()
+        )))
+        .is_err()
+    );
+}

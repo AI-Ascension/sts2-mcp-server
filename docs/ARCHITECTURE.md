@@ -128,3 +128,8 @@ Runtime-v2 HTTP 429 guidance preserves only bounded `error_code`, `retryable: tr
 `retry_after_ms` between zero and 60,000 milliseconds. Invalid guidance fails closed and private
 fields are omitted. The adapter never automatically redispatches; synthetic tests cover valid and
 out-of-range delays. Gateway support for this guidance is an independent consumer integration gate.
+
+The standalone process defaults its MCP session to `mcp-session-1`, independently of the gateway
+session default `session-1`. Explicit `STS2_MCP_SESSION_ID` values remain authoritative; same-session
+setups must configure both variables. [ADR 0011](decisions/0011-composition-mcp-session-default.md)
+records the configuration compatibility change.

@@ -77,7 +77,8 @@ configured gateway identity before forwarding; Runtime-v1 retains its compatibil
 
 Runtime-v2 separates the tool argument `mcp_session_id` from the gateway envelope `session_id`.
 `STS2_MCP_SESSION_ID` configures the expected MCP session; when absent it defaults to
-`STS2_SESSION_ID` for existing same-session setups. `STS2_SESSION_ID` always supplies the gateway
+`mcp-session-1`, matching the harness and gateway composition defaults. Existing same-session setups
+must explicitly set `STS2_MCP_SESSION_ID` to their gateway session. `STS2_SESSION_ID` supplies the gateway
 session. Foreign MCP sessions fail before forwarding, while MCP correlation headers retain the MCP
 identity and gateway authority headers retain the gateway identity. Pure unbound library constructors
 keep their historical same-session mapping; executable configuration uses the explicitly bound API.

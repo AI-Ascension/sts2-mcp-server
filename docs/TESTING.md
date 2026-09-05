@@ -108,3 +108,7 @@ Runtime-v2 HTTP 429 guidance preserves only bounded `error_code`, `retryable: tr
 `retry_after_ms` between zero and 60,000 milliseconds. Invalid guidance fails closed and private
 fields are omitted. The adapter never automatically redispatches; synthetic tests cover valid and
 out-of-range delays. Gateway support for this guidance is an independent consumer integration gate.
+
+A pure configuration-selection test covers the standalone `mcp-session-1` default, explicit distinct
+and same-session overrides, empty values, and invalid-Unicode configuration without mutating shared
+process environment. This verifies default selection, not cross-process readiness.

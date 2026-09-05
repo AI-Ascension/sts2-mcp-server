@@ -5,6 +5,9 @@ exists.
 
 ## Unreleased
 
+- Default the standalone MCP session to `mcp-session-1` for harness/gateway composition; existing
+  same-session configurations must set `STS2_MCP_SESSION_ID` explicitly.
+
 - Complete frozen POC and Runtime-v1 artifact inventories with canonical conformance cases,
   schemas and goldens; verify every copied checksum in CI without ignoring missing entries.
 
