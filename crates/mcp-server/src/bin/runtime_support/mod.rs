@@ -4,6 +4,7 @@ use std::net::{SocketAddr, TcpStream};
 use std::time::{Duration, Instant};
 
 mod binding;
+use binding::is_runtime_result;
 mod http;
 use http::{ReadError, read_response, write_request};
 
@@ -227,21 +228,6 @@ fn classify_gateway_response(
         400 | 409 | 413 | 422 => Err(GatewayError::Rejected),
         status => Ok(GatewayResponse { status, body }),
     }
-}
-
-fn is_runtime_result(body: &JsonValue) -> bool {
-    matches!(
-        body,
-        JsonValue::Object(object)
-            if matches!(
-                object.get("kind"),
-                Some(JsonValue::String(kind))
-                    if matches!(
-                        kind.as_str(),
-                        "state_response" | "action_response" | "reconcile_response"
-                    )
-            )
-    )
 }
 
 fn map_io(error: ReadError) -> GatewayError {

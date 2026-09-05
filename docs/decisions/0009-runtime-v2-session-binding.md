@@ -24,10 +24,10 @@ envelope. The MCP session remains in the gateway adapter's correlation and
 MCP-session value is added to the frozen protocol artifact or forwarded to
 the game-mod as mutation authority.
 
-The default MCP session is the configured gateway session for compatibility;
-an operator may set `STS2_MCP_SESSION_ID` explicitly when the two namespaces
-must be distinct. The gateway and harness must be configured with the same
-MCP-session value for a connected run.
+The default MCP session is `mcp-session-1`, independently of the gateway session,
+as updated by [ADR 0011](0011-composition-mcp-session-default.md). Existing same-session
+setups must set `STS2_MCP_SESSION_ID` explicitly to their gateway session. The gateway
+and harness must use the same MCP-session value for a connected run.
 
 ## Rejection and compatibility
 
