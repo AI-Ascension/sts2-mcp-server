@@ -17,38 +17,8 @@ pub(super) fn validate_kind_shape(
     expected_operation_id: Option<&str>,
 ) -> Result<(), &'static str> {
     match kind {
-        "state_response" | "reobserve_response" => {
-            validate_state_id(object)?;
-            let observation = validate_observation(object.get("observation"))?;
-            if observation_generation(observation)? != generation {
-                return Err("Runtime-v3 observation generation does not match the envelope");
-            }
-            if observation.get("state_id") != object.get("state_id") {
-                return Err("Runtime-v3 observation state_id does not match the envelope");
-            }
-            validate_legal_actions(object.get("legal_actions"))?;
-            require_null(object, "operation_id")?;
-            require_null(object, "action")?;
-            require_null(object, "status")?;
-            require_null(object, "transition")?;
-            require_null(object, "error_code")?;
-            require_null(object, "wait_for_millis")?;
-            require_null(object, "wait_outcome")?;
-            require_null(object, "recovery")
-        }
-        "legal_actions_response" => {
-            validate_state_id(object)?;
-            validate_legal_actions(object.get("legal_actions"))?;
-            require_null(object, "operation_id")?;
-            require_null(object, "observation")?;
-            require_null(object, "action")?;
-            require_null(object, "status")?;
-            require_null(object, "transition")?;
-            require_null(object, "error_code")?;
-            require_null(object, "wait_for_millis")?;
-            require_null(object, "wait_outcome")?;
-            require_null(object, "recovery")
-        }
+        "state_response" | "reobserve_response" => validate_read_result(object, generation, true),
+        "legal_actions_response" => validate_read_result(object, generation, false),
         "dispatch_action_response" | "recover_response" => {
             validate_result(
                 object,
@@ -67,22 +37,7 @@ pub(super) fn validate_kind_shape(
                 request_generation,
                 expected_operation_id,
             )?;
-            let Some(outcome) = object.get("wait_outcome").and_then(JsonValue::as_string) else {
-                return Err("Runtime-v3 wait outcome is missing");
-            };
-            if !matches!(
-                outcome,
-                "successor" | "same_state_mutation" | "timeout" | "recovery_required"
-            ) {
-                return Err("Runtime-v3 wait outcome is not allowlisted");
-            }
-            match outcome {
-                "successor" | "same_state_mutation"
-                    if object.get("status").and_then(JsonValue::as_string) == Some("settled") => {}
-                "timeout" | "recovery_required"
-                    if object.get("status").and_then(JsonValue::as_string) == Some("unknown") => {}
-                _ => return Err("Runtime-v3 wait outcome does not match status"),
-            }
+            validate_wait_outcome(object)?;
             require_null(object, "wait_for_millis")?;
             require_null(object, "recovery")
         }
@@ -208,4 +163,58 @@ pub(super) fn validate_transition(
     }
     validate_identity_value(object.get("state_id"))?;
     validate_identity_value(object.get("effect_kind"))
+}
+
+fn validate_read_result(
+    object: &BTreeMap<String, JsonValue>,
+    generation: i64,
+    observed: bool,
+) -> Result<(), &'static str> {
+    validate_state_id(object)?;
+    if observed {
+        let observation = validate_observation(object.get("observation"))?;
+        if observation_generation(observation)? != generation {
+            return Err("Runtime-v3 observation generation does not match the envelope");
+        }
+        if observation.get("state_id") != object.get("state_id") {
+            return Err("Runtime-v3 observation state_id does not match the envelope");
+        }
+    }
+    validate_legal_actions(object.get("legal_actions"))?;
+    require_null(object, "operation_id")?;
+    if !observed {
+        require_null(object, "observation")?;
+    }
+    for field in [
+        "action",
+        "status",
+        "transition",
+        "error_code",
+        "wait_for_millis",
+        "wait_outcome",
+        "recovery",
+    ] {
+        require_null(object, field)?;
+    }
+    Ok(())
+}
+
+fn validate_wait_outcome(object: &BTreeMap<String, JsonValue>) -> Result<(), &'static str> {
+    let Some(outcome) = object.get("wait_outcome").and_then(JsonValue::as_string) else {
+        return Err("Runtime-v3 wait outcome is missing");
+    };
+    if !matches!(
+        outcome,
+        "successor" | "same_state_mutation" | "timeout" | "recovery_required"
+    ) {
+        return Err("Runtime-v3 wait outcome is not allowlisted");
+    }
+    match outcome {
+        "successor" | "same_state_mutation"
+            if object.get("status").and_then(JsonValue::as_string) == Some("settled") => {}
+        "timeout" | "recovery_required"
+            if object.get("status").and_then(JsonValue::as_string) == Some("unknown") => {}
+        _ => return Err("Runtime-v3 wait outcome does not match status"),
+    }
+    Ok(())
 }

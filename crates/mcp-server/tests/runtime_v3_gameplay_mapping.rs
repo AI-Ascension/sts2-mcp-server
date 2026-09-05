@@ -59,41 +59,8 @@ fn root(
     error_code: JsonValue,
     wait_outcome: JsonValue,
 ) -> JsonValue {
-    JsonValue::object([
-        (
-            String::from("protocol_version"),
-            JsonValue::string("runtime-v3-gameplay"),
-        ),
-        (
-            String::from("schema_digest"),
-            JsonValue::string("b37c80f583aeaf4f81ede2083bcfb4129196baf5eb092470e8738173c4b7226c"),
-        ),
-        (
-            String::from("provenance"),
-            JsonValue::object([
-                (
-                    String::from("artifact"),
-                    JsonValue::string("sts2-protocol/runtime-v3-gameplay"),
-                ),
-                (
-                    String::from("source"),
-                    JsonValue::string("schemas/runtime-v3-gameplay.schema.json"),
-                ),
-                (
-                    String::from("generator"),
-                    JsonValue::string("hand-authored"),
-                ),
-            ]),
-        ),
-        (
-            String::from("correlation_id"),
-            JsonValue::string("request-1"),
-        ),
-        (String::from("instance_id"), JsonValue::string("instance-1")),
-        (String::from("session_id"), JsonValue::string("session-1")),
-        (String::from("lease_id"), JsonValue::string("lease-1")),
-        (String::from("lease_epoch"), JsonValue::Number(1)),
-        (String::from("generation"), JsonValue::Number(generation)),
+    let mut fields = fixture_identity(generation);
+    fields.extend([
         (String::from("kind"), JsonValue::string(kind)),
         (String::from("state_id"), state_id),
         (String::from("operation_id"), operation_id),
@@ -106,7 +73,8 @@ fn root(
         (String::from("wait_for_millis"), JsonValue::Null),
         (String::from("wait_outcome"), wait_outcome),
         (String::from("recovery"), JsonValue::Null),
-    ])
+    ]);
+    JsonValue::object(fields)
 }
 
 fn observation(generation: i64) -> JsonValue {
@@ -345,3 +313,42 @@ fn result_operation_identity_must_match_the_requested_operation() {
 
 #[path = "runtime_v3_gameplay_regressions/mod.rs"]
 mod regressions;
+
+fn fixture_identity(generation: i64) -> Vec<(String, JsonValue)> {
+    vec![
+        (
+            String::from("protocol_version"),
+            JsonValue::string("runtime-v3-gameplay"),
+        ),
+        (
+            String::from("schema_digest"),
+            JsonValue::string("b37c80f583aeaf4f81ede2083bcfb4129196baf5eb092470e8738173c4b7226c"),
+        ),
+        (
+            String::from("provenance"),
+            JsonValue::object([
+                (
+                    String::from("artifact"),
+                    JsonValue::string("sts2-protocol/runtime-v3-gameplay"),
+                ),
+                (
+                    String::from("source"),
+                    JsonValue::string("schemas/runtime-v3-gameplay.schema.json"),
+                ),
+                (
+                    String::from("generator"),
+                    JsonValue::string("hand-authored"),
+                ),
+            ]),
+        ),
+        (
+            String::from("correlation_id"),
+            JsonValue::string("request-1"),
+        ),
+        (String::from("instance_id"), JsonValue::string("instance-1")),
+        (String::from("session_id"), JsonValue::string("session-1")),
+        (String::from("lease_id"), JsonValue::string("lease-1")),
+        (String::from("lease_epoch"), JsonValue::Number(1)),
+        (String::from("generation"), JsonValue::Number(generation)),
+    ]
+}

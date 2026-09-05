@@ -157,34 +157,10 @@ pub(super) fn recover_call<G: GatewayAdapter>(
         Ok(context) => context,
         Err(message) => return invalid_params(id, message),
     };
-    let Some(kind) = arguments
-        .get("recovery_kind")
-        .and_then(JsonValue::as_string)
-    else {
-        return invalid_params(id, "recovery_kind must be an allowlisted string");
+    let recovery = match recovery_payload(arguments, &context) {
+        Ok(recovery) => recovery,
+        Err(message) => return invalid_params(id, message),
     };
-    if !matches!(
-        kind,
-        "reobserve" | "reconcile" | "release_lease" | "stop_episode"
-    ) {
-        return invalid_params(id, "recovery_kind is not allowlisted");
-    }
-    if kind == "reconcile" && context.operation_id.is_none() {
-        return invalid_params(id, "reconcile recovery requires operation_id");
-    }
-    if kind != "reconcile" && context.operation_id.is_some() {
-        return invalid_params(id, "operation_id is only valid for reconcile recovery");
-    }
-    let recovery = JsonValue::object([
-        (String::from("kind"), JsonValue::string(kind)),
-        (
-            String::from("operation_id"),
-            context
-                .operation_id
-                .as_deref()
-                .map_or(JsonValue::Null, JsonValue::string),
-        ),
-    ]);
     let body = envelope::request_envelope(
         &context,
         "recover_request",
@@ -209,4 +185,38 @@ fn bounded_wait(arguments: &BTreeMap<String, JsonValue>) -> Option<i64> {
         Some(JsonValue::Number(value)) if (1..=120_000).contains(value) => Some(*value),
         _ => None,
     }
+}
+
+fn recovery_payload(
+    arguments: &BTreeMap<String, JsonValue>,
+    context: &context::RuntimeV3GameplayContext,
+) -> Result<JsonValue, &'static str> {
+    let Some(kind) = arguments
+        .get("recovery_kind")
+        .and_then(JsonValue::as_string)
+    else {
+        return Err("recovery_kind must be an allowlisted string");
+    };
+    if !matches!(
+        kind,
+        "reobserve" | "reconcile" | "release_lease" | "stop_episode"
+    ) {
+        return Err("recovery_kind is not allowlisted");
+    }
+    if kind == "reconcile" && context.operation_id.is_none() {
+        return Err("reconcile recovery requires operation_id");
+    }
+    if kind != "reconcile" && context.operation_id.is_some() {
+        return Err("operation_id is only valid for reconcile recovery");
+    }
+    Ok(JsonValue::object([
+        (String::from("kind"), JsonValue::string(kind)),
+        (
+            String::from("operation_id"),
+            context
+                .operation_id
+                .as_deref()
+                .map_or(JsonValue::Null, JsonValue::string),
+        ),
+    ]))
 }

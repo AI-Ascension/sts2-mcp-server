@@ -3,7 +3,7 @@
 use super::profiles::catalog_for_profile;
 use super::*;
 use std::collections::BTreeMap;
-use sts2_mcp_server::Correlation;
+use sts2_mcp_server::{Correlation, GatewayMethod};
 
 fn config() -> RuntimeConfig {
     RuntimeConfig {

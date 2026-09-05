@@ -1,18 +1,18 @@
 // SPDX-License-Identifier: MIT
 
-use std::net::{SocketAddr, TcpStream};
-use std::time::{Duration, Instant};
+use std::net::SocketAddr;
 
 mod binding;
 use binding::is_runtime_result;
+mod exchange;
 mod http;
 mod profiles;
-use http::{ReadError, read_response, write_request};
+use http::ReadError;
 pub(crate) use profiles::catalog_from_environment;
 
 use sts2_mcp_server::{
-    GatewayAdapter, GatewayError, GatewayMethod, GatewayRequest, GatewayResponse, JsonValue,
-    RUNTIME_V2_PROTOCOL_VERSION, RUNTIME_V3_GAMEPLAY_PROTOCOL_VERSION, parse_json,
+    GatewayAdapter, GatewayError, GatewayRequest, GatewayResponse, JsonValue,
+    RUNTIME_V2_PROTOCOL_VERSION, RUNTIME_V3_GAMEPLAY_PROTOCOL_VERSION,
 };
 
 const MAX_BODY_BYTES: usize = 16 * 1024;
@@ -142,101 +142,13 @@ impl GatewayAdapter for RuntimeGatewayAdapter {
         let response_kind = binding::response_kind(&self.config, &request);
         let correlation = request.correlation.mcp_request_id.stable_text();
         let body = self.body(&request)?;
-        let deadline = Instant::now() + Duration::from_secs(5);
-        let mut stream =
-            TcpStream::connect_timeout(&self.config.gateway_address, Duration::from_secs(2))
-                .map_err(|error| map_io(http::classify_io(error)))?;
-        let method = match request.method {
-            GatewayMethod::Get => "GET",
-            GatewayMethod::Post => "POST",
-        };
-        let mut headers = request.headers;
-        headers.insert(
-            String::from("Authorization"),
-            format!("Bearer {}", self.config.gateway_token),
-        );
-        headers.insert(
-            String::from("Host"),
-            self.config.gateway_address.to_string(),
-        );
-        headers.insert(
-            String::from("x-sts2-instance-id"),
-            self.config.instance_id.clone(),
-        );
-        headers.insert(
-            String::from("x-sts2-caller-id"),
-            self.config.caller_id.clone(),
-        );
-        headers.insert(
-            String::from("x-sts2-session-id"),
-            self.config.session_id.clone(),
-        );
-        headers.insert(
-            String::from("x-sts2-lease-id"),
-            self.config.lease_id.clone(),
-        );
-        headers.insert(
-            String::from("x-sts2-lease-epoch"),
-            self.config.lease_epoch.to_string(),
-        );
-        headers.insert(
-            String::from("x-sts2-correlation-id"),
-            request.correlation.mcp_request_id.stable_text(),
-        );
-        headers.insert(String::from("Content-Length"), body.len().to_string());
-        if !body.is_empty() {
-            headers.insert(
-                String::from("Content-Type"),
-                String::from("application/json"),
-            );
-        }
-        write_request(
-            &mut stream,
-            method,
-            &request.path,
-            &headers,
-            &body,
-            deadline,
-        )
-        .map_err(|error| match error {
-            ReadError::Malformed | ReadError::Oversized => GatewayError::Rejected,
-            error => map_io(error),
-        })?;
-        let response = read_response(&mut stream, deadline).map_err(map_io)?;
-        let body = parse_json(
-            std::str::from_utf8(&response.body).map_err(|_| GatewayError::MalformedResponse)?,
-        )
-        .map_err(|_| GatewayError::MalformedResponse)?;
-        if ((200..300).contains(&response.status) || is_runtime_result(&body))
+        let response = exchange::exchange(&self.config, request, body)?;
+        if ((200..300).contains(&response.status) || is_runtime_result(&response.body))
             && let Some(kind) = response_kind
         {
-            binding::response(&self.config, &body, &correlation, kind)?;
+            binding::response(&self.config, &response.body, &correlation, kind)?;
         }
-        match response.status {
-            408 | 502 | 503 | 504
-                if is_runtime_result(&body)
-                    && matches!(&body, JsonValue::Object(object)
-                    if object.get("protocol_version") == Some(&JsonValue::string(RUNTIME_V3_GAMEPLAY_PROTOCOL_VERSION))) =>
-            {
-                // The semantic projection validates the full envelope before surfacing it.
-                // A received host uncertainty receipt is not a transport disconnect.
-                Ok(GatewayResponse {
-                    status: response.status,
-                    body,
-                })
-            }
-            401 => Err(GatewayError::Unauthorized),
-            403 => Err(GatewayError::Forbidden),
-            404 => Err(GatewayError::NotFound),
-            408 | 504 => Err(GatewayError::Timeout),
-            502 | 503 => Err(GatewayError::Unavailable),
-            400 | 409 | 413 | 422 if is_runtime_result(&body) => Ok(GatewayResponse {
-                status: response.status,
-                body,
-            }),
-            400 | 409 | 413 | 422 => Err(GatewayError::Rejected),
-            status => Ok(GatewayResponse { status, body }),
-        }
+        exchange::classify(response)
     }
 }
 
