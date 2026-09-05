@@ -5,6 +5,9 @@ exists.
 
 ## Unreleased
 
+- Complete frozen POC and Runtime-v1 artifact inventories with canonical conformance cases,
+  schemas and goldens; verify every copied checksum in CI without ignoring missing entries.
+
 - Rejected the bare operation-ID segments `.` and `..` before Runtime-v2 dispatch (fail-closed, in
   addition to the existing `/` rejection), and made two loopback tests portable to Windows socket
   semantics without changing product code.

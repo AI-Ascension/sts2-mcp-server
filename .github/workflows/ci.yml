@@ -39,7 +39,13 @@ jobs:
             golden/action-rejected.json fixtures/invalid-action.json; do
             test -f "$path"
           done
-          sha256sum -c --ignore-missing SHA256SUMS
+          sha256sum --check SHA256SUMS
+
+      - name: Verify frozen runtime artifact inventories
+        run: |
+          for profile in runtime-v1 runtime-v2; do
+            (cd "protocol-artifact/$profile" && sha256sum --check SHA256SUMS)
+          done
 
       - name: Validate copied POC schema and fixtures
         run: cargo test --locked --package sts2-mcp-server --test artifact
