@@ -132,3 +132,10 @@ is pinned to the producer SHA recorded in COMPATIBILITY.md, not inferred from ma
 Runtime-v3 regression tests construct a schema-valid
 oversized settlement receipt and verify one dispatch produces structured uncertainty retaining the
 operation identity. These checks use gateway doubles and do not establish host settlement.
+
+## Separate co-op proposal tests
+
+Five library tests validate synthetic synchronization against the copied schema, read-only mapping,
+unknown input, peer-count agreement, and separate bound MCP/gateway sessions with foreign-session
+rejection before forwarding. This is one synchronization-response subset consumer, not evidence of
+two shared-schema consumers, a gateway route, or live multiplayer compatibility.

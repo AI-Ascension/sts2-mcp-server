@@ -137,8 +137,8 @@ manifest, conformance inventory and four producer goldens are checksum-verified 
 all six tool request envelopes through the producer schema and compare a canonical dispatch request
 and settled receipt at both adapter boundaries. These are synthetic contract checks, not host evidence.
 
-Co-op is preserved in a separate unadmitted proposal with no exports, schema, or catalog in this
-profile. Its shared-contract admission lacks two named actual serialized-schema consumers. The source
+Co-op is preserved in a separate unadmitted proposal with no exports, schema, or catalog in the
+Runtime-v3 merge lane. Its shared-contract admission lacks two named actual serialized-schema consumers. The source
 lineage is retained on review/mcp-coop-proposal-source-20260905; multiplayer support is unverified.
 
 Protocol #7 and MCP #7 use a different, older gameplay contract with the same proposed profile name.
@@ -172,3 +172,9 @@ use `read`. The gateway's single `STS2_GATEWAY_TOKEN` defaults to all three when
 `STS2_GATEWAY_TOKEN_SCOPE` is unset. An explicitly restricted scope set may return HTTP 403; MCP
 preserves that typed scope denial as sanitized tool error `-32007`, without inventing an unknown
 operation outcome. Session and scope tests use gateway doubles, not live authorization evidence.
+
+The co-op additions on this proposal branch remain blocked on shared-contract admission; see
+[ADR 0012](decisions/0012-coop-proposal-admission.md). They are absent from the Runtime-v3 merge lane.
+The copied proposal schema has digest
+`85e0028c1ae20e49542791da165eeabaaea0cc2023626b5094b6660ebcc0cc81`; MCP consumes only its
+synchronization-response subset. No executable co-op selector or implemented gateway route exists.
