@@ -3,6 +3,7 @@
 use super::*;
 
 mod bound_sessions;
+mod recovery_ownership;
 
 #[test]
 fn every_tool_constructs_a_canonical_request_and_uncertainty_is_schema_valid() -> Result<(), String>

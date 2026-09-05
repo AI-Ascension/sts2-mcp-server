@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 
 use crate::json::JsonValue;
+use crate::transport::{LEGACY_MAX_FRAME_BYTES, MAX_FRAME_BYTES};
 
 #[path = "catalog_runtime.rs"]
 mod runtime;
@@ -204,6 +205,18 @@ impl ToolCatalog {
     #[must_use]
     pub fn runtime_v3_gameplay() -> Self {
         runtime_v3_gameplay::build()
+    }
+
+    /// Largest MCP frame this profile accepts. The poc, runtime-v1, and runtime-v2
+    /// profiles keep their historical 16 KiB limit; only the Runtime-v3 semantic
+    /// profile accepts frames up to [`MAX_FRAME_BYTES`].
+    #[must_use]
+    pub fn max_frame_bytes(&self) -> usize {
+        if self.is_runtime_v3_gameplay() {
+            MAX_FRAME_BYTES
+        } else {
+            LEGACY_MAX_FRAME_BYTES
+        }
     }
 
     pub(crate) fn is_runtime_v1(&self) -> bool {

@@ -129,6 +129,12 @@ all four producer goldens. The mapping regression suite schema-validates every a
 outbound envelope and local uncertainty response, including all four recovery kinds. The artifact
 is pinned to the producer SHA recorded in COMPATIBILITY.md, not inferred from matching filenames.
 
+`recovery_ownership.rs` pins that `release_lease` and `stop_episode` map only to
+`POST /v3/instances/{id}/recover` with a null operation identity, exactly one gateway request, and a
+typed `-32007` result on scope denial. `profile_frame_bounds.rs` proves the MCP frame limit is per
+profile: 16 KiB for poc/runtime-v1/runtime-v2 and 256 KiB for Runtime-v3, with one byte more rejected
+before any gateway access; the executable HTTP tests pin the 64 KiB and 128 KiB response-body budgets.
+
 Runtime-v3 regression tests construct a schema-valid
 oversized settlement receipt and verify one dispatch produces structured uncertainty retaining the
 operation identity. These checks use gateway doubles and do not establish host settlement.

@@ -9,7 +9,10 @@ use crate::projection::{
 };
 use crate::protocol::{RequestId, RpcResponse};
 
-pub(super) const MAX_RESPONSE_BYTES: usize = 128 * 1024;
+/// Projected tool content limit kept by the poc, runtime-v1, and runtime-v2 profiles.
+pub(super) const LEGACY_MAX_RESPONSE_BYTES: usize = 16 * 1024;
+/// Projected tool content limit for the Runtime-v3 semantic profile only.
+pub(super) const RUNTIME_V3_MAX_RESPONSE_BYTES: usize = 128 * 1024;
 
 pub(super) fn gateway_success(
     id: RequestId,
@@ -29,7 +32,7 @@ pub(super) fn gateway_success(
         );
     };
     let body = projection.to_json();
-    if body.len() > MAX_RESPONSE_BYTES {
+    if body.len() > LEGACY_MAX_RESPONSE_BYTES {
         return super::tool_result(id, "gateway returned an oversized response", true);
     }
     super::tool_result(
@@ -57,7 +60,7 @@ pub(super) fn gateway_success_v2(
         );
     };
     let body = projection.to_json();
-    if body.len() > MAX_RESPONSE_BYTES {
+    if body.len() > LEGACY_MAX_RESPONSE_BYTES {
         return super::tool_result(id, "gateway returned an oversized response", true);
     }
     super::tool_result(
@@ -116,7 +119,7 @@ pub(super) fn gateway_success_v3(
         );
     };
     let body = projection.to_json();
-    if body.len() > MAX_RESPONSE_BYTES {
+    if body.len() > RUNTIME_V3_MAX_RESPONSE_BYTES {
         return super::tool_result(id, "gateway returned an oversized response", true);
     }
     super::tool_result(
@@ -124,4 +127,15 @@ pub(super) fn gateway_success_v3(
         body,
         !(200..300).contains(&response.status) || runtime_v3_result_is_error(&projection),
     )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{LEGACY_MAX_RESPONSE_BYTES, RUNTIME_V3_MAX_RESPONSE_BYTES};
+
+    #[test]
+    fn projected_content_limits_are_profile_scoped() {
+        assert_eq!(LEGACY_MAX_RESPONSE_BYTES, 16 * 1024);
+        assert_eq!(RUNTIME_V3_MAX_RESPONSE_BYTES, 128 * 1024);
+    }
 }

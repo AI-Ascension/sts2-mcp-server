@@ -44,7 +44,10 @@ fn executable_rejects_foreign_v1_response_before_returning_success() {
         });
         let mut request = request();
         request.path = String::from("/v1/instances/instance/state");
-        let mut adapter = super::super::RuntimeGatewayAdapter::new(config);
+        let mut adapter = super::super::RuntimeGatewayAdapter::new(
+            config,
+            super::super::http::LEGACY_MAX_RESPONSE_BYTES,
+        );
         let result = adapter.forward(request);
         if session == "session" {
             assert!(result.is_ok());
@@ -78,7 +81,10 @@ fn semantic_http_uncertainty_retains_the_received_error_origin() {
         let mut request = request();
         request.path = String::from("/v3/instances/instance/action");
         request.method = GatewayMethod::Post;
-        let mut adapter = super::super::RuntimeGatewayAdapter::new(config);
+        let mut adapter = super::super::RuntimeGatewayAdapter::new(
+            config,
+            super::super::http::LEGACY_MAX_RESPONSE_BYTES,
+        );
         let result = adapter.forward(request).unwrap();
         assert_eq!(result.status, status);
         assert!(result.body.to_json().contains("settlement_unproven"));
@@ -111,7 +117,10 @@ fn request() -> GatewayRequest {
 
 #[test]
 fn bodyless_authority_mismatch_is_rejected_before_connect() {
-    let mut adapter = super::super::RuntimeGatewayAdapter::new(config());
+    let mut adapter = super::super::RuntimeGatewayAdapter::new(
+        config(),
+        super::super::http::LEGACY_MAX_RESPONSE_BYTES,
+    );
     assert_eq!(admit(&config(), &request()), Ok(()));
     for name in [
         "x-sts2-instance-id",
@@ -204,7 +213,10 @@ fn forbidden_scope_receipt_remains_a_sanitized_authorization_error() {
         let body = r#"{"error_code":"insufficient_scope","private_detail":"do-not-forward"}"#;
         socket.write_all(format!("HTTP/1.1 403 Forbidden\r\nContent-Type: application/json\r\nContent-Length: {}\r\n\r\n{body}", body.len()).as_bytes()).unwrap();
     });
-    let mut adapter = super::super::RuntimeGatewayAdapter::new(config);
+    let mut adapter = super::super::RuntimeGatewayAdapter::new(
+        config,
+        super::super::http::LEGACY_MAX_RESPONSE_BYTES,
+    );
     assert_eq!(adapter.forward(request()), Err(GatewayError::Forbidden));
     worker.join().unwrap();
 }

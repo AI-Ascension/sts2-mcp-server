@@ -17,6 +17,7 @@ pub(super) fn exchange(
     config: &RuntimeConfig,
     request: GatewayRequest,
     body: Vec<u8>,
+    max_response_bytes: usize,
 ) -> Result<GatewayResponse, GatewayError> {
     let deadline = Instant::now() + Duration::from_secs(5);
     let mut stream = TcpStream::connect_timeout(&config.gateway_address, Duration::from_secs(2))
@@ -43,7 +44,7 @@ pub(super) fn exchange(
         ReadError::Malformed | ReadError::Oversized => GatewayError::Rejected,
         error => map_io(error),
     })?;
-    let response = read_response(&mut stream, deadline).map_err(map_io)?;
+    let response = read_response(&mut stream, deadline, max_response_bytes).map_err(map_io)?;
     let body = parse_json(
         std::str::from_utf8(&response.body).map_err(|_| GatewayError::MalformedResponse)?,
     )
