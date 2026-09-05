@@ -241,7 +241,9 @@ fn request_context<G: GatewayAdapter>(
         || !super::safe_header_value(session_id)
         || !super::safe_header_value(lease_id)
         || (require_operation_id
-            && (!super::safe_header_value(operation_id) || operation_id.contains('/')))
+            && (!super::safe_header_value(operation_id)
+                || operation_id.contains('/')
+                || matches!(operation_id, "." | "..")))
     {
         return Err("Runtime-v2 identity is unsafe or oversized");
     }

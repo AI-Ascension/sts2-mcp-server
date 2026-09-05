@@ -61,8 +61,9 @@ projections remain unchanged. These are synthetic protocol-owner goldens, not ho
 
 `runtime_v2_uncertainty.rs` checks that invalid action receipts remain unknown without retry or
 untrusted payload leakage; state-read failures report missing observation rather than inventing an
-operation. Operation IDs containing `/` are rejected before submission, because they cannot be
-looked up as one segment of the current gateway reconciliation route.
+operation. Operation IDs containing `/`, and the bare segments `.` and `..`, are rejected before
+submission, because they cannot be looked up as one plain segment of the current gateway
+reconciliation route.
 
 `runtime_v2_sessions.rs` checks distinct configured MCP/gateway sessions for state, submission and
 reconciliation, rejects foreign MCP sessions before forwarding, and exercises the actual executable

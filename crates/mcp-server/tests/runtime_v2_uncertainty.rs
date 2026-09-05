@@ -58,16 +58,18 @@ fn malformed_end_turn_response_remains_unknown_without_retry() {
 #[test]
 fn operations_that_cannot_be_addressed_by_the_read_route_are_never_dispatched() {
     let mut server = McpServer::with_catalog(RecordingGateway::new([]), ToolCatalog::runtime_v2());
-    let response = server.handle_frame(&submit_call(
-        "request-1",
-        "instance-1",
-        "session-1",
-        "lease-1",
-        1,
-        4,
-        "namespace/op-1",
-    ));
-    assert!(response.contains("unsafe or oversized"));
+    for operation_id in ["namespace/op-1", ".", ".."] {
+        let response = server.handle_frame(&submit_call(
+            "request-1",
+            "instance-1",
+            "session-1",
+            "lease-1",
+            1,
+            4,
+            operation_id,
+        ));
+        assert!(response.contains("unsafe or oversized"), "{operation_id}");
+    }
     assert!(server.gateway().requests.is_empty());
 }
 
