@@ -2,6 +2,8 @@
 
 use super::*;
 
+mod bound_sessions;
+
 #[test]
 fn every_tool_constructs_a_canonical_request_and_uncertainty_is_schema_valid() -> Result<(), String>
 {
@@ -12,80 +14,7 @@ fn every_tool_constructs_a_canonical_request_and_uncertainty_is_schema_valid() -
     let validator = jsonschema::draft202012::options()
         .build(&schema)
         .map_err(|error| error.to_string())?;
-    let cases = [
-        (
-            OBSERVE_TOOL,
-            "",
-            "state_request",
-            "state",
-            GatewayMethod::Get,
-            false,
-        ),
-        (
-            LEGAL_ACTIONS_TOOL,
-            ",\"state_id\":\"combat-1\"",
-            "legal_actions_request",
-            "legal-actions",
-            GatewayMethod::Get,
-            false,
-        ),
-        (
-            DISPATCH_ACTION_TOOL,
-            ",\"state_id\":\"combat-1\",\"operation_id\":\"operation-1\",\"action\":{\"action_id\":\"end-turn\",\"action\":{\"kind\":\"end_turn\"}}",
-            "dispatch_action_request",
-            "action",
-            GatewayMethod::Post,
-            true,
-        ),
-        (
-            WAIT_FOR_TRANSITION_TOOL,
-            ",\"operation_id\":\"operation-1\",\"wait_for_millis\":120000",
-            "wait_request",
-            "wait",
-            GatewayMethod::Post,
-            true,
-        ),
-        (
-            REOBSERVE_TOOL,
-            "",
-            "reobserve_request",
-            "reobserve",
-            GatewayMethod::Get,
-            false,
-        ),
-        (
-            RECOVER_TOOL,
-            ",\"recovery_kind\":\"reobserve\"",
-            "recover_request",
-            "recover",
-            GatewayMethod::Post,
-            true,
-        ),
-        (
-            RECOVER_TOOL,
-            ",\"recovery_kind\":\"reconcile\",\"operation_id\":\"operation-1\"",
-            "recover_request",
-            "recover",
-            GatewayMethod::Post,
-            true,
-        ),
-        (
-            RECOVER_TOOL,
-            ",\"recovery_kind\":\"release_lease\"",
-            "recover_request",
-            "recover",
-            GatewayMethod::Post,
-            true,
-        ),
-        (
-            RECOVER_TOOL,
-            ",\"recovery_kind\":\"stop_episode\"",
-            "recover_request",
-            "recover",
-            GatewayMethod::Post,
-            true,
-        ),
-    ];
+    let cases = bound_sessions::tool_cases();
     for (tool, extra, kind, suffix, method, uncertain) in cases {
         let mut server = McpServer::with_catalog(
             RecordingGateway::new([Err(GatewayError::Timeout)]),

@@ -17,7 +17,7 @@ Run from this target root:
 
 ```bash
 cargo metadata --locked --offline --no-deps --format-version 1
-for profile in poc-v1 runtime-v1 runtime-v2; do
+for profile in poc-v1 runtime-v1 runtime-v2 runtime-v3-gameplay; do
   (cd "protocol-artifact/$profile" && sha256sum --check SHA256SUMS)
 done
 cargo test --locked --offline --package sts2-mcp-server --test artifact
@@ -128,17 +128,6 @@ do not reinterpret their current observation generation as the original mutation
 all four producer goldens. The mapping regression suite schema-validates every advertised tool's
 outbound envelope and local uncertainty response, including all four recovery kinds. The artifact
 is pinned to the producer SHA recorded in COMPATIBILITY.md, not inferred from matching filenames.
-
-The executable HTTP unit tests use ephemeral loopback listeners, not a live gateway or game. They
-cover slow-drip headers/bodies against one total deadline, an unread request writer, expired deadlines,
-strict JSON content type and Content-Length framing, duplicate headers, unsupported encodings,
-truncation, header-size limits, and outbound header injection. Configuration tests reject DNS names,
-non-loopback addresses, port zero, and control/non-ASCII token bytes.
-
-The executable binding tests reject missing/mismatched bodyless authority before any connection and
-reject foreign response instance/session/lease/epoch, wrong correlation, or wrong route-specific kind.
-The Runtime-v2 mapping regression verifies that reconciliation preserves all four authority headers
-without adding a mutation body.
 
 Runtime-v3 regression tests construct a schema-valid
 oversized settlement receipt and verify one dispatch produces structured uncertainty retaining the

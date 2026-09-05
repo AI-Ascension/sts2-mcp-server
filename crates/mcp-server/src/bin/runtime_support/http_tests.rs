@@ -76,6 +76,18 @@ fn strict_json_framing_rejects_ambiguous_or_unsupported_headers() {
 }
 
 #[test]
+fn semantic_response_budget_is_128_kibibytes() {
+    let wire = |size| {
+        format!("HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {size}")
+    };
+    assert!(parse_headers(&wire(128 * 1024)).is_ok());
+    assert_eq!(
+        parse_headers(&wire(128 * 1024 + 1)),
+        Err(ReadError::Oversized)
+    );
+}
+
+#[test]
 fn bounded_response_accepts_json_and_rejects_truncation_and_header_overflow() {
     let (mut client, mut server) = socket_pair();
     server

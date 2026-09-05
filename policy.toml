@@ -20,4 +20,3 @@ markdown_preferred = 500
 markdown_max = 700
 
 [exemptions]
-"crates/mcp-server/src/bin/runtime_support/mod.rs" = "Existing runtime support executable boundary remains one composition unit; split with its next transport revision."

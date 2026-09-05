@@ -89,7 +89,7 @@ Connect, request writes, and response reads share a five-second total exchange d
 additionally limited to two seconds. Responses require HTTP/1.1, a final 200–599 status, one decimal
 Content-Length, and `application/json` (optionally UTF-8 charset); duplicate headers, transfer/content
 encodings, and headers exceeding 8 KiB including the terminator fail closed. Bodies remain capped at
-64 KiB. These are source and loopback-test guarantees, not downstream readiness evidence.
+128 KiB in this semantic profile branch. These are source and loopback-test guarantees, not downstream readiness evidence.
 
 The Runtime-v2 mapping carries the caller's instance/session/lease/epoch as explicit authority
 headers even for bodyless reconciliation. Before connecting, the executable rejects mismatches with
@@ -160,16 +160,15 @@ which preserves its known status and error origin. Only missing, malformed or un
 become synthesized transport/invalid-response uncertainty. A received host `settlement_unproven`
 receipt is not relabelled as a disconnect. Legacy profile HTTP error normalization remains unchanged.
 
-The executable gateway address must be a numeric loopback socket address with a nonzero port
-(for example `127.0.0.1:15525` or `[::1]:15525`); DNS names and remote endpoints are unsupported.
-Connect, request writes, and response reads share a five-second total exchange deadline, with connect
-additionally limited to two seconds. Responses require HTTP/1.1, a final 200–599 status, one decimal
-Content-Length, and `application/json` (optionally UTF-8 charset); duplicate headers, transfer/content
-encodings, and headers exceeding 8 KiB including the terminator fail closed. Bodies remain capped at
-128 KiB in this semantic profile branch. These are source and loopback-test guarantees, not downstream readiness evidence.
-
 The Runtime-v2 mapping carries the caller's instance/session/lease/epoch as explicit authority
 headers even for bodyless reconciliation. Before connecting, the executable rejects mismatches with
 its configured gateway authority instead of silently replacing them. Runtime-v1 keeps its documented
 configured-identity injection, but Runtime-v1 and Runtime-v2 response envelopes must match the actual
 configured identity, request correlation, and route-specific result kind before projection.
+
+The six-tool Runtime-v3 path requires the gateway credential to have `read`, `mutate`, and `control`
+scopes: `sts2.dispatch_action` uses `mutate`, `sts2.recover` uses `control`, and the other four tools
+use `read`. The gateway's single `STS2_GATEWAY_TOKEN` defaults to all three when
+`STS2_GATEWAY_TOKEN_SCOPE` is unset. An explicitly restricted scope set may return HTTP 403; MCP
+preserves that typed scope denial as sanitized tool error `-32007`, without inventing an unknown
+operation outcome. Session and scope tests use gateway doubles, not live authorization evidence.

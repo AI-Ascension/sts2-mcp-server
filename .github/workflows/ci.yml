@@ -49,9 +49,9 @@ jobs:
           done
           sha256sum --check SHA256SUMS
 
-      - name: Verify frozen runtime artifact inventories
+      - name: Verify copied runtime artifact inventories
         run: |
-          for profile in runtime-v1 runtime-v2; do
+          for profile in runtime-v1 runtime-v2 runtime-v3-gameplay; do
             (cd "protocol-artifact/$profile" && sha256sum --check SHA256SUMS)
           done
 
