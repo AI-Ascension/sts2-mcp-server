@@ -3,6 +3,28 @@
 use super::{RuntimeConfig, safe_header_value};
 use sts2_mcp_server::{GatewayError, GatewayMethod, GatewayRequest, JsonValue};
 
+pub(super) fn is_runtime_result(body: &JsonValue) -> bool {
+    matches!(
+        body,
+        JsonValue::Object(object)
+            if matches!(
+                object.get("kind"),
+                Some(JsonValue::String(kind))
+                    if matches!(
+                        kind.as_str(),
+                        "state_response"
+                            | "action_response"
+                            | "reconcile_response"
+                            | "legal_actions_response"
+                            | "dispatch_action_response"
+                            | "wait_response"
+                            | "reobserve_response"
+                            | "recover_response"
+                    )
+            )
+    )
+}
+
 pub(super) fn admit(config: &RuntimeConfig, request: &GatewayRequest) -> Result<(), GatewayError> {
     if request.correlation.mcp_session_id != config.mcp_session_id
         || request.headers.get("x-mcp-session-id").map(String::as_str)

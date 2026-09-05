@@ -149,9 +149,9 @@ Configured instance/session/lease/correlation identifiers retain the adapter's 1
 Runtime-v3 body-only state, operation and action identifiers follow the canonical 512-byte bound.
 
 `STS2_MCP_SESSION_ID` configures the caller's MCP correlation namespace separately from
-`STS2_SESSION_ID`, the authenticated gateway session. It defaults to the gateway session only for
-backward compatibility. Runtime-v2/v3 validate the tool's supplied MCP session before mapping and
-places the configured gateway session in envelopes; distinct namespaces are not forced to equal.
+`STS2_SESSION_ID`, the authenticated gateway session. Its default is `mcp-session-1`; an explicit
+override preserves custom or same-session setups. Runtime-v2/v3 validate the tool's supplied MCP
+session before mapping and place the configured gateway session in envelopes.
 This shared binding correction is inherited from the earlier adapter proposal without importing its
 incompatible gameplay contract.
 
