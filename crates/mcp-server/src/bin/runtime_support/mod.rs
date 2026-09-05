@@ -209,19 +209,23 @@ impl GatewayAdapter for RuntimeGatewayAdapter {
         {
             binding::response(&self.config, &body, &correlation, kind)?;
         }
-        match response.status {
-            401 => Err(GatewayError::Unauthorized),
-            403 => Err(GatewayError::Forbidden),
-            404 => Err(GatewayError::NotFound),
-            408 | 504 => Err(GatewayError::Timeout),
-            502 | 503 => Err(GatewayError::Unavailable),
-            400 | 409 | 413 | 422 if is_runtime_result(&body) => Ok(GatewayResponse {
-                status: response.status,
-                body,
-            }),
-            400 | 409 | 413 | 422 => Err(GatewayError::Rejected),
-            status => Ok(GatewayResponse { status, body }),
-        }
+        classify_gateway_response(response.status, body)
+    }
+}
+
+fn classify_gateway_response(
+    status: u16,
+    body: JsonValue,
+) -> Result<GatewayResponse, GatewayError> {
+    match status {
+        401 => Err(GatewayError::Unauthorized),
+        403 => Err(GatewayError::Forbidden),
+        404 => Err(GatewayError::NotFound),
+        408 | 504 => Err(GatewayError::Timeout),
+        502 | 503 => Err(GatewayError::Unavailable),
+        400 | 409 | 413 | 422 if is_runtime_result(&body) => Ok(GatewayResponse { status, body }),
+        400 | 409 | 413 | 422 => Err(GatewayError::Rejected),
+        status => Ok(GatewayResponse { status, body }),
     }
 }
 
@@ -320,3 +324,6 @@ pub(crate) fn catalog_for_profile(profile: Option<&str>) -> Result<ToolCatalog, 
 #[cfg(test)]
 #[path = "runtime_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+mod pr7_tests;

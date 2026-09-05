@@ -132,4 +132,3 @@ pub(super) fn gateway_success_v3(
         !(200..300).contains(&response.status) || runtime_v3_gameplay_result_is_error(&projection),
     )
 }
-
