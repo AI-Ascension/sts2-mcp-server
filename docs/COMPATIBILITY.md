@@ -95,3 +95,13 @@ headers even for bodyless reconciliation. Before connecting, the executable reje
 its configured gateway authority instead of silently replacing them. Runtime-v1 keeps its documented
 configured-identity injection, but Runtime-v1 and Runtime-v2 response envelopes must match the actual
 configured identity, request correlation, and route-specific result kind before projection.
+
+## Complete frozen artifact inventories
+
+The copied POC and Runtime-v1 bundles include the canonical README, checksum inventory,
+conformance cases, schema sources and golden vectors from protocol commit
+`11e4252e39a77f0017b8e4f3720590e6162e8f53`. Existing schema, manifest and golden wire bytes
+are unchanged; the packaging correction restores missing inventory entries. CI checks every
+checksum without ignoring missing files. These are inert MIT contract data, not protocol
+implementation dependencies or new host evidence. MCP continues to own framing, tool validation
+and fixed gateway mapping; the game-mod and host retain authoritative game state and effects.

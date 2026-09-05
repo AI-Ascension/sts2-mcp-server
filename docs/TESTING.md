@@ -17,7 +17,9 @@ Run from this target root:
 
 ```bash
 cargo metadata --locked --offline --no-deps --format-version 1
-sha256sum -c --ignore-missing protocol-artifact/poc-v1/SHA256SUMS
+for profile in poc-v1 runtime-v1 runtime-v2; do
+  (cd "protocol-artifact/$profile" && sha256sum --check SHA256SUMS)
+done
 cargo test --locked --offline --package sts2-mcp-server --test artifact
 cargo fmt --all --check
 cargo clippy --workspace --all-targets --all-features --locked -- -D warnings
