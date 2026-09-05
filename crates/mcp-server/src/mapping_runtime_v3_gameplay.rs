@@ -248,7 +248,7 @@ fn forward<G: GatewayAdapter>(
                     expected_kind,
                 )
                 .map_or(true, |body| {
-                    body.to_json().len() > response::MAX_RESPONSE_BYTES
+                    body.to_json().len() > response::RUNTIME_V3_MAX_RESPONSE_BYTES
                 }) =>
         {
             let body = envelope::unknown_response(

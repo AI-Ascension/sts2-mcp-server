@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-use super::profiles::catalog_for_profile;
+use super::profiles::profile_for_name;
 use super::*;
 use std::collections::BTreeMap;
 use sts2_mcp_server::{Correlation, GatewayMethod};
@@ -61,18 +61,33 @@ fn request(body: JsonValue) -> GatewayRequest {
 #[test]
 fn runtime_profile_defaults_to_v1_and_selects_v2_explicitly() {
     assert_eq!(
-        catalog_for_profile(None).map(|catalog| catalog.revision),
+        profile_for_name(None).map(|profile| profile.catalog.revision),
         Ok(String::from("runtime-v1-mcp"))
     );
     assert_eq!(
-        catalog_for_profile(Some("runtime-v2")).map(|catalog| catalog.revision),
+        profile_for_name(Some("runtime-v2")).map(|profile| profile.catalog.revision),
         Ok(String::from("runtime-v2-mcp"))
     );
-    assert!(catalog_for_profile(Some("runtime-v3")).is_err());
+    assert!(profile_for_name(Some("runtime-v3")).is_err());
     assert_eq!(
-        catalog_for_profile(Some("runtime-v3-gameplay")).map(|catalog| catalog.revision),
+        profile_for_name(Some("runtime-v3-gameplay")).map(|profile| profile.catalog.revision),
         Ok(String::from("runtime-v3-gameplay-mcp"))
     );
+}
+
+#[test]
+fn runtime_profile_bounds_are_scoped_to_the_semantic_profile() -> Result<(), String> {
+    for (name, frame, body) in [
+        (None, 16 * 1024, 64 * 1024),
+        (Some("runtime-v1"), 16 * 1024, 64 * 1024),
+        (Some("runtime-v2"), 16 * 1024, 64 * 1024),
+        (Some("runtime-v3-gameplay"), 256 * 1024, 128 * 1024),
+    ] {
+        let profile = profile_for_name(name)?;
+        assert_eq!(profile.catalog.max_frame_bytes(), frame, "{name:?}");
+        assert_eq!(profile.max_response_bytes, body, "{name:?}");
+    }
+    Ok(())
 }
 
 #[test]
@@ -100,7 +115,7 @@ fn runtime_result_recognition_includes_reconcile_response() {
 
 #[test]
 fn runtime_v2_and_v3_body_reject_wrong_supplied_identity_before_forwarding() {
-    let adapter = RuntimeGatewayAdapter::new(config());
+    let adapter = RuntimeGatewayAdapter::new(config(), http::LEGACY_MAX_RESPONSE_BYTES);
     for protocol in [
         RUNTIME_V2_PROTOCOL_VERSION,
         RUNTIME_V3_GAMEPLAY_PROTOCOL_VERSION,
@@ -130,7 +145,7 @@ fn runtime_v2_and_v3_body_reject_wrong_supplied_identity_before_forwarding() {
 
 #[test]
 fn runtime_v1_body_keeps_configured_identity_injection() {
-    let adapter = RuntimeGatewayAdapter::new(config());
+    let adapter = RuntimeGatewayAdapter::new(config(), http::LEGACY_MAX_RESPONSE_BYTES);
     let body = JsonValue::object([
         (
             String::from("protocol_version"),

@@ -6,7 +6,10 @@ use std::net::TcpStream;
 use std::time::{Duration, Instant};
 
 const MAX_HEADER_BYTES: usize = 8 * 1024;
-const MAX_RESPONSE_BYTES: usize = 128 * 1024;
+/// Gateway response body limit kept by the runtime-v1 and runtime-v2 profiles.
+pub(super) const LEGACY_MAX_RESPONSE_BYTES: usize = 64 * 1024;
+/// Gateway response body limit for the Runtime-v3 semantic profile only.
+pub(super) const RUNTIME_V3_MAX_RESPONSE_BYTES: usize = 128 * 1024;
 
 pub(super) struct HttpResponse {
     pub(super) status: u16,
@@ -102,6 +105,7 @@ fn read_bytes(
 pub(super) fn read_response(
     stream: &mut TcpStream,
     deadline: Instant,
+    max_response_bytes: usize,
 ) -> Result<HttpResponse, ReadError> {
     let mut bytes = Vec::new();
     let mut buffer = [0_u8; 2048];
@@ -122,7 +126,7 @@ pub(super) fn read_response(
         bytes.extend_from_slice(&buffer[..read]);
     };
     let header = std::str::from_utf8(&bytes[..header_end]).map_err(|_| ReadError::Malformed)?;
-    let (status, content_length) = parse_headers(header)?;
+    let (status, content_length) = parse_headers(header, max_response_bytes)?;
     let body_start = header_end + 4;
     if bytes.len() - body_start > content_length {
         return Err(ReadError::Malformed);
@@ -136,7 +140,7 @@ pub(super) fn read_response(
     Ok(HttpResponse { status, body })
 }
 
-fn parse_headers(header: &str) -> Result<(u16, usize), ReadError> {
+fn parse_headers(header: &str, max_response_bytes: usize) -> Result<(u16, usize), ReadError> {
     let mut lines = header.split("\r\n");
     let status_line = lines.next().ok_or(ReadError::Malformed)?;
     let parts: Vec<_> = status_line.splitn(3, ' ').collect();
@@ -177,7 +181,7 @@ fn parse_headers(header: &str) -> Result<(u16, usize), ReadError> {
         return Err(ReadError::Malformed);
     }
     let length = length.parse::<usize>().map_err(|_| ReadError::Malformed)?;
-    if length > MAX_RESPONSE_BYTES {
+    if length > max_response_bytes {
         return Err(ReadError::Oversized);
     }
     Ok((status, length))

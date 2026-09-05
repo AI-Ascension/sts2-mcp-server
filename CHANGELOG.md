@@ -5,6 +5,14 @@ exists.
 
 ## Unreleased
 
+- Scoped the Runtime-v3 byte limits to the `runtime-v3-gameplay` profile: poc, runtime-v1, and
+  runtime-v2 keep their historical 16 KiB MCP frame, 64 KiB gateway response body, and 16 KiB
+  projected content limits (PR #8 had raised them globally to 256/128/128 KiB, unreleased);
+  `ToolCatalog::max_frame_bytes` reports the profile's frame limit. Documented that `sts2.recover`
+  exposes but does not own the `release_lease`/`stop_episode` lifecycle vocabulary (the gateway
+  decides under its `control` scope) and pinned the single fixed recover route with a regression
+  test. ADR 0012.
+
 - Default the standalone MCP session to `mcp-session-1` for harness/gateway composition; existing
   same-session configurations must set `STS2_MCP_SESSION_ID` explicitly.
 

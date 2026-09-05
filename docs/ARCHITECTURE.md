@@ -149,6 +149,19 @@ without requiring their settlement generation to exceed a caller's subsequently 
 The host remains responsible for independent action-completion evidence; envelope validation alone
 cannot establish that an effect occurred.
 
+`sts2.recover` carries the recovery vocabulary (`reobserve`, `reconcile`, `release_lease`,
+`stop_episode`) to one fixed route, `POST /v3/instances/{id}/recover`. The adapter exposes and
+shape-checks the vocabulary but does not own lifecycle: lease release belongs to the gateway and
+episode stop to the harness. The gateway authorizes recovery with the `control` scope and decides
+whether it happens; the adapter constructs no lifecycle route of its own, holds no lease or episode
+state, and reports a scope denial as a typed error rather than an uncertain operation.
+
+Byte limits are profile-scoped. The poc, runtime-v1, and runtime-v2 profiles keep their historical
+16 KiB MCP frame, 64 KiB gateway response body, and 16 KiB projected content limits; only the
+Runtime-v3 profile accepts 256 KiB frames, 128 KiB bodies, and 128 KiB projected content. The catalog
+owns the frame limit (`ToolCatalog::max_frame_bytes`) and the executable selects the body limit
+together with the catalog, so the Runtime-v3 addition changes no bound a legacy consumer sees.
+
 Co-op remains a separate unadmitted proposal, preserved on the review/mcp-coop-proposal-source-20260905
 source branch. This profile exports no co-op catalog, mapping, or schema. Admission requires at least
 two named actual serialized-contract consumers; a library prototype alone does not meet that gate.

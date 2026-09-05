@@ -3,7 +3,10 @@
 use crate::json;
 use crate::protocol::{RpcRequest, RpcResponse};
 
+/// Absolute MCP frame ceiling; only the Runtime-v3 semantic profile accepts frames this large.
 pub const MAX_FRAME_BYTES: usize = 256 * 1024;
+/// Historical frame limit kept by the poc, runtime-v1, and runtime-v2 profiles.
+pub(crate) const LEGACY_MAX_FRAME_BYTES: usize = 16 * 1024;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum FrameError {
@@ -16,8 +19,11 @@ pub enum FrameError {
 pub struct FrameCodec;
 
 impl FrameCodec {
-    pub(crate) fn decode(frame: &str) -> Result<Option<RpcRequest>, FrameError> {
-        if frame.len() > MAX_FRAME_BYTES {
+    pub(crate) fn decode(
+        frame: &str,
+        max_frame_bytes: usize,
+    ) -> Result<Option<RpcRequest>, FrameError> {
+        if frame.len() > max_frame_bytes.min(MAX_FRAME_BYTES) {
             return Err(FrameError::TooLarge);
         }
         if frame.contains(['\n', '\r']) {

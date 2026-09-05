@@ -88,14 +88,38 @@ The executable gateway address must be a numeric loopback socket address with a 
 Connect, request writes, and response reads share a five-second total exchange deadline, with connect
 additionally limited to two seconds. Responses require HTTP/1.1, a final 200–599 status, one decimal
 Content-Length, and `application/json` (optionally UTF-8 charset); duplicate headers, transfer/content
-encodings, and headers exceeding 8 KiB including the terminator fail closed. Bodies remain capped at
-128 KiB in this semantic profile branch. These are source and loopback-test guarantees, not downstream readiness evidence.
+encodings, and headers exceeding 8 KiB including the terminator fail closed. Response bodies are
+capped per profile (see the profile-scoped bounds table). These are source and loopback-test
+guarantees, not downstream readiness evidence.
 
 The Runtime-v2 mapping carries the caller's instance/session/lease/epoch as explicit authority
 headers even for bodyless reconciliation. Before connecting, the executable rejects mismatches with
 its configured gateway authority instead of silently replacing them. Runtime-v1 keeps its documented
 configured-identity injection, but Runtime-v1 and Runtime-v2 response envelopes must match the actual
 configured identity, request correlation, and route-specific result kind before projection.
+
+## Profile-scoped bounds
+
+Byte limits are properties of the selected profile, not of the process. PR #8 had raised the MCP
+frame, gateway response body, and projected tool content limits globally to serve Runtime-v3
+payloads; the poc, runtime-v1, and runtime-v2 profiles keep their historical limits again, and only
+`runtime-v3-gameplay-mcp` accepts the larger ones. The catalog reports its frame limit through
+`ToolCatalog::max_frame_bytes`, and the executable selects the gateway body limit together with the
+catalog, so the Runtime-v3 addition changes no bound that a legacy consumer sees.
+[ADR 0012](decisions/0012-profile-scoped-bounds-and-recovery-vocabulary.md) records the decision.
+
+| Bound | poc-v1, runtime-v1, runtime-v2 | runtime-v3-gameplay | Evidence |
+| --- | --- | --- | --- |
+| MCP frame (stdin line and library decode) | 16 KiB | 256 KiB | `tests/profile_frame_bounds.rs`: every profile accepts a frame at its limit and rejects one byte more with `-32700` before any gateway access (`confirmed`) |
+| Gateway response body (executable HTTP) | 64 KiB | 128 KiB | `http_tests.rs::response_body_budget_is_profile_scoped`, `runtime_tests.rs::runtime_profile_bounds_are_scoped_to_the_semantic_profile` (`confirmed`) |
+| Projected tool content | 16 KiB | 128 KiB | `mapping_response.rs` pins the constants and the Runtime-v3 oversized-receipt regression exercises the 128 KiB path (`confirmed` for the values; no synthetic legacy envelope exceeds 16 KiB) |
+| Gateway request body | 16 KiB | 16 KiB | unchanged (`confirmed` by source) |
+| HTTP header block | 8 KiB | 8 KiB | unchanged (`confirmed`, loopback test) |
+
+An oversized stdin frame still terminates the executable with exit code 2 because the rest of that
+line is not drained; the library rejects an oversized frame with parse error `-32700` and continues.
+A runtime-v1 or runtime-v2 consumer that relied on the interim, unreleased global 256 KiB frame or
+128 KiB body limits must select the Runtime-v3 profile or stay within the historical limits.
 
 ## Complete frozen artifact inventories
 
@@ -172,3 +196,15 @@ use `read`. The gateway's single `STS2_GATEWAY_TOKEN` defaults to all three when
 `STS2_GATEWAY_TOKEN_SCOPE` is unset. An explicitly restricted scope set may return HTTP 403; MCP
 preserves that typed scope denial as sanitized tool error `-32007`, without inventing an unknown
 operation outcome. Session and scope tests use gateway doubles, not live authorization evidence.
+
+### Recovery vocabulary ownership
+
+`sts2.recover` accepts exactly four recovery kinds: `reobserve`, `reconcile`, `release_lease`, and
+`stop_episode`. The adapter exposes this vocabulary and checks its shape (`reconcile` requires
+`operation_id`; the other kinds reject it) but owns none of the lifecycle it names: lease release is
+gateway-owned and episode stop is harness-owned. Every kind is forwarded unchanged to the single fixed
+route `POST /v3/instances/{id}/recover`; the adapter constructs no lease, episode, or instance
+lifecycle route, keeps no lifecycle state, and the gateway authorizes the request with the `control`
+scope and decides whether the recovery happens. A scope denial is the typed `-32007` error, not an
+unknown outcome. `tests/runtime_v3_gameplay_regressions/recovery_ownership.rs` pins the route, the
+envelope, and the absence of any other request.

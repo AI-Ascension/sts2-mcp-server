@@ -8,7 +8,7 @@ mod exchange;
 mod http;
 mod profiles;
 use http::ReadError;
-pub(crate) use profiles::catalog_from_environment;
+pub(crate) use profiles::profile_from_environment;
 
 use sts2_mcp_server::{
     GatewayAdapter, GatewayError, GatewayRequest, GatewayResponse, JsonValue,
@@ -78,11 +78,17 @@ impl RuntimeConfig {
 
 pub(crate) struct RuntimeGatewayAdapter {
     config: RuntimeConfig,
+    max_response_bytes: usize,
 }
 
 impl RuntimeGatewayAdapter {
-    pub(crate) const fn new(config: RuntimeConfig) -> Self {
-        Self { config }
+    /// `max_response_bytes` is the selected profile's gateway body limit
+    /// (`RuntimeProfile::max_response_bytes`); legacy profiles keep 64 KiB.
+    pub(crate) const fn new(config: RuntimeConfig, max_response_bytes: usize) -> Self {
+        Self {
+            config,
+            max_response_bytes,
+        }
     }
 
     fn body(&self, request: &GatewayRequest) -> Result<Vec<u8>, GatewayError> {
@@ -142,7 +148,7 @@ impl GatewayAdapter for RuntimeGatewayAdapter {
         let response_kind = binding::response_kind(&self.config, &request);
         let correlation = request.correlation.mcp_request_id.stable_text();
         let body = self.body(&request)?;
-        let response = exchange::exchange(&self.config, request, body)?;
+        let response = exchange::exchange(&self.config, request, body, self.max_response_bytes)?;
         if ((200..300).contains(&response.status) || is_runtime_result(&response.body))
             && let Some(kind) = response_kind
         {
