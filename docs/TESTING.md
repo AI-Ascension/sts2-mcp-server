@@ -17,7 +17,7 @@ Run from this target root:
 
 ```bash
 cargo metadata --locked --offline --no-deps --format-version 1
-for profile in poc-v1 runtime-v1 runtime-v2; do
+for profile in poc-v1 runtime-v1 runtime-v2 runtime-v3-gameplay; do
   (cd "protocol-artifact/$profile" && sha256sum --check SHA256SUMS)
 done
 cargo test --locked --offline --package sts2-mcp-server --test artifact
@@ -112,3 +112,23 @@ out-of-range delays. Gateway support for this guidance is an independent consume
 A pure configuration-selection test covers the standalone `mcp-session-1` default, explicit distinct
 and same-session overrides, empty values, and invalid-Unicode configuration without mutating shared
 process environment. This verifies default selection, not cross-process readiness.
+
+## Runtime-v3 checks
+
+The Runtime-v3 tests assert the exact six advertised tools, fixed semantic paths, bounded action
+shapes, generation/identity fencing, redaction, stale handling, and no-fallback timeout behavior.
+These are source/test checks, not live provider or host evidence.
+
+The review regressions additionally bind a legal-action catalog to its requested generation and
+state, bind settlement witnesses to the returned state and original dispatch generation, and retain
+an operation's existing settlement when waiting after a newer observation. Wait and recovery reads
+do not reinterpret their current observation generation as the original mutation generation.
+
+`runtime_v3_gameplay_artifact.rs` verifies the full copied package checksum inventory and validates
+all four producer goldens. The mapping regression suite schema-validates every advertised tool's
+outbound envelope and local uncertainty response, including all four recovery kinds. The artifact
+is pinned to the producer SHA recorded in COMPATIBILITY.md, not inferred from matching filenames.
+
+Runtime-v3 regression tests construct a schema-valid
+oversized settlement receipt and verify one dispatch produces structured uncertainty retaining the
+operation identity. These checks use gateway doubles and do not establish host settlement.

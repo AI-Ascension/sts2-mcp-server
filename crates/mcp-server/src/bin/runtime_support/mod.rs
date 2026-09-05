@@ -1,15 +1,18 @@
 // SPDX-License-Identifier: MIT
 
-use std::net::{SocketAddr, TcpStream};
-use std::time::{Duration, Instant};
+use std::net::SocketAddr;
 
 mod binding;
+use binding::is_runtime_result;
+mod exchange;
 mod http;
-use http::{ReadError, read_response, write_request};
+mod profiles;
+use http::ReadError;
+pub(crate) use profiles::catalog_from_environment;
 
 use sts2_mcp_server::{
-    GatewayAdapter, GatewayError, GatewayMethod, GatewayRequest, GatewayResponse, JsonValue,
-    RUNTIME_V2_PROTOCOL_VERSION, ToolCatalog, parse_json,
+    GatewayAdapter, GatewayError, GatewayRequest, GatewayResponse, JsonValue,
+    RUNTIME_V2_PROTOCOL_VERSION, RUNTIME_V3_GAMEPLAY_PROTOCOL_VERSION,
 };
 
 const MAX_BODY_BYTES: usize = 16 * 1024;
@@ -93,7 +96,11 @@ impl RuntimeGatewayAdapter {
             object.get("protocol_version"),
             Some(JsonValue::String(value)) if value == RUNTIME_V2_PROTOCOL_VERSION
         );
-        if is_runtime_v2 {
+        let is_runtime_v3 = matches!(
+            object.get("protocol_version"),
+            Some(JsonValue::String(value)) if value == RUNTIME_V3_GAMEPLAY_PROTOCOL_VERSION
+        );
+        if is_runtime_v2 || is_runtime_v3 {
             if object.get("instance_id")
                 != Some(&JsonValue::string(self.config.instance_id.as_str()))
                 || object.get("session_id")
@@ -135,105 +142,14 @@ impl GatewayAdapter for RuntimeGatewayAdapter {
         let response_kind = binding::response_kind(&self.config, &request);
         let correlation = request.correlation.mcp_request_id.stable_text();
         let body = self.body(&request)?;
-        let deadline = Instant::now() + Duration::from_secs(5);
-        let mut stream =
-            TcpStream::connect_timeout(&self.config.gateway_address, Duration::from_secs(2))
-                .map_err(|error| map_io(http::classify_io(error)))?;
-        let method = match request.method {
-            GatewayMethod::Get => "GET",
-            GatewayMethod::Post => "POST",
-        };
-        let mut headers = request.headers;
-        headers.insert(
-            String::from("Authorization"),
-            format!("Bearer {}", self.config.gateway_token),
-        );
-        headers.insert(
-            String::from("Host"),
-            self.config.gateway_address.to_string(),
-        );
-        headers.insert(
-            String::from("x-sts2-instance-id"),
-            self.config.instance_id.clone(),
-        );
-        headers.insert(
-            String::from("x-sts2-caller-id"),
-            self.config.caller_id.clone(),
-        );
-        headers.insert(
-            String::from("x-sts2-session-id"),
-            self.config.session_id.clone(),
-        );
-        headers.insert(
-            String::from("x-sts2-lease-id"),
-            self.config.lease_id.clone(),
-        );
-        headers.insert(
-            String::from("x-sts2-lease-epoch"),
-            self.config.lease_epoch.to_string(),
-        );
-        headers.insert(
-            String::from("x-sts2-correlation-id"),
-            request.correlation.mcp_request_id.stable_text(),
-        );
-        headers.insert(String::from("Content-Length"), body.len().to_string());
-        if !body.is_empty() {
-            headers.insert(
-                String::from("Content-Type"),
-                String::from("application/json"),
-            );
-        }
-        write_request(
-            &mut stream,
-            method,
-            &request.path,
-            &headers,
-            &body,
-            deadline,
-        )
-        .map_err(|error| match error {
-            ReadError::Malformed | ReadError::Oversized => GatewayError::Rejected,
-            error => map_io(error),
-        })?;
-        let response = read_response(&mut stream, deadline).map_err(map_io)?;
-        let body = parse_json(
-            std::str::from_utf8(&response.body).map_err(|_| GatewayError::MalformedResponse)?,
-        )
-        .map_err(|_| GatewayError::MalformedResponse)?;
-        if ((200..300).contains(&response.status) || is_runtime_result(&body))
+        let response = exchange::exchange(&self.config, request, body)?;
+        if ((200..300).contains(&response.status) || is_runtime_result(&response.body))
             && let Some(kind) = response_kind
         {
-            binding::response(&self.config, &body, &correlation, kind)?;
+            binding::response(&self.config, &response.body, &correlation, kind)?;
         }
-        match response.status {
-            401 => Err(GatewayError::Unauthorized),
-            403 => Err(GatewayError::Forbidden),
-            404 => Err(GatewayError::NotFound),
-            408 | 504 => Err(GatewayError::Timeout),
-            502 | 503 => Err(GatewayError::Unavailable),
-            400 | 409 | 413 | 422 if is_runtime_result(&body) => Ok(GatewayResponse {
-                status: response.status,
-                body,
-            }),
-            400 | 409 | 413 | 422 => Err(GatewayError::Rejected),
-            status => Ok(GatewayResponse { status, body }),
-        }
+        exchange::classify(response)
     }
-}
-
-fn is_runtime_result(body: &JsonValue) -> bool {
-    matches!(
-        body,
-        JsonValue::Object(object)
-            if matches!(
-                object.get("kind"),
-                Some(JsonValue::String(kind))
-                    if matches!(
-                        kind.as_str(),
-                        "state_response" | "action_response" | "reconcile_response"
-                    )
-            )
-    )
 }
 
 fn map_io(error: ReadError) -> GatewayError {
@@ -289,27 +205,6 @@ fn safe_header_value(value: &str) -> bool {
         && value.bytes().all(|byte| {
             byte.is_ascii_alphanumeric() || matches!(byte, b'-' | b'_' | b'.' | b':' | b'/')
         })
-}
-
-pub(crate) fn catalog_from_environment() -> Result<ToolCatalog, String> {
-    let profile = match std::env::var("STS2_RUNTIME_PROFILE") {
-        Ok(value) => Some(value),
-        Err(std::env::VarError::NotPresent) => None,
-        Err(std::env::VarError::NotUnicode(_)) => {
-            return Err(String::from("STS2_RUNTIME_PROFILE is not valid UTF-8"));
-        }
-    };
-    catalog_for_profile(profile.as_deref())
-}
-
-pub(crate) fn catalog_for_profile(profile: Option<&str>) -> Result<ToolCatalog, String> {
-    match profile.unwrap_or("runtime-v1") {
-        "runtime-v1" => Ok(ToolCatalog::runtime_v1()),
-        "runtime-v2" => Ok(ToolCatalog::runtime_v2()),
-        value => Err(format!(
-            "STS2_RUNTIME_PROFILE must be runtime-v1 or runtime-v2, got {value}"
-        )),
-    }
 }
 
 #[cfg(test)]

@@ -6,10 +6,18 @@ use crate::json::JsonValue;
 mod runtime;
 #[path = "catalog_runtime_v2.rs"]
 mod runtime_v2;
+#[path = "catalog_runtime_v3_gameplay.rs"]
+mod runtime_v3_gameplay;
 
 pub const GET_STATE_TOOL: &str = "get_state";
 pub const SUBMIT_ACTION_TOOL: &str = "submit_action";
 pub const RECONCILE_ACTION_TOOL: &str = "reconcile_action";
+pub const OBSERVE_TOOL: &str = "sts2.observe";
+pub const LEGAL_ACTIONS_TOOL: &str = "sts2.legal_actions";
+pub const DISPATCH_ACTION_TOOL: &str = "sts2.dispatch_action";
+pub const WAIT_FOR_TRANSITION_TOOL: &str = "sts2.wait_for_transition";
+pub const REOBSERVE_TOOL: &str = "sts2.reobserve";
+pub const RECOVER_TOOL: &str = "sts2.recover";
 pub(crate) const MAX_IDENTIFIER_BYTES: usize = 128;
 const INSTANCE_ID_PATTERN: &str = "^[A-Za-z0-9_-]{1,128}$";
 const SESSION_ID_PATTERN: &str = "^[A-Za-z0-9_.:/-]{1,128}$";
@@ -193,12 +201,21 @@ impl ToolCatalog {
         runtime_v2::build()
     }
 
+    #[must_use]
+    pub fn runtime_v3_gameplay() -> Self {
+        runtime_v3_gameplay::build()
+    }
+
     pub(crate) fn is_runtime_v1(&self) -> bool {
         self.revision == "runtime-v1-mcp"
     }
 
     pub(crate) fn is_runtime_v2(&self) -> bool {
         self.revision == "runtime-v2-mcp"
+    }
+
+    pub(crate) fn is_runtime_v3_gameplay(&self) -> bool {
+        self.revision == "runtime-v3-gameplay-mcp"
     }
 
     pub(crate) fn descriptor(&self, name: &str) -> Option<&ToolDescriptor> {

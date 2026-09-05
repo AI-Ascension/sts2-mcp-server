@@ -89,7 +89,7 @@ Connect, request writes, and response reads share a five-second total exchange d
 additionally limited to two seconds. Responses require HTTP/1.1, a final 200–599 status, one decimal
 Content-Length, and `application/json` (optionally UTF-8 charset); duplicate headers, transfer/content
 encodings, and headers exceeding 8 KiB including the terminator fail closed. Bodies remain capped at
-64 KiB. These are source and loopback-test guarantees, not downstream readiness evidence.
+128 KiB in this semantic profile branch. These are source and loopback-test guarantees, not downstream readiness evidence.
 
 The Runtime-v2 mapping carries the caller's instance/session/lease/epoch as explicit authority
 headers even for bodyless reconciliation. Before connecting, the executable rejects mismatches with
@@ -121,3 +121,54 @@ Runtime-v2 HTTP 429 guidance preserves only bounded `error_code`, `retryable: tr
 `retry_after_ms` between zero and 60,000 milliseconds. Invalid guidance fails closed and private
 fields are omitted. The adapter never automatically redispatches; synthetic tests cover valid and
 out-of-range delays. Gateway support for this guidance is an independent consumer integration gate.
+
+The `runtime-v3-gameplay-mcp` profile is additive and source-derived. Its exact six-tool catalog,
+semantic route mapping, fair-play response projection, and unknown/recovery handling are covered by
+local tests. Live MCP/gateway, provider, and host compatibility remain `unverified`.
+
+### Reviewed proposed artifact migration
+
+This branch consumes protocol PR #8 producer `82507361890c1bdce6cffeaf7e616d93e53a7d99`:
+Runtime-v3 gameplay schema digest
+`b37c80f583aeaf4f81ede2083bcfb4129196baf5eb092470e8738173c4b7226c` replaces the earlier
+unpublished proposal `fbfb18279b0c7ebb350ef0ce0d56547fa11e83985b13380cb2b0f1dba4cb56e9`.
+Mixed proposal versions fail closed; producer and consumers must update together. The copied schema,
+manifest, conformance inventory and four producer goldens are checksum-verified in tests. Tests send
+all six tool request envelopes through the producer schema and compare a canonical dispatch request
+and settled receipt at both adapter boundaries. These are synthetic contract checks, not host evidence.
+
+Co-op is preserved in a separate unadmitted proposal with no exports, schema, or catalog in this
+profile. Its shared-contract admission lacks two named actual serialized-schema consumers. The source
+lineage is retained on review/mcp-coop-proposal-source-20260905; multiplayer support is unverified.
+
+Protocol #7 and MCP #7 use a different, older gameplay contract with the same proposed profile name.
+They are alternative proposals, not prerequisites inherited by this branch. A maintainer must select
+or reconcile them; merging both independently does not establish compatible gameplay.
+
+Configured instance/session/lease/correlation identifiers retain the adapter's 128-byte HTTP bound.
+Runtime-v3 body-only state, operation and action identifiers follow the canonical 512-byte bound.
+
+`STS2_MCP_SESSION_ID` configures the caller's MCP correlation namespace separately from
+`STS2_SESSION_ID`, the authenticated gateway session. Its default is `mcp-session-1`; an explicit
+override preserves custom or same-session setups. Runtime-v2/v3 validate the tool's supplied MCP
+session before mapping and place the configured gateway session in envelopes.
+This shared binding correction is inherited from the earlier adapter proposal without importing its
+incompatible gameplay contract.
+
+An HTTP 408/502/503/504 carrying a Runtime-v3 receipt is passed to the strict semantic projection,
+which preserves its known status and error origin. Only missing, malformed or uncorrelated receipts
+become synthesized transport/invalid-response uncertainty. A received host `settlement_unproven`
+receipt is not relabelled as a disconnect. Legacy profile HTTP error normalization remains unchanged.
+
+The Runtime-v2 mapping carries the caller's instance/session/lease/epoch as explicit authority
+headers even for bodyless reconciliation. Before connecting, the executable rejects mismatches with
+its configured gateway authority instead of silently replacing them. Runtime-v1 keeps its documented
+configured-identity injection, but Runtime-v1 and Runtime-v2 response envelopes must match the actual
+configured identity, request correlation, and route-specific result kind before projection.
+
+The six-tool Runtime-v3 path requires the gateway credential to have `read`, `mutate`, and `control`
+scopes: `sts2.dispatch_action` uses `mutate`, `sts2.recover` uses `control`, and the other four tools
+use `read`. The gateway's single `STS2_GATEWAY_TOKEN` defaults to all three when
+`STS2_GATEWAY_TOKEN_SCOPE` is unset. An explicitly restricted scope set may return HTTP 403; MCP
+preserves that typed scope denial as sanitized tool error `-32007`, without inventing an unknown
+operation outcome. Session and scope tests use gateway doubles, not live authorization evidence.

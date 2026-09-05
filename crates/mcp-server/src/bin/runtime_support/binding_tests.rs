@@ -55,6 +55,38 @@ fn executable_rejects_foreign_v1_response_before_returning_success() {
     }
 }
 
+#[test]
+fn semantic_http_uncertainty_retains_the_received_error_origin() {
+    use std::io::{Read, Write};
+    use std::net::TcpListener;
+    use std::thread;
+    use std::time::Duration;
+    for status in [408, 502, 503, 504] {
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let mut config = config();
+        config.gateway_address = listener.local_addr().unwrap();
+        let worker = thread::spawn(move || {
+            let (mut socket, _) = listener.accept().unwrap();
+            socket
+                .set_read_timeout(Some(Duration::from_secs(1)))
+                .unwrap();
+            let mut bytes = [0; 8192];
+            assert!(socket.read(&mut bytes).unwrap() > 0);
+            let body = r#"{"protocol_version":"runtime-v3-gameplay","kind":"dispatch_action_response","status":"unknown","error_code":"sts2.game-mod/settlement_unproven"}"#;
+            socket.write_all(format!("HTTP/1.1 {status} Unknown\r\nContent-Type: application/json\r\nContent-Length: {}\r\n\r\n{body}", body.len()).as_bytes()).unwrap();
+        });
+        let mut request = request();
+        request.path = String::from("/v3/instances/instance/action");
+        request.method = GatewayMethod::Post;
+        let mut adapter = super::super::RuntimeGatewayAdapter::new(config);
+        let result = adapter.forward(request).unwrap();
+        assert_eq!(result.status, status);
+        assert!(result.body.to_json().contains("settlement_unproven"));
+        // Full-envelope validation belongs to semantic projection; this checks only HTTP classification.
+        worker.join().unwrap();
+    }
+}
+
 fn request() -> GatewayRequest {
     GatewayRequest {
         method: GatewayMethod::Get,

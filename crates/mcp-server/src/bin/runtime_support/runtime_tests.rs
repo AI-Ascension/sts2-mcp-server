@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: MIT
 
+use super::profiles::catalog_for_profile;
 use super::*;
 use std::collections::BTreeMap;
-use sts2_mcp_server::Correlation;
+use sts2_mcp_server::{Correlation, GatewayMethod};
 
 fn config() -> RuntimeConfig {
     RuntimeConfig {
@@ -68,11 +69,24 @@ fn runtime_profile_defaults_to_v1_and_selects_v2_explicitly() {
         Ok(String::from("runtime-v2-mcp"))
     );
     assert!(catalog_for_profile(Some("runtime-v3")).is_err());
+    assert_eq!(
+        catalog_for_profile(Some("runtime-v3-gameplay")).map(|catalog| catalog.revision),
+        Ok(String::from("runtime-v3-gameplay-mcp"))
+    );
 }
 
 #[test]
 fn runtime_result_recognition_includes_reconcile_response() {
-    for kind in ["state_response", "action_response", "reconcile_response"] {
+    for kind in [
+        "state_response",
+        "action_response",
+        "reconcile_response",
+        "dispatch_action_response",
+        "wait_response",
+        "recover_response",
+        "legal_actions_response",
+        "reobserve_response",
+    ] {
         assert!(is_runtime_result(&JsonValue::object([(
             String::from("kind"),
             JsonValue::string(kind),
@@ -85,28 +99,33 @@ fn runtime_result_recognition_includes_reconcile_response() {
 }
 
 #[test]
-fn runtime_v2_body_rejects_wrong_supplied_identity_before_forwarding() {
+fn runtime_v2_and_v3_body_reject_wrong_supplied_identity_before_forwarding() {
     let adapter = RuntimeGatewayAdapter::new(config());
-    let body = JsonValue::object([
-        (
-            String::from("protocol_version"),
-            JsonValue::string(RUNTIME_V2_PROTOCOL_VERSION),
-        ),
-        (
-            String::from("instance_id"),
-            JsonValue::string("wrong-instance"),
-        ),
-        (
-            String::from("session_id"),
-            JsonValue::string("configured-session"),
-        ),
-        (
-            String::from("lease_id"),
-            JsonValue::string("configured-lease"),
-        ),
-        (String::from("lease_epoch"), JsonValue::Number(7)),
-    ]);
-    assert_eq!(adapter.body(&request(body)), Err(GatewayError::Rejected));
+    for protocol in [
+        RUNTIME_V2_PROTOCOL_VERSION,
+        RUNTIME_V3_GAMEPLAY_PROTOCOL_VERSION,
+    ] {
+        let body = JsonValue::object([
+            (
+                String::from("protocol_version"),
+                JsonValue::string(protocol),
+            ),
+            (
+                String::from("instance_id"),
+                JsonValue::string("wrong-instance"),
+            ),
+            (
+                String::from("session_id"),
+                JsonValue::string("configured-session"),
+            ),
+            (
+                String::from("lease_id"),
+                JsonValue::string("configured-lease"),
+            ),
+            (String::from("lease_epoch"), JsonValue::Number(7)),
+        ]);
+        assert_eq!(adapter.body(&request(body)), Err(GatewayError::Rejected));
+    }
 }
 
 #[test]

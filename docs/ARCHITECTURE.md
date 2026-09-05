@@ -133,3 +133,22 @@ The standalone process defaults its MCP session to `mcp-session-1`, independentl
 session default `session-1`. Explicit `STS2_MCP_SESSION_ID` values remain authoritative; same-session
 setups must configure both variables. [ADR 0011](decisions/0011-composition-mcp-session-default.md)
 records the configuration compatibility change.
+
+## Runtime-v3 semantic mapping
+
+ADR 0009 adds a separate Runtime-v3 profile with exactly six tools: observe, legal actions,
+dispatch, wait, reobserve, and recover. The adapter carries bounded identity/generation context,
+maps each call to one fixed gateway route, retains typed status and transition witnesses, and turns
+timeout or disconnect uncertainty into a recovery-required unknown result. It exposes no raw host
+object, arbitrary route, shell, coordinate, or process tool.
+
+Legal-action responses must match the state and generation used to request the catalog. Observation
+and reobservation reads may discover newer host generations. A settled dispatch witness must start
+at the dispatch generation and name the returned state; wait/recovery retain operation-bound receipts
+without requiring their settlement generation to exceed a caller's subsequently refreshed generation.
+The host remains responsible for independent action-completion evidence; envelope validation alone
+cannot establish that an effect occurred.
+
+Co-op remains a separate unadmitted proposal, preserved on the review/mcp-coop-proposal-source-20260905
+source branch. This profile exports no co-op catalog, mapping, or schema. Admission requires at least
+two named actual serialized-contract consumers; a library prototype alone does not meet that gate.

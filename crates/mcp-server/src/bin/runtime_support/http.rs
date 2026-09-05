@@ -6,7 +6,7 @@ use std::net::TcpStream;
 use std::time::{Duration, Instant};
 
 const MAX_HEADER_BYTES: usize = 8 * 1024;
-const MAX_RESPONSE_BYTES: usize = 64 * 1024;
+const MAX_RESPONSE_BYTES: usize = 128 * 1024;
 
 pub(super) struct HttpResponse {
     pub(super) status: u16,

@@ -24,6 +24,14 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Verify exact Runtime-v3 semantic surface
+        run: |
+          git diff --check
+          for tool in sts2.observe sts2.legal_actions sts2.dispatch_action sts2.wait_for_transition sts2.reobserve sts2.recover; do
+            grep -Fq "$tool" crates/mcp-server/src/catalog_runtime_v3_gameplay.rs
+          done
+          if grep -En 'shell|raw_memory|host_object|process_command' crates/mcp-server/src/catalog_runtime_v3_gameplay.rs; then exit 1; fi
+
       - name: Install pinned Rust toolchain
         run: rustup toolchain install 1.97.1 --profile minimal --component clippy --component rustfmt --no-self-update
 
@@ -41,9 +49,9 @@ jobs:
           done
           sha256sum --check SHA256SUMS
 
-      - name: Verify frozen runtime artifact inventories
+      - name: Verify copied runtime artifact inventories
         run: |
-          for profile in runtime-v1 runtime-v2; do
+          for profile in runtime-v1 runtime-v2 runtime-v3-gameplay; do
             (cd "protocol-artifact/$profile" && sha256sum --check SHA256SUMS)
           done
 

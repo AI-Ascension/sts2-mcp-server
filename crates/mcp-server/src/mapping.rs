@@ -20,11 +20,16 @@ mod response;
 mod runtime;
 #[path = "mapping_runtime_v2.rs"]
 mod runtime_v2;
+#[path = "mapping_runtime_v3_gameplay.rs"]
+mod runtime_v3_gameplay;
 
 pub(crate) fn tools_call<G: GatewayAdapter>(
     server: &mut McpServer<G>,
     request: RpcRequest,
 ) -> RpcResponse {
+    if server.catalog.is_runtime_v3_gameplay() {
+        return runtime_v3_gameplay::tools_call(server, request);
+    }
     if server.catalog.is_runtime_v2() {
         return runtime_v2::tools_call(server, request);
     }

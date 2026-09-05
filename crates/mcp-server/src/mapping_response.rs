@@ -3,12 +3,13 @@
 use crate::gateway::GatewayResponse;
 use crate::json::JsonValue;
 use crate::projection::{
-    RuntimeV2Context, project_gateway_body, project_runtime_gateway_body,
-    project_runtime_v2_gateway_body, projection_is_error, runtime_v2_result_is_error,
+    RuntimeV2Context, RuntimeV3GameplayProjectionContext, project_gateway_body,
+    project_runtime_gateway_body, project_runtime_v2_gateway_body, project_runtime_v3_gateway_body,
+    projection_is_error, runtime_v2_result_is_error, runtime_v3_result_is_error,
 };
 use crate::protocol::{RequestId, RpcResponse};
 
-const MAX_RESPONSE_BYTES: usize = 16 * 1024;
+pub(super) const MAX_RESPONSE_BYTES: usize = 128 * 1024;
 
 pub(super) fn gateway_success(
     id: RequestId,
@@ -98,4 +99,29 @@ fn gateway_overload(id: RequestId, response: GatewayResponse) -> RpcResponse {
     ])
     .to_json();
     super::tool_result(id, body, true)
+}
+
+pub(super) fn gateway_success_v3(
+    id: RequestId,
+    response: GatewayResponse,
+    context: &RuntimeV3GameplayProjectionContext,
+    expected_kind: &str,
+) -> RpcResponse {
+    let projection = project_runtime_v3_gateway_body(&response.body, context, expected_kind);
+    let Ok(projection) = projection else {
+        return super::tool_result(
+            id,
+            "gateway response is not a valid Runtime-v3 gameplay envelope",
+            true,
+        );
+    };
+    let body = projection.to_json();
+    if body.len() > MAX_RESPONSE_BYTES {
+        return super::tool_result(id, "gateway returned an oversized response", true);
+    }
+    super::tool_result(
+        id,
+        body,
+        !(200..300).contains(&response.status) || runtime_v3_result_is_error(&projection),
+    )
 }
