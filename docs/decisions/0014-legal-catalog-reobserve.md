@@ -1,6 +1,14 @@
 # Legal catalog reobserve mapping
 
-Status: source implementation; coordinated harness validation pending.
+Status: implemented; coordinated harness component checks and native read-only mapping verified.
+
+The HTTP adapter must preserve this refusal before generic status classification. Both layers
+share one body validator, and the adapter independently requires the exact v3 legal-action GET
+route. Socket tests exercise the real HTTP adapter through MCP mapping, including wrong route,
+correlation, extra fields and unrelated error rejection.
+
+The [native read-only check](../evidence/legal-catalog-reobserve-20260906.md) verified the compact
+refusal, reobservation and matching fresh catalog through real gateway and MCP processes.
 
 The host can advance between observation and the separate legal-action request. Its
 HTTP refusal has exactly `correlation_id`, `error_code`, and `recovery`. The gateway

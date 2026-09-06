@@ -111,7 +111,7 @@ pub(super) fn gateway_success_v3(
     expected_kind: &str,
 ) -> RpcResponse {
     if expected_kind == "legal_actions_response"
-        && let Some(body) = catalog_reobserve(&response, &context.correlation_id)
+        && let Some(body) = crate::catalog_reobserve_body(&response, &context.correlation_id)
     {
         return super::tool_result(id, body, true);
     }
@@ -132,23 +132,6 @@ pub(super) fn gateway_success_v3(
         body,
         !(200..300).contains(&response.status) || runtime_v3_result_is_error(&projection),
     )
-}
-
-fn catalog_reobserve(response: &GatewayResponse, correlation_id: &str) -> Option<String> {
-    let object = response.body.as_object()?;
-    if object.len() != 3
-        || object.get("correlation_id")?.as_string()? != correlation_id
-        || object.get("recovery")?.as_string()? != "reobserve"
-        || !matches!(
-            (response.status, object.get("error_code")?.as_string()?),
-            (409, "stale_generation")
-                | (503, "host_not_configured" | "host_observation_unavailable")
-        )
-    {
-        return None;
-    }
-    let body = response.body.to_json();
-    (body.len() <= 1024).then_some(body)
 }
 
 #[cfg(test)]
