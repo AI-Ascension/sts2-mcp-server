@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 
 mod catalog;
+mod catalog_reobserve;
 mod gateway;
 mod json;
 mod mapping;
@@ -18,6 +19,7 @@ pub use catalog::{
     RECONCILE_ACTION_TOOL, RECOVER_TOOL, REOBSERVE_TOOL, SUBMIT_ACTION_TOOL, ToolCatalog,
     ToolDescriptor, WAIT_FOR_TRANSITION_TOOL,
 };
+pub use catalog_reobserve::catalog_reobserve_body;
 pub use gateway::{
     Correlation, GatewayAdapter, GatewayError, GatewayMethod, GatewayRequest, GatewayResponse,
 };

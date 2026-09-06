@@ -13,6 +13,9 @@ struct RecordingGateway {
     responses: VecDeque<Result<GatewayResponse, GatewayError>>,
 }
 
+#[path = "runtime_v3_gameplay_mapping/catalog_reobserve.rs"]
+mod catalog_reobserve;
+
 impl RecordingGateway {
     fn new(responses: impl IntoIterator<Item = Result<GatewayResponse, GatewayError>>) -> Self {
         Self {
@@ -59,41 +62,8 @@ fn root(
     error_code: JsonValue,
     wait_outcome: JsonValue,
 ) -> JsonValue {
-    JsonValue::object([
-        (
-            String::from("protocol_version"),
-            JsonValue::string("runtime-v3-gameplay"),
-        ),
-        (
-            String::from("schema_digest"),
-            JsonValue::string("b37c80f583aeaf4f81ede2083bcfb4129196baf5eb092470e8738173c4b7226c"),
-        ),
-        (
-            String::from("provenance"),
-            JsonValue::object([
-                (
-                    String::from("artifact"),
-                    JsonValue::string("sts2-protocol/runtime-v3-gameplay"),
-                ),
-                (
-                    String::from("source"),
-                    JsonValue::string("schemas/runtime-v3-gameplay.schema.json"),
-                ),
-                (
-                    String::from("generator"),
-                    JsonValue::string("hand-authored"),
-                ),
-            ]),
-        ),
-        (
-            String::from("correlation_id"),
-            JsonValue::string("request-1"),
-        ),
-        (String::from("instance_id"), JsonValue::string("instance-1")),
-        (String::from("session_id"), JsonValue::string("session-1")),
-        (String::from("lease_id"), JsonValue::string("lease-1")),
-        (String::from("lease_epoch"), JsonValue::Number(1)),
-        (String::from("generation"), JsonValue::Number(generation)),
+    let mut fields = fixture_identity(generation);
+    fields.extend([
         (String::from("kind"), JsonValue::string(kind)),
         (String::from("state_id"), state_id),
         (String::from("operation_id"), operation_id),
@@ -106,7 +76,8 @@ fn root(
         (String::from("wait_for_millis"), JsonValue::Null),
         (String::from("wait_outcome"), wait_outcome),
         (String::from("recovery"), JsonValue::Null),
-    ])
+    ]);
+    JsonValue::object(fields)
 }
 
 fn observation(generation: i64) -> JsonValue {
@@ -259,6 +230,38 @@ fn dispatch_maps_one_typed_action_and_preserves_stale_rejection() {
 }
 
 #[test]
+fn continuation_actions_forward_once_and_reject_extra_arguments() {
+    for kind in ["proceed", "confirm_selection", "cancel_selection"] {
+        let mut server = McpServer::with_catalog(
+            RecordingGateway::new([Err(GatewayError::Timeout)]),
+            ToolCatalog::runtime_v3_gameplay(),
+        );
+        let extra = format!(
+            ",\"state_id\":\"combat-1\",\"operation_id\":\"operation-1\",\
+             \"action\":{{\"action_id\":\"continuation\",\"action\":{{\"kind\":\"{kind}\"}}}}"
+        );
+        server.handle_frame(&call(DISPATCH_ACTION_TOOL, &context_arguments(&extra)));
+        assert_eq!(server.gateway().requests.len(), 1, "{kind}");
+        let request = &server.gateway().requests[0];
+        assert_eq!(request.path, "/v3/instances/instance-1/action");
+        assert!(
+            request
+                .body
+                .as_ref()
+                .is_some_and(|body| { body.to_json().contains(&format!("\"kind\":\"{kind}\"")) })
+        );
+        let invalid = extra.replace(
+            &format!("\"kind\":\"{kind}\""),
+            &format!("\"kind\":\"{kind}\",\"choice_id\":\"injected\""),
+        );
+        let response =
+            server.handle_frame(&call(DISPATCH_ACTION_TOOL, &context_arguments(&invalid)));
+        assert!(response.contains("\"code\":-32602"), "{kind}");
+        assert_eq!(server.gateway().requests.len(), 1, "{kind}");
+    }
+}
+
+#[test]
 fn action_shape_and_unknown_response_fields_fail_closed_before_or_at_projection() {
     let mut server = McpServer::with_catalog(
         RecordingGateway::new([]),
@@ -345,3 +348,42 @@ fn result_operation_identity_must_match_the_requested_operation() {
 
 #[path = "runtime_v3_gameplay_regressions/mod.rs"]
 mod regressions;
+
+fn fixture_identity(generation: i64) -> Vec<(String, JsonValue)> {
+    vec![
+        (
+            String::from("protocol_version"),
+            JsonValue::string("runtime-v3-gameplay"),
+        ),
+        (
+            String::from("schema_digest"),
+            JsonValue::string("8e99cea36b7ede97532348fd8efe302ca79260895265a7bf14ddf7e006d8ff63"),
+        ),
+        (
+            String::from("provenance"),
+            JsonValue::object([
+                (
+                    String::from("artifact"),
+                    JsonValue::string("sts2-protocol/runtime-v3-gameplay"),
+                ),
+                (
+                    String::from("source"),
+                    JsonValue::string("schemas/runtime-v3-gameplay.schema.json"),
+                ),
+                (
+                    String::from("generator"),
+                    JsonValue::string("hand-authored"),
+                ),
+            ]),
+        ),
+        (
+            String::from("correlation_id"),
+            JsonValue::string("request-1"),
+        ),
+        (String::from("instance_id"), JsonValue::string("instance-1")),
+        (String::from("session_id"), JsonValue::string("session-1")),
+        (String::from("lease_id"), JsonValue::string("lease-1")),
+        (String::from("lease_epoch"), JsonValue::Number(1)),
+        (String::from("generation"), JsonValue::Number(generation)),
+    ]
+}

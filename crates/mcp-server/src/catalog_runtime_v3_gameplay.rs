@@ -79,30 +79,6 @@ fn context_schema(required_extra: &[&str], optional_extra: &[&str]) -> JsonValue
         (String::from("lease_epoch"), bounded_counter(MAX_GENERATION)),
         (String::from("generation"), bounded_counter(MAX_GENERATION)),
     ];
-    let schema_for = |key: &str| -> JsonValue {
-        match key {
-            "state_id" | "operation_id" => payload_identity(),
-            "action" => legal_action_schema(),
-            "wait_for_millis" => JsonValue::object([
-                (String::from("type"), JsonValue::string("integer")),
-                (String::from("minimum"), JsonValue::Number(1)),
-                (String::from("maximum"), JsonValue::Number(MAX_WAIT_MILLIS)),
-            ]),
-            "recovery_kind" => JsonValue::object([
-                (String::from("type"), JsonValue::string("string")),
-                (
-                    String::from("enum"),
-                    JsonValue::Array(
-                        ["reobserve", "reconcile", "release_lease", "stop_episode"]
-                            .into_iter()
-                            .map(JsonValue::string)
-                            .collect(),
-                    ),
-                ),
-            ]),
-            _ => JsonValue::Null,
-        }
-    };
     for key in required_extra {
         properties.push((String::from(*key), schema_for(key)));
     }
@@ -185,6 +161,9 @@ fn action_payload_schema() -> JsonValue {
         simple_action_schema("rest"),
         simple_action_schema("confirm_victory"),
         simple_action_schema("save_quit"),
+        simple_action_schema("proceed"),
+        simple_action_schema("confirm_selection"),
+        simple_action_schema("cancel_selection"),
     ];
     for (kind, field) in [
         ("start_run", "character_id"),
@@ -271,4 +250,29 @@ fn one_argument_action_schema(kind: &str, field: &str) -> JsonValue {
             ]),
         ),
     ])
+}
+
+fn schema_for(key: &str) -> JsonValue {
+    match key {
+        "state_id" | "operation_id" => payload_identity(),
+        "action" => legal_action_schema(),
+        "wait_for_millis" => JsonValue::object([
+            (String::from("type"), JsonValue::string("integer")),
+            (String::from("minimum"), JsonValue::Number(1)),
+            (String::from("maximum"), JsonValue::Number(MAX_WAIT_MILLIS)),
+        ]),
+        "recovery_kind" => JsonValue::object([
+            (String::from("type"), JsonValue::string("string")),
+            (
+                String::from("enum"),
+                JsonValue::Array(
+                    ["reobserve", "reconcile", "release_lease", "stop_episode"]
+                        .into_iter()
+                        .map(JsonValue::string)
+                        .collect(),
+                ),
+            ),
+        ]),
+        _ => JsonValue::Null,
+    }
 }

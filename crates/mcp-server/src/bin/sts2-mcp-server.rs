@@ -2,7 +2,7 @@
 
 use std::io::{self, BufRead, Write};
 
-use sts2_mcp_server::{MAX_FRAME_BYTES, McpServer};
+use sts2_mcp_server::McpServer;
 
 #[path = "runtime_support/mod.rs"]
 mod runtime_http;
@@ -16,18 +16,23 @@ fn main() {
 
 fn run() -> Result<(), String> {
     let config = runtime_http::RuntimeConfig::from_environment()?;
-    let catalog = runtime_http::catalog_from_environment()?;
+    let profile = runtime_http::profile_from_environment()?;
     let gateway_session_id = config.session_id.clone();
     let mcp_session_id = config.mcp_session_id.clone();
-    let adapter = runtime_http::RuntimeGatewayAdapter::new(config);
-    let mut server =
-        McpServer::with_catalog_and_sessions(adapter, catalog, gateway_session_id, mcp_session_id);
+    let adapter = runtime_http::RuntimeGatewayAdapter::new(config, profile.max_response_bytes);
+    let mut server = McpServer::with_catalog_and_sessions(
+        adapter,
+        profile.catalog,
+        gateway_session_id,
+        mcp_session_id,
+    );
+    let max_frame_bytes = server.catalog().max_frame_bytes();
     let stdin = io::stdin();
     let mut input = stdin.lock();
     let stdout = io::stdout();
     let mut output = stdout.lock();
     loop {
-        let Some(frame) = read_frame(&mut input)? else {
+        let Some(frame) = read_frame(&mut input, max_frame_bytes)? else {
             return Ok(());
         };
         let Some(response) = server.handle_message(&frame) else {
@@ -41,9 +46,9 @@ fn run() -> Result<(), String> {
     }
 }
 
-fn read_frame(input: &mut impl BufRead) -> Result<Option<String>, String> {
-    let mut bytes = Vec::with_capacity(MAX_FRAME_BYTES);
-    for _ in 0..=MAX_FRAME_BYTES {
+fn read_frame(input: &mut impl BufRead, max_frame_bytes: usize) -> Result<Option<String>, String> {
+    let mut bytes = Vec::with_capacity(max_frame_bytes);
+    for _ in 0..=max_frame_bytes {
         let mut byte = [0_u8; 1];
         let read = input
             .read(&mut byte)
@@ -59,7 +64,7 @@ fn read_frame(input: &mut impl BufRead) -> Result<Option<String>, String> {
         }
         bytes.push(byte[0]);
     }
-    if bytes.len() > MAX_FRAME_BYTES {
+    if bytes.len() > max_frame_bytes {
         return Err(String::from("MCP frame exceeds the byte limit"));
     }
     let frame = String::from_utf8(bytes).map_err(|_| String::from("MCP frame is not UTF-8"))?;

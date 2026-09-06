@@ -13,26 +13,8 @@ pub(super) fn validate_state(value: Option<&JsonValue>) -> Result<(), &'static s
     };
     match state {
         "setup" => id_list_shape(object, &["state", "characters"]),
-        "map" => {
-            if object.len() != 3
-                || !object.contains_key("node_id")
-                || !object.contains_key("options")
-            {
-                return Err("Runtime-v3 map state contains unknown or missing fields");
-            }
-            optional_identity(object.get("node_id"))?;
-            validate_id_list(object.get("options"))
-        }
-        "combat" => {
-            if object.len() != 3
-                || !object.contains_key("turn_index")
-                || !object.contains_key("enemies")
-            {
-                return Err("Runtime-v3 combat state contains unknown or missing fields");
-            }
-            bounded_number(object.get("turn_index"), 65_535)?;
-            validate_enemies(object.get("enemies"))
-        }
+        "map" => validate_map_state(object),
+        "combat" => validate_combat_state(object),
         "reward" | "rest" => id_list_shape(object, &["state", "options"]),
         "event" | "selection" => id_list_shape(object, &["state", "choices"]),
         "shop" => {
@@ -200,4 +182,20 @@ pub(super) fn validate_shop_items(value: Option<&JsonValue>) -> Result<(), &'sta
         bounded_number(item.get("price"), 4_294_967_295_i64)?;
     }
     Ok(())
+}
+
+fn validate_map_state(object: &BTreeMap<String, JsonValue>) -> Result<(), &'static str> {
+    if object.len() != 3 || !object.contains_key("node_id") || !object.contains_key("options") {
+        return Err("Runtime-v3 map state contains unknown or missing fields");
+    }
+    optional_identity(object.get("node_id"))?;
+    validate_id_list(object.get("options"))
+}
+
+fn validate_combat_state(object: &BTreeMap<String, JsonValue>) -> Result<(), &'static str> {
+    if object.len() != 3 || !object.contains_key("turn_index") || !object.contains_key("enemies") {
+        return Err("Runtime-v3 combat state contains unknown or missing fields");
+    }
+    bounded_number(object.get("turn_index"), 65_535)?;
+    validate_enemies(object.get("enemies"))
 }

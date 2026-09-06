@@ -66,7 +66,7 @@ impl<G: GatewayAdapter> McpServer<G> {
 
     /// Notifications produce no response and never dispatch request-only tools.
     pub fn handle_message(&mut self, frame: &str) -> Option<String> {
-        match FrameCodec::decode(frame) {
+        match FrameCodec::decode(frame, self.catalog.max_frame_bytes()) {
             Ok(Some(request)) => Some(FrameCodec::encode(&self.dispatch(request))),
             Ok(None) => None,
             Err(error) => Some(FrameCodec::encode(&RpcResponse::failure(

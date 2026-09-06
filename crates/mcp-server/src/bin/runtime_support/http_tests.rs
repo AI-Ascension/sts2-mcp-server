@@ -28,16 +28,19 @@ fn strict_json_framing_rejects_ambiguous_or_unsupported_headers() {
             "HTTP/1.1 200 OK\r\nContent-Length: 2\r\nContent-Type: application/json\r\n{extra}"
         );
         assert_eq!(
-            parse_headers(wire.trim_end_matches("\r\n")),
+            parse_headers(wire.trim_end_matches("\r\n"), LEGACY_MAX_RESPONSE_BYTES),
             Err(ReadError::Malformed),
             "{extra:?}"
         );
     }
     for length in ["+2", "-2", "2, 2", "", "2 2"] {
         assert_eq!(
-            parse_headers(&format!(
-                "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {length}"
-            )),
+            parse_headers(
+                &format!(
+                    "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {length}"
+                ),
+                LEGACY_MAX_RESPONSE_BYTES
+            ),
             Err(ReadError::Malformed)
         );
     }
@@ -48,21 +51,28 @@ fn strict_json_framing_rejects_ambiguous_or_unsupported_headers() {
         "application/json; charset=utf-8; charset=utf-8",
     ] {
         assert_eq!(
-            parse_headers(&format!(
-                "HTTP/1.1 200 OK\r\nContent-Type: {content_type}\r\nContent-Length: 2"
-            )),
+            parse_headers(
+                &format!("HTTP/1.1 200 OK\r\nContent-Type: {content_type}\r\nContent-Length: 2"),
+                LEGACY_MAX_RESPONSE_BYTES
+            ),
             Err(ReadError::Malformed)
         );
     }
     assert_eq!(
-        parse_headers("HTTP/1.1 200 OK\r\nContent-Length: 2"),
+        parse_headers(
+            "HTTP/1.1 200 OK\r\nContent-Length: 2",
+            LEGACY_MAX_RESPONSE_BYTES
+        ),
         Err(ReadError::Malformed)
     );
     for status in ["0200", "+200", "100", "600", "200\tOK"] {
         assert!(
-            parse_headers(&format!(
-                "HTTP/1.1 {status} OK\r\nContent-Type: application/json\r\nContent-Length: 2"
-            ))
+            parse_headers(
+                &format!(
+                    "HTTP/1.1 {status} OK\r\nContent-Type: application/json\r\nContent-Length: 2"
+                ),
+                LEGACY_MAX_RESPONSE_BYTES
+            )
             .is_err()
         );
     }
@@ -76,13 +86,20 @@ fn strict_json_framing_rejects_ambiguous_or_unsupported_headers() {
 }
 
 #[test]
-fn semantic_response_budget_is_128_kibibytes() {
+fn response_body_budget_is_profile_scoped() {
     let wire = |size| {
         format!("HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {size}")
     };
-    assert!(parse_headers(&wire(128 * 1024)).is_ok());
+    assert_eq!(LEGACY_MAX_RESPONSE_BYTES, 64 * 1024);
+    assert_eq!(RUNTIME_V3_MAX_RESPONSE_BYTES, 128 * 1024);
+    assert!(parse_headers(&wire(64 * 1024), LEGACY_MAX_RESPONSE_BYTES).is_ok());
     assert_eq!(
-        parse_headers(&wire(128 * 1024 + 1)),
+        parse_headers(&wire(64 * 1024 + 1), LEGACY_MAX_RESPONSE_BYTES),
+        Err(ReadError::Oversized)
+    );
+    assert!(parse_headers(&wire(128 * 1024), RUNTIME_V3_MAX_RESPONSE_BYTES).is_ok());
+    assert_eq!(
+        parse_headers(&wire(128 * 1024 + 1), RUNTIME_V3_MAX_RESPONSE_BYTES),
         Err(ReadError::Oversized)
     );
 }
@@ -95,7 +112,12 @@ fn bounded_response_accepts_json_and_rejects_truncation_and_header_overflow() {
             b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\nContent-Type: application/json\r\n\r\n{}",
         )
         .unwrap();
-    let response = read_response(&mut client, Instant::now() + Duration::from_secs(1)).unwrap();
+    let response = read_response(
+        &mut client,
+        Instant::now() + Duration::from_secs(1),
+        LEGACY_MAX_RESPONSE_BYTES,
+    )
+    .unwrap();
     assert_eq!(response.status, 200);
     assert_eq!(response.body, b"{}");
     for wire in [
@@ -110,7 +132,14 @@ fn bounded_response_accepts_json_and_rejects_truncation_and_header_overflow() {
         let (mut client, mut server) = socket_pair();
         server.write_all(wire.as_bytes()).unwrap();
         drop(server);
-        assert!(read_response(&mut client, Instant::now() + Duration::from_secs(1)).is_err());
+        assert!(
+            read_response(
+                &mut client,
+                Instant::now() + Duration::from_secs(1),
+                LEGACY_MAX_RESPONSE_BYTES
+            )
+            .is_err()
+        );
     }
 }
 
@@ -133,7 +162,12 @@ fn slow_drip_header_and_body_share_one_total_deadline() {
         });
         let start = Instant::now();
         assert_eq!(
-            read_response(&mut client, start + Duration::from_millis(60)).err(),
+            read_response(
+                &mut client,
+                start + Duration::from_millis(60),
+                LEGACY_MAX_RESPONSE_BYTES
+            )
+            .err(),
             Some(ReadError::Timeout)
         );
         assert!(start.elapsed() < Duration::from_millis(250));
