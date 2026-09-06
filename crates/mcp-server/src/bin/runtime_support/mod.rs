@@ -147,8 +147,15 @@ impl GatewayAdapter for RuntimeGatewayAdapter {
         binding::admit(&self.config, &request)?;
         let response_kind = binding::response_kind(&self.config, &request);
         let correlation = request.correlation.mcp_request_id.stable_text();
+        let catalog_read = request.method == sts2_mcp_server::GatewayMethod::Get
+            && request.path == format!("/v3/instances/{}/legal-actions", self.config.instance_id);
         let body = self.body(&request)?;
         let response = exchange::exchange(&self.config, request, body, self.max_response_bytes)?;
+        if catalog_read
+            && sts2_mcp_server::catalog_reobserve_body(&response, &correlation).is_some()
+        {
+            return Ok(response);
+        }
         if ((200..300).contains(&response.status) || is_runtime_result(&response.body))
             && let Some(kind) = response_kind
         {

@@ -5,6 +5,9 @@ use super::*;
 use std::collections::BTreeMap;
 use sts2_mcp_server::{Correlation, GatewayMethod};
 
+#[path = "catalog_http_tests.rs"]
+mod catalog_http;
+
 fn config() -> RuntimeConfig {
     RuntimeConfig {
         gateway_address: SocketAddr::from(([127, 0, 0, 1], 15525)),
