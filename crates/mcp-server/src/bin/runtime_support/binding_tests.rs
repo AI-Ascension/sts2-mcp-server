@@ -220,3 +220,43 @@ fn forbidden_scope_receipt_remains_a_sanitized_authorization_error() {
     assert_eq!(adapter.forward(request()), Err(GatewayError::Forbidden));
     worker.join().unwrap();
 }
+
+#[test]
+fn co_op_bodyless_read_cannot_inject_missing_or_foreign_authority() {
+    let mut request = request();
+    request.path = "/v1/instances/instance/coop/synchronization".to_owned();
+    request.method = GatewayMethod::Get;
+    request.body = None;
+    for (name, value) in [
+        ("x-sts2-instance-id", "instance"),
+        ("x-sts2-session-id", "session"),
+        ("x-sts2-lease-id", "lease"),
+        ("x-sts2-lease-epoch", "1"),
+    ] {
+        request.headers.insert(name.to_owned(), value.to_owned());
+    }
+    assert_eq!(admit(&config(), &request), Ok(()));
+    assert_eq!(
+        response_kind(&config(), &request),
+        Some("synchronization_response")
+    );
+    for name in [
+        "x-sts2-instance-id",
+        "x-sts2-session-id",
+        "x-sts2-lease-id",
+        "x-sts2-lease-epoch",
+    ] {
+        let original = request.headers.remove(name).unwrap();
+        assert_eq!(admit(&config(), &request), Err(GatewayError::Rejected));
+        request
+            .headers
+            .insert(name.to_owned(), "foreign".to_owned());
+        assert_eq!(admit(&config(), &request), Err(GatewayError::Rejected));
+        request.headers.insert(name.to_owned(), original);
+    }
+    request.body = Some(JsonValue::Null);
+    assert_eq!(admit(&config(), &request), Err(GatewayError::Rejected));
+    request.body = None;
+    request.method = GatewayMethod::Post;
+    assert_eq!(admit(&config(), &request), Err(GatewayError::Rejected));
+}

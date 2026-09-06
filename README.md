@@ -99,3 +99,11 @@ The fixed action is the safe host-visible `show_runtime_probe`, with a fresh eff
 stable stale-generation rejection. Runtime artifact metadata is checked before projection. Local
 Rust and mapping tests are confirmed; the authorized host trace confirms the gateway/mod path for
 STS2 v0.107.1 on Windows x86-64. Gameplay mutation and broader compatibility remain `unverified`.
+
+For the gateway's coordinator-reported peer agreement, select
+`STS2_RUNTIME_PROFILE=coop-synchronization-v1`. Its only tool is
+`sts2.coop_synchronization`, with explicit `instance_id`, `mcp_session_id`, `lease_id`, and
+`lease_epoch`. It reads the current generation; no generation guess is required. The gateway
+must have a configured roster and active lease. The MCP credential needs read scope only.
+See [ADR 0015](docs/decisions/0015-executable-coop-synchronization.md) and
+[executable verification](docs/TESTING.md#co-op-synchronization-verification) for exact scope.

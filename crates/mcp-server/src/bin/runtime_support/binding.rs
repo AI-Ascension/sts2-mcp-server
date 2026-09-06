@@ -50,7 +50,7 @@ pub(super) fn admit(config: &RuntimeConfig, request: &GatewayRequest) -> Result<
     }
     // Runtime-v1 retains its documented configured identity injection. Newer profiles
     // must not silently substitute authority, including for bodyless observation calls.
-    if version != "v1" {
+    if version != "v1" || request.path.ends_with("/coop/synchronization") {
         // MCP correlation sessions are a separate namespace; only explicit gateway
         // authority headers/body fields are compared with configured gateway identity.
         for (name, expected) in [
@@ -83,6 +83,11 @@ pub(super) fn response_kind(
         let prefix = format!("/{version}/instances/{}/", config.instance_id);
         if let Some(route) = request.path.strip_prefix(&prefix) {
             return match (request.method, route) {
+                (GatewayMethod::Get, "coop/synchronization")
+                    if version == "v1" && request.body.is_none() =>
+                {
+                    Some("synchronization_response")
+                }
                 (GatewayMethod::Get, "state") => Some("state_response"),
                 (GatewayMethod::Post, "action") => Some("action_response"),
                 (GatewayMethod::Get, route)

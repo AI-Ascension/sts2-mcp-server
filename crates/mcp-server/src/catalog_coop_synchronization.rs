@@ -3,7 +3,7 @@
 use super::{CapabilityCatalog, MAX_IDENTIFIER_BYTES, ToolDescriptor};
 use crate::json::JsonValue;
 
-pub(super) const REVISION: &str = "coop-gameplay-v1-mcp";
+pub(super) const REVISION: &str = "coop-synchronization-v1-mcp";
 pub(super) const SYNC_TOOL: &str = "sts2.coop_synchronization";
 
 pub(super) fn build() -> super::ToolCatalog {
@@ -42,17 +42,6 @@ pub(super) fn build() -> super::ToolCatalog {
                 ),
             ]),
         ),
-        (
-            String::from("generation"),
-            JsonValue::object([
-                (String::from("type"), JsonValue::string("integer")),
-                (String::from("minimum"), JsonValue::Number(0)),
-                (
-                    String::from("maximum"),
-                    JsonValue::Number(9_007_199_254_740_991),
-                ),
-            ]),
-        ),
     ];
     let required = properties
         .iter()
@@ -64,7 +53,7 @@ pub(super) fn build() -> super::ToolCatalog {
         tools: vec![ToolDescriptor {
             name: String::from(SYNC_TOOL),
             description: String::from(
-                "Read bounded co-op synchronization metadata; this tool does not authorize actions.",
+                "Read recent coordinator-reported peer agreement; this does not verify game peers or authorize actions.",
             ),
             input_schema: JsonValue::object([
                 (String::from("type"), JsonValue::string("object")),

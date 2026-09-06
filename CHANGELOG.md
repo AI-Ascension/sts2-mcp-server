@@ -5,8 +5,10 @@ exists.
 
 ## Unreleased
 
-- Restored the co-op library catalog, synchronization mapping and tests on a separate blocked
-  proposal branch. Admission still requires two actual shared-schema consumers; see ADR 0012.
+- Complete the read-only co-op synchronization tool as the explicit executable profile
+  `coop-synchronization-v1`, with strict configured-identity admission, complete response
+  validation, and real gateway/MCP transport verification. The unpublished broader prototype
+  remains in history; no action/vote/effect tools or host mutation authority are added.
 - Consume the coordinated Runtime-v3 continuation schema with argument-free proceed,
   confirm-selection and cancel-selection actions; reject mixed revisions and extra arguments.
 

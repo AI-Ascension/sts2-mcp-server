@@ -139,9 +139,23 @@ Runtime-v3 regression tests construct a schema-valid
 oversized settlement receipt and verify one dispatch produces structured uncertainty retaining the
 operation identity. These checks use gateway doubles and do not establish host settlement.
 
-## Separate co-op proposal tests
+## Co-op synchronization verification
 
-Five library tests validate synthetic synchronization against the copied schema, read-only mapping,
-unknown input, peer-count agreement, and separate bound MCP/gateway sessions with foreign-session
-rejection before forwarding. This is one synchronization-response subset consumer, not evidence of
-two shared-schema consumers, a gateway route, or live multiplayer compatibility.
+`coop_synchronization` consumes all 27 shared vectors and verifies exact metadata, closed
+objects, duplicate/integer handling, read-only mapping, configured sessions, and complete
+response projection. Executable unit tests cover explicit profile selection and refusal of
+missing/foreign bodyless-request authority before TCP. All eight artifact checksum entries
+must pass. Existing profiles retain their own catalogs and bounds.
+
+The separate `coop_gateway_runtime` test launches the actual gateway and MCP executables,
+uses distinct control/read credentials, and verifies convergence, disagreement, disconnect,
+recovery, stale lease refusal, and no downstream game connection. It is explicitly ignored
+in single-repository CI because the gateway binary is external; run it as a coordinated gate:
+
+```sh
+STS2_COOP_GATEWAY_BINARY=/path/to/reviewed/sts2-gateway-runtime \
+  cargo test --locked --offline --package sts2-mcp-server --test coop_gateway_runtime -- --ignored
+```
+
+Use separate Cargo target directories for the two worktrees. This test supplies disposable
+coordinator reports; it proves executable coordination transport, not native multiplayer.

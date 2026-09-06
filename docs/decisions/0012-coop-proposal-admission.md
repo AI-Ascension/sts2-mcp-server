@@ -1,9 +1,13 @@
 # ADR 0012: Separate co-op proposal admission
 
-- Status: Proposed; blocked on shared-contract admission
+- Status: Historical proposal; synchronization scope superseded by ADR 0015
 - Date: 2026-09-05
 
 ## Scope and lineage
+
+The original blocked proposal below remains historical. [ADR 0015](0015-executable-coop-synchronization.md)
+follows its explicit narrowing option using protocol ADR 0013's complete consumed response.
+Unused action/vote/effect types remain unadmitted in the preserved proposal history.
 
 This proposal restores the co-op schema, read-only library catalog, mapping, projection and tests
 removed from the Runtime-v3 merge lane. The source is preserved exactly from commit

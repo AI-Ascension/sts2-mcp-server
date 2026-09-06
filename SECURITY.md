@@ -12,6 +12,11 @@ and ambiguous timeout or cancellation state. Localhost is not an authorization d
 content must not expose tokens, saves, prompts, personal paths, multiplayer identities, or raw untrusted
 payloads without sanitization.
 
+The explicit co-op synchronization profile projects only the closed, validated roster of
+opaque lease-local peer IDs and coordinator-reported status. It preserves the source label
+and configured session/lease identity. The tool cannot submit peer reports, authenticate
+remote peers, or grant game mutation authority; its gateway credential needs read scope only.
+
 ## Reporting
 
 Report a suspected vulnerability privately to the repository maintainers through the approved security

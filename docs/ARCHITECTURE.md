@@ -162,13 +162,11 @@ Runtime-v3 profile accepts 256 KiB frames, 128 KiB bodies, and 128 KiB projected
 owns the frame limit (`ToolCatalog::max_frame_bytes`) and the executable selects the body limit
 together with the catalog, so the Runtime-v3 addition changes no bound a legacy consumer sees.
 
-Co-op remains a separate unadmitted proposal, preserved on the review/mcp-coop-proposal-source-20260905
-source branch. The Runtime-v3 merge lane exports no co-op catalog, mapping, or schema. Admission requires at least
-two named actual serialized-contract consumers; a library prototype alone does not meet that gate.
+## Read-only co-op synchronization
 
-## Separate co-op proposal
-
-This proposal branch restores a read-only library synchronization mapping and bounded peer metadata
-projection. It has no executable profile selector or gateway route implementation. The shared
-contract remains unadmitted pending two named actual serialized-contract consumers;
-[ADR 0012](decisions/0012-coop-proposal-admission.md) records the blocker.
+The explicit `coop-synchronization-v1` profile exposes one fixed GET tool. Gateway serializes
+the complete shared response from its bounded coordinator-report ledger, and MCP validates
+and projects every field. Both are actual consumers of the same copied artifact. The broader
+prototype remains preserved in history under ADR 0012; ADR 0015 implements its admitted
+read-only scope. The response's source label is retained, and no action/vote/effect tool or
+peer-report ingestion capability is exposed. Gateway owns roster, freshness and authority.
