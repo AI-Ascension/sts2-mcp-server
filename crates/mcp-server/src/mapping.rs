@@ -24,6 +24,8 @@ mod runtime;
 mod runtime_v2;
 #[path = "mapping_runtime_v3_gameplay.rs"]
 mod runtime_v3_gameplay;
+#[path = "mapping_runtime_v4_expert.rs"]
+mod runtime_v4_expert;
 
 pub(crate) fn tools_call<G: GatewayAdapter>(
     server: &mut McpServer<G>,
@@ -34,6 +36,9 @@ pub(crate) fn tools_call<G: GatewayAdapter>(
     }
     if server.catalog.is_runtime_v3_gameplay() {
         return runtime_v3_gameplay::tools_call(server, request);
+    }
+    if server.catalog.is_runtime_v4_expert() {
+        return runtime_v4_expert::tools_call(server, request);
     }
     if server.catalog.is_runtime_v2() {
         return runtime_v2::tools_call(server, request);

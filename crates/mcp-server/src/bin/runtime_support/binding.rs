@@ -37,7 +37,7 @@ pub(super) fn admit(config: &RuntimeConfig, request: &GatewayRequest) -> Result<
         .split('/')
         .nth(1)
         .ok_or(GatewayError::Rejected)?;
-    if !matches!(version, "v1" | "v2" | "v3")
+    if !matches!(version, "v1" | "v2" | "v3" | "v4")
         || !request
             .path
             .starts_with(&format!("/{version}/instances/{}/", config.instance_id))
@@ -45,7 +45,14 @@ pub(super) fn admit(config: &RuntimeConfig, request: &GatewayRequest) -> Result<
     {
         return Err(GatewayError::Rejected);
     }
-    if version != "v3" && response_kind(config, request).is_none() {
+    if version != "v3" && version != "v4" && response_kind(config, request).is_none() {
+        return Err(GatewayError::Rejected);
+    }
+    if version == "v4"
+        && (request.method != GatewayMethod::Get
+            || request.path != format!("/v4/instances/{}/expert-state", config.instance_id)
+            || request.body.is_some())
+    {
         return Err(GatewayError::Rejected);
     }
     // Runtime-v1 retains its documented configured identity injection. Newer profiles

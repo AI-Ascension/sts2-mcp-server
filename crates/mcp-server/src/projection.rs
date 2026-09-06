@@ -10,6 +10,8 @@ mod runtime;
 mod runtime_v2;
 #[path = "projection_runtime_v3_gameplay.rs"]
 mod runtime_v3_gameplay;
+#[path = "projection_runtime_v4_expert.rs"]
+mod runtime_v4_expert;
 
 pub(crate) use runtime::project_runtime_gateway_body;
 pub(crate) use runtime_v2::{
@@ -19,6 +21,7 @@ pub(crate) use runtime_v3_gameplay::{
     RuntimeV3GameplayProjectionContext, project_runtime_v3_gateway_body,
     project_runtime_v3_legal_action, runtime_v3_result_is_error,
 };
+pub(crate) use runtime_v4_expert::project_runtime_v4_expert_gateway_body;
 
 const ALLOWLISTED_KINDS: [&str; 4] = [
     "state_request",

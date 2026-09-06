@@ -146,6 +146,8 @@ impl GatewayAdapter for RuntimeGatewayAdapter {
     fn forward(&mut self, request: GatewayRequest) -> Result<GatewayResponse, GatewayError> {
         binding::admit(&self.config, &request)?;
         let response_kind = binding::response_kind(&self.config, &request);
+        let expert_state_route = request.method == sts2_mcp_server::GatewayMethod::Get
+            && request.path == format!("/v4/instances/{}/expert-state", self.config.instance_id);
         let correlation = request.correlation.mcp_request_id.stable_text();
         let catalog_read = request.method == sts2_mcp_server::GatewayMethod::Get
             && request.path == format!("/v3/instances/{}/legal-actions", self.config.instance_id);
@@ -156,7 +158,8 @@ impl GatewayAdapter for RuntimeGatewayAdapter {
         {
             return Ok(response);
         }
-        if ((200..300).contains(&response.status) || is_runtime_result(&response.body))
+        if !expert_state_route
+            && ((200..300).contains(&response.status) || is_runtime_result(&response.body))
             && let Some(kind) = response_kind
         {
             binding::response(&self.config, &response.body, &correlation, kind)?;

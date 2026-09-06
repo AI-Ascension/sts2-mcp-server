@@ -10,10 +10,12 @@ mod protocol;
 mod protocol_artifact;
 mod protocol_artifact_runtime_v2;
 mod protocol_artifact_runtime_v3_gameplay;
+mod protocol_artifact_runtime_v4_expert;
 mod server;
 mod transport;
 
 pub use catalog::COOP_SYNCHRONIZATION_TOOL;
+pub use catalog::EXPERT_STATE_TOOL;
 pub use catalog::{
     CapabilityCatalog, DISPATCH_ACTION_TOOL, GET_STATE_TOOL, LEGAL_ACTIONS_TOOL, OBSERVE_TOOL,
     RECONCILE_ACTION_TOOL, RECOVER_TOOL, REOBSERVE_TOOL, SUBMIT_ACTION_TOOL, ToolCatalog,
@@ -45,6 +47,10 @@ pub use protocol_artifact_runtime_v3_gameplay::{
     RUNTIME_V3_GAMEPLAY_MAX_GENERATION, RUNTIME_V3_GAMEPLAY_MAX_WAIT_MILLIS,
     RUNTIME_V3_GAMEPLAY_PROTOCOL_VERSION, RUNTIME_V3_GAMEPLAY_SCHEMA_DIGEST,
     RUNTIME_V3_GAMEPLAY_SCHEMA_SOURCE,
+};
+pub use protocol_artifact_runtime_v4_expert::{
+    RUNTIME_V4_EXPERT_ARTIFACT, RUNTIME_V4_EXPERT_GENERATOR, RUNTIME_V4_EXPERT_PROTOCOL_VERSION,
+    RUNTIME_V4_EXPERT_SCHEMA_DIGEST, RUNTIME_V4_EXPERT_SCHEMA_SOURCE,
 };
 pub use server::{MCP_PROTOCOL_VERSION, McpServer, SERVER_NAME, SERVER_VERSION};
 pub use transport::{FrameCodec, FrameError, MAX_FRAME_BYTES};
