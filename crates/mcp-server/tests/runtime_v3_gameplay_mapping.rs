@@ -13,6 +13,9 @@ struct RecordingGateway {
     responses: VecDeque<Result<GatewayResponse, GatewayError>>,
 }
 
+#[path = "runtime_v3_gameplay_mapping/catalog_reobserve.rs"]
+mod catalog_reobserve;
+
 impl RecordingGateway {
     fn new(responses: impl IntoIterator<Item = Result<GatewayResponse, GatewayError>>) -> Self {
         Self {
