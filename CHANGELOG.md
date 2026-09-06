@@ -8,7 +8,13 @@ exists.
 - Complete the read-only co-op synchronization tool as the explicit executable profile
   `coop-synchronization-v1`, with strict configured-identity admission, complete response
   validation, and real gateway/MCP transport verification. The unpublished broader prototype
-  remains in history; no action/vote/effect tools or host mutation authority are added.
+  remains in history; no action/vote/effect tools or host mutation authority are added. The
+  executable check covered coordinator report convergence, disagreement, disconnect/recovery and
+  fencing with zero downstream game connections; it is not native multiplayer evidence.
+
+- Carry the bounded native runtime-v3 Windows/Linux campaign and replay paths through the MCP
+  process for the named v0.107.1 fixtures. Model-played Victory and broader compatibility remain
+  unverified; see the harness campaign records.
 - Consume the coordinated Runtime-v3 continuation schema with argument-free proceed,
   confirm-selection and cancel-selection actions; reject mixed revisions and extra arguments.
 
@@ -39,8 +45,9 @@ exists.
   its source is retained on review/mcp-coop-proposal-source-20260905 pending shared-contract admission.
 
 - Added the exact six-tool Runtime-v3 semantic catalog, bounded fair-play projection, fixed gateway
-  mapping and fail-closed timeout handling. Live
-  MCP/gateway/provider and target-game settlement remain unverified.
+  mapping and fail-closed timeout handling. For that source/component entry, live
+  MCP/gateway/provider execution and target-game settlement were unverified; later dated campaign
+  records are scoped separately.
 
 - Added the separate `runtime-v2-mcp` catalog and fixed `submit_action`/`reconcile_action` mapping for
   the argument-free `end_turn` operation, including full-envelope projection, fencing, uncertainty,

@@ -7,7 +7,7 @@
 
 > **AI-Ascension · tier 3: thin MCP adapter** — Thin MCP tool adapter that maps approved calls to the authenticated gateway API without bypassing it.
 >
-> **Status:** deterministic tests and one bounded `runtime-v1` host trace `confirmed` for STS2 v0.107.1 on Windows x86-64 · broader compatibility and gameplay mutation `unverified`.
+> **Status:** deterministic tests, the bounded `runtime-v1` host trace, the runtime-v3 gameplay adapter path, and the read-only `coop-synchronization-v1` executable profile are `confirmed` for the recorded STS2 v0.107.1 evidence · native multiplayer and broader compatibility `unverified`.
 > **Proof:** [45-second browser replay](https://ai-ascension.github.io/proof.html) · [Evidence ledger](https://ai-ascension.github.io/evidence.html) · [This repository on the map](https://ai-ascension.github.io/repositories.html#sts2-mcp-server)
 > **Seam tests:** [crates/mcp-server/tests/seam.rs](crates/mcp-server/tests/seam.rs) — one tool call maps to one gateway request; malformed frames are rejected before the gateway.
 > **Owner:** `sts2-mcp-server` owns the external MCP process boundary: framing, server identity and capabilities, tool schemas, bounded validation, and the versioned mapping to the gateway API.
@@ -16,9 +16,11 @@
 > AI-Ascension is an independent project. It is not affiliated with or endorsed by Mega Crit or Valve and grants no rights to game files, assets, or marks.
 
 Status: Wave 2 codebase initialization plus bounded runtime seams. The target-owned MCP seam includes
-the two-tool `poc-v1` mapping, the separate `runtime-v1` process profile, and the deterministic
-`runtime-v2` gameplay-operation mapping. Runtime-v2 source/fake tests are confirmed; live host
-settlement and gameplay mutation remain unverified.
+the two-tool `poc-v1` mapping, the separate `runtime-v1` process profile, the deterministic
+`runtime-v2` gameplay-operation mapping, and the six-tool runtime-v3 gameplay mapping. Dated
+Windows/Linux campaign and replay records confirm the MCP path for the named v0.107.1 fixtures.
+The separate `coop-synchronization-v1` profile is read-only coordinator reporting; it is not native
+multiplayer gameplay.
 
 ## Owner and consumers
 
@@ -47,13 +49,16 @@ its digest is pinned in one owner-local metadata module.
 
 ## Evidence and provenance
 
-No provider call, release, or deployment has been run from this target. The controlled component
-lane exercises the real MCP process against the attached gateway and a synthetic downstream; the
-authorized runtime lane additionally exercised the exact packaged host path. The local seam and
-fake-gateway tests remain deterministic build/test evidence and cover exactly two local tools,
-fixed GET/POST mappings, and copied-artifact identity. Documentation, policy tooling, and fixtures
-must be original or carry explicit provenance and redistribution rights. Proprietary game files,
-saves, credentials, personal paths, and copied implementation source do not belong here.
+The controlled component and co-op executable checks provide no provider-call, release, or deployment
+evidence. The controlled component lane exercises the real MCP process against the attached gateway and
+a synthetic downstream; the authorized runtime lane additionally exercised the exact packaged host path.
+Dated runtime-v3 campaign/replay records and the separate co-op executable check exercised the real MCP
+process with reviewed gateway binaries. The local seam and fake-gateway tests remain deterministic
+build/test evidence and cover fixed mappings, copied-artifact identity, and bounded projections.
+Documentation, policy tooling, and fixtures must be original or carry explicit provenance and
+redistribution rights.
+Proprietary game files, saves, credentials, personal paths, and copied implementation source do not
+belong here.
 
 ## Local validation
 
@@ -95,10 +100,12 @@ is surfaced as `unknown` with no automatic retry. `accepted` is admission only; 
 only when the downstream result contains a fresh post-action observation and the
 `turn_end_settled` witness. MCP does not infer settlement from an acknowledgement or a state read.
 
-The fixed action is the safe host-visible `show_runtime_probe`, with a fresh effect witness and
-stable stale-generation rejection. Runtime artifact metadata is checked before projection. Local
-Rust and mapping tests are confirmed; the authorized host trace confirms the gateway/mod path for
-STS2 v0.107.1 on Windows x86-64. Gameplay mutation and broader compatibility remain `unverified`.
+The fixed `runtime-v1` action is the safe host-visible `show_runtime_probe`, with a fresh effect
+witness and stable stale-generation rejection. Runtime artifact metadata is checked before
+projection. Local Rust and mapping tests are confirmed; the authorized host trace confirms the
+gateway/mod path for STS2 v0.107.1 on Windows x86-64. The separate runtime-v3 mapping has been
+used in the recorded Windows/Linux campaign and replay runs; model-played Victory, native
+multiplayer, and broader compatibility remain `unverified`.
 
 For the gateway's coordinator-reported peer agreement, select
 `STS2_RUNTIME_PROFILE=coop-synchronization-v1`. Its only tool is
@@ -107,3 +114,10 @@ For the gateway's coordinator-reported peer agreement, select
 must have a configured roster and active lease. The MCP credential needs read scope only.
 See [ADR 0015](docs/decisions/0015-executable-coop-synchronization.md) and
 [executable verification](docs/TESTING.md#co-op-synchronization-verification) for exact scope.
+
+The synchronization profile returns only the gateway's `gateway_peer_reports` response. Its
+executable verification covered missing and partial reports, convergence, disagreement,
+disconnect/recovery, stale lease fencing, and rejected unknown or regressing reports, with zero
+downstream game connections. It provides no action, vote, shared-effect, or peer-game authority;
+native multiplayer observation and actuation remain unverified. See the
+[dated executable evidence](docs/evidence/coop-synchronization-20260906.md).
