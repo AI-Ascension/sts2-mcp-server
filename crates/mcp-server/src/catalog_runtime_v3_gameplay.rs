@@ -161,6 +161,9 @@ fn action_payload_schema() -> JsonValue {
         simple_action_schema("rest"),
         simple_action_schema("confirm_victory"),
         simple_action_schema("save_quit"),
+        simple_action_schema("proceed"),
+        simple_action_schema("confirm_selection"),
+        simple_action_schema("cancel_selection"),
     ];
     for (kind, field) in [
         ("start_run", "character_id"),

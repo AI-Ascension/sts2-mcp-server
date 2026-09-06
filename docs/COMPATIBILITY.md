@@ -152,12 +152,13 @@ local tests. Live MCP/gateway, provider, and host compatibility remain `unverifi
 
 ### Reviewed proposed artifact migration
 
-This branch consumes protocol PR #8 producer `82507361890c1bdce6cffeaf7e616d93e53a7d99`:
+This branch consumes protocol PR #14 producer `a81ec64d7d14bdb3079b8c7dc3c75e5c88693dfd`:
 Runtime-v3 gameplay schema digest
-`b37c80f583aeaf4f81ede2083bcfb4129196baf5eb092470e8738173c4b7226c` replaces the earlier
-unpublished proposal `fbfb18279b0c7ebb350ef0ce0d56547fa11e83985b13380cb2b0f1dba4cb56e9`.
+`8e99cea36b7ede97532348fd8efe302ca79260895265a7bf14ddf7e006d8ff63` replaces
+`b37c80f583aeaf4f81ede2083bcfb4129196baf5eb092470e8738173c4b7226c`.
+The catalog and projection admit argument-free proceed, confirm-selection and cancel-selection.
 Mixed proposal versions fail closed; producer and consumers must update together. The copied schema,
-manifest, conformance inventory and four producer goldens are checksum-verified in tests. Tests send
+manifest, conformance inventory and seven producer goldens are checksum-verified in tests. Tests send
 all six tool request envelopes through the producer schema and compare a canonical dispatch request
 and settled receipt at both adapter boundaries. These are synthetic contract checks, not host evidence.
 

@@ -227,6 +227,38 @@ fn dispatch_maps_one_typed_action_and_preserves_stale_rejection() {
 }
 
 #[test]
+fn continuation_actions_forward_once_and_reject_extra_arguments() {
+    for kind in ["proceed", "confirm_selection", "cancel_selection"] {
+        let mut server = McpServer::with_catalog(
+            RecordingGateway::new([Err(GatewayError::Timeout)]),
+            ToolCatalog::runtime_v3_gameplay(),
+        );
+        let extra = format!(
+            ",\"state_id\":\"combat-1\",\"operation_id\":\"operation-1\",\
+             \"action\":{{\"action_id\":\"continuation\",\"action\":{{\"kind\":\"{kind}\"}}}}"
+        );
+        server.handle_frame(&call(DISPATCH_ACTION_TOOL, &context_arguments(&extra)));
+        assert_eq!(server.gateway().requests.len(), 1, "{kind}");
+        let request = &server.gateway().requests[0];
+        assert_eq!(request.path, "/v3/instances/instance-1/action");
+        assert!(
+            request
+                .body
+                .as_ref()
+                .is_some_and(|body| { body.to_json().contains(&format!("\"kind\":\"{kind}\"")) })
+        );
+        let invalid = extra.replace(
+            &format!("\"kind\":\"{kind}\""),
+            &format!("\"kind\":\"{kind}\",\"choice_id\":\"injected\""),
+        );
+        let response =
+            server.handle_frame(&call(DISPATCH_ACTION_TOOL, &context_arguments(&invalid)));
+        assert!(response.contains("\"code\":-32602"), "{kind}");
+        assert_eq!(server.gateway().requests.len(), 1, "{kind}");
+    }
+}
+
+#[test]
 fn action_shape_and_unknown_response_fields_fail_closed_before_or_at_projection() {
     let mut server = McpServer::with_catalog(
         RecordingGateway::new([]),
@@ -322,7 +354,7 @@ fn fixture_identity(generation: i64) -> Vec<(String, JsonValue)> {
         ),
         (
             String::from("schema_digest"),
-            JsonValue::string("b37c80f583aeaf4f81ede2083bcfb4129196baf5eb092470e8738173c4b7226c"),
+            JsonValue::string("8e99cea36b7ede97532348fd8efe302ca79260895265a7bf14ddf7e006d8ff63"),
         ),
         (
             String::from("provenance"),

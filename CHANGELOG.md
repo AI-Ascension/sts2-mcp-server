@@ -5,6 +5,9 @@ exists.
 
 ## Unreleased
 
+- Consume the coordinated Runtime-v3 continuation schema with argument-free proceed,
+  confirm-selection and cancel-selection actions; reject mixed revisions and extra arguments.
+
 - Scoped the Runtime-v3 byte limits to the `runtime-v3-gameplay` profile: poc, runtime-v1, and
   runtime-v2 keep their historical 16 KiB MCP frame, 64 KiB gateway response body, and 16 KiB
   projected content limits (PR #8 had raised them globally to 256/128/128 KiB, unreleased);
