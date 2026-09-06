@@ -162,9 +162,10 @@ manifest, conformance inventory and seven producer goldens are checksum-verified
 all six tool request envelopes through the producer schema and compare a canonical dispatch request
 and settled receipt at both adapter boundaries. These are synthetic contract checks, not host evidence.
 
-Co-op is preserved in a separate unadmitted proposal with no exports, schema, or catalog in this
-profile. Its shared-contract admission lacks two named actual serialized-schema consumers. The source
-lineage is retained on review/mcp-coop-proposal-source-20260905; multiplayer support is unverified.
+Co-op synchronization is a separate explicitly selected profile, not part of the six-tool
+Runtime-v3 catalog. The complete `coop-synchronization-v1` response is serialized by the
+gateway and consumed by MCP. The earlier six-family prototype remains in Git history;
+multiplayer actuation and native peer compatibility are unverified.
 
 Protocol #7 and MCP #7 use a different, older gameplay contract with the same proposed profile name.
 They are alternative proposals, not prerequisites inherited by this branch. A maintainer must select
@@ -198,6 +199,12 @@ use `read`. The gateway's single `STS2_GATEWAY_TOKEN` defaults to all three when
 preserves that typed scope denial as sanitized tool error `-32007`, without inventing an unknown
 operation outcome. Session and scope tests use gateway doubles, not live authorization evidence.
 
+The selected `coop-synchronization-v1` profile pins schema digest
+`d410858cabbd38612345120c2196423130c7b21d788fd2b0d775cd82887087ec`; all response fields are
+consumed. The old `coop-gameplay-v1` profile/digest and generation input argument are rejected.
+Current generation is observed from the gateway. The tool retains 16 KiB frame/body/content
+bounds and never injects missing bodyless-request authority. See
+[ADR 0015](decisions/0015-executable-coop-synchronization.md).
 ### Recovery vocabulary ownership
 
 `sts2.recover` accepts exactly four recovery kinds: `reobserve`, `reconcile`, `release_lease`, and

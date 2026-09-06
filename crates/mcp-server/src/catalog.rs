@@ -3,6 +3,8 @@
 use crate::json::JsonValue;
 use crate::transport::{LEGACY_MAX_FRAME_BYTES, MAX_FRAME_BYTES};
 
+#[path = "catalog_coop_synchronization.rs"]
+mod coop_synchronization;
 #[path = "catalog_runtime.rs"]
 mod runtime;
 #[path = "catalog_runtime_v2.rs"]
@@ -19,6 +21,7 @@ pub const DISPATCH_ACTION_TOOL: &str = "sts2.dispatch_action";
 pub const WAIT_FOR_TRANSITION_TOOL: &str = "sts2.wait_for_transition";
 pub const REOBSERVE_TOOL: &str = "sts2.reobserve";
 pub const RECOVER_TOOL: &str = "sts2.recover";
+pub const COOP_SYNCHRONIZATION_TOOL: &str = coop_synchronization::SYNC_TOOL;
 pub(crate) const MAX_IDENTIFIER_BYTES: usize = 128;
 const INSTANCE_ID_PATTERN: &str = "^[A-Za-z0-9_-]{1,128}$";
 const SESSION_ID_PATTERN: &str = "^[A-Za-z0-9_.:/-]{1,128}$";
@@ -207,6 +210,11 @@ impl ToolCatalog {
         runtime_v3_gameplay::build()
     }
 
+    #[must_use]
+    pub fn coop_synchronization() -> Self {
+        coop_synchronization::build()
+    }
+
     /// Largest MCP frame this profile accepts. The poc, runtime-v1, and runtime-v2
     /// profiles keep their historical 16 KiB limit; only the Runtime-v3 semantic
     /// profile accepts frames up to [`MAX_FRAME_BYTES`].
@@ -229,6 +237,10 @@ impl ToolCatalog {
 
     pub(crate) fn is_runtime_v3_gameplay(&self) -> bool {
         self.revision == "runtime-v3-gameplay-mcp"
+    }
+
+    pub(crate) fn is_coop_synchronization(&self) -> bool {
+        self.revision == coop_synchronization::REVISION
     }
 
     pub(crate) fn descriptor(&self, name: &str) -> Option<&ToolDescriptor> {

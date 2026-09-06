@@ -117,6 +117,16 @@ fn runtime_result_recognition_includes_reconcile_response() {
 }
 
 #[test]
+fn co_op_profile_is_explicit_and_retired_proposal_is_rejected() -> Result<(), String> {
+    let profile = profile_for_name(Some("coop-synchronization-v1"))?;
+    assert_eq!(profile.catalog.revision, "coop-synchronization-v1-mcp");
+    assert_eq!(profile.max_response_bytes, 16 * 1024);
+    assert_eq!(profile.catalog.max_frame_bytes(), 16 * 1024);
+    assert!(profile_for_name(Some("coop-gameplay-v1")).is_err());
+    Ok(())
+}
+
+#[test]
 fn runtime_v2_and_v3_body_reject_wrong_supplied_identity_before_forwarding() {
     let adapter = RuntimeGatewayAdapter::new(config(), http::LEGACY_MAX_RESPONSE_BYTES);
     for protocol in [
