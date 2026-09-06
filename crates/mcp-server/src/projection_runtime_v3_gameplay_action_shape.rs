@@ -66,7 +66,8 @@ fn project_action_payload(value: &JsonValue) -> Result<JsonValue, &'static str> 
         return Err("Runtime-v3 action payload kind must be a string");
     };
     match kind {
-        "end_turn" | "skip_reward" | "rest" | "confirm_victory" | "save_quit" => {
+        "end_turn" | "skip_reward" | "rest" | "confirm_victory" | "save_quit" | "proceed"
+        | "confirm_selection" | "cancel_selection" => {
             if !exact_keys(object, &["kind"]) {
                 return Err("Runtime-v3 action payload contains unknown fields");
             }
