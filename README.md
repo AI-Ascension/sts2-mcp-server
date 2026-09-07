@@ -3,7 +3,11 @@
   <img alt="AI-Ascension — Inspect how AI requests to a game get fenced, one Rust contract at a time. Bounded runtime host trace confirmed. Deterministic tests: confirmed." src="https://raw.githubusercontent.com/AI-Ascension/.github/main/profile/assets/banner-light.svg" width="100%">
 </picture>
 
-# sts2-mcp-server
+# Slay the Spire 2 MCP
+
+Part of [Ascension](https://github.com/AI-Ascension/sts2-harness), the AI
+Ascension flagship toolkit. The repository slug remains `sts2-mcp-server`;
+**The Climb — by AI Ascension** does not broaden this adapter's authority.
 
 > **AI-Ascension · tier 3: thin MCP adapter** — Thin MCP tool adapter that maps approved calls to the authenticated gateway API without bypassing it.
 >
