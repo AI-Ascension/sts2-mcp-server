@@ -5,13 +5,13 @@ use std::net::SocketAddr;
 mod binding;
 use binding::is_runtime_result;
 mod config;
-use config::{
-    gateway_address, optional_recovery_proof, recovery_or_gateway_token, recovery_profile_selected,
-    required_or_default, safe_header_value, safe_recovery_principal, safe_recovery_uuid, safe_token,
-    value_is_recovery,
-};
 #[cfg(test)]
 use config::configured_value;
+use config::{
+    gateway_address, optional_recovery_proof, recovery_or_gateway_token, recovery_profile_selected,
+    required_or_default, safe_header_value, safe_recovery_principal, safe_recovery_uuid,
+    safe_token, value_is_recovery,
+};
 mod exchange;
 mod http;
 mod profiles;
