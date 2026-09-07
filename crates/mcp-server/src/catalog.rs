@@ -11,6 +11,8 @@ mod runtime;
 mod runtime_v2;
 #[path = "catalog_runtime_v3_gameplay.rs"]
 mod runtime_v3_gameplay;
+#[path = "catalog_runtime_v4_expert.rs"]
+mod runtime_v4_expert;
 
 pub const GET_STATE_TOOL: &str = "get_state";
 pub const SUBMIT_ACTION_TOOL: &str = "submit_action";
@@ -22,6 +24,9 @@ pub const WAIT_FOR_TRANSITION_TOOL: &str = "sts2.wait_for_transition";
 pub const REOBSERVE_TOOL: &str = "sts2.reobserve";
 pub const RECOVER_TOOL: &str = "sts2.recover";
 pub const COOP_SYNCHRONIZATION_TOOL: &str = coop_synchronization::SYNC_TOOL;
+pub const EXPERT_STATE_TOOL: &str = runtime_v4_expert::EXPERT_STATE_TOOL;
+pub const EXPERT_ACTION_TOOL: &str = runtime_v4_expert::EXPERT_ACTION_TOOL;
+pub const EXPERT_RECONCILE_TOOL: &str = runtime_v4_expert::EXPERT_RECONCILE_TOOL;
 pub(crate) const MAX_IDENTIFIER_BYTES: usize = 128;
 const INSTANCE_ID_PATTERN: &str = "^[A-Za-z0-9_-]{1,128}$";
 const SESSION_ID_PATTERN: &str = "^[A-Za-z0-9_.:/-]{1,128}$";
@@ -211,6 +216,11 @@ impl ToolCatalog {
     }
 
     #[must_use]
+    pub fn runtime_v4_expert() -> Self {
+        runtime_v4_expert::build()
+    }
+
+    #[must_use]
     pub fn coop_synchronization() -> Self {
         coop_synchronization::build()
     }
@@ -220,7 +230,7 @@ impl ToolCatalog {
     /// profile accepts frames up to [`MAX_FRAME_BYTES`].
     #[must_use]
     pub fn max_frame_bytes(&self) -> usize {
-        if self.is_runtime_v3_gameplay() {
+        if self.is_runtime_v3_gameplay() || self.is_runtime_v4_expert() {
             MAX_FRAME_BYTES
         } else {
             LEGACY_MAX_FRAME_BYTES
@@ -237,6 +247,10 @@ impl ToolCatalog {
 
     pub(crate) fn is_runtime_v3_gameplay(&self) -> bool {
         self.revision == "runtime-v3-gameplay-mcp"
+    }
+
+    pub(crate) fn is_runtime_v4_expert(&self) -> bool {
+        self.revision == runtime_v4_expert::REVISION
     }
 
     pub(crate) fn is_coop_synchronization(&self) -> bool {

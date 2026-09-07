@@ -37,12 +37,16 @@ pub(crate) fn profile_for_name(profile: Option<&str>) -> Result<RuntimeProfile, 
             catalog: ToolCatalog::runtime_v3_gameplay(),
             max_response_bytes: RUNTIME_V3_MAX_RESPONSE_BYTES,
         }),
+        "runtime-v4-expert" => Ok(RuntimeProfile {
+            catalog: ToolCatalog::runtime_v4_expert(),
+            max_response_bytes: RUNTIME_V3_MAX_RESPONSE_BYTES,
+        }),
         "coop-synchronization-v1" => Ok(RuntimeProfile {
             catalog: ToolCatalog::coop_synchronization(),
             max_response_bytes: 16 * 1024,
         }),
         value => Err(format!(
-            "STS2_RUNTIME_PROFILE must be runtime-v1, runtime-v2, runtime-v3-gameplay, or coop-synchronization-v1, got {value}"
+            "STS2_RUNTIME_PROFILE must be runtime-v1, runtime-v2, runtime-v3-gameplay, runtime-v4-expert, or coop-synchronization-v1, got {value}"
         )),
     }
 }

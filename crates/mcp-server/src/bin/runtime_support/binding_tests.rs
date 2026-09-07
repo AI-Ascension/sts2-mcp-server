@@ -154,6 +154,42 @@ fn bodyless_authority_mismatch_is_rejected_before_connect() {
 }
 
 #[test]
+fn v4_reconcile_rejects_stale_lease_and_epoch_before_http() {
+    use std::io::ErrorKind;
+    use std::net::TcpListener;
+
+    let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+    listener.set_nonblocking(true).unwrap();
+    let mut config = config();
+    config.gateway_address = listener.local_addr().unwrap();
+    let expected_lease_id = config.lease_id.clone();
+    let mut adapter = super::super::RuntimeGatewayAdapter::new(
+        config,
+        super::super::http::LEGACY_MAX_RESPONSE_BYTES,
+    );
+    let mut reconcile = request();
+    reconcile.path = String::from("/v4/instances/instance/expert-actions/operation");
+
+    reconcile
+        .headers
+        .insert(String::from("x-sts2-lease-id"), String::from("stale-lease"));
+    assert_eq!(
+        adapter.forward(reconcile.clone()),
+        Err(GatewayError::Rejected)
+    );
+    assert!(matches!(listener.accept(), Err(error) if error.kind() == ErrorKind::WouldBlock));
+
+    reconcile
+        .headers
+        .insert(String::from("x-sts2-lease-id"), expected_lease_id);
+    reconcile
+        .headers
+        .insert(String::from("x-sts2-lease-epoch"), String::from("0"));
+    assert_eq!(adapter.forward(reconcile), Err(GatewayError::Rejected));
+    assert!(matches!(listener.accept(), Err(error) if error.kind() == ErrorKind::WouldBlock));
+}
+
+#[test]
 fn response_is_bound_to_configured_identity_request_and_route() {
     let fields = BTreeMap::from([
         (String::from("instance_id"), JsonValue::string("instance")),
@@ -259,4 +295,23 @@ fn co_op_bodyless_read_cannot_inject_missing_or_foreign_authority() {
     request.body = None;
     request.method = GatewayMethod::Post;
     assert_eq!(admit(&config(), &request), Err(GatewayError::Rejected));
+}
+
+#[test]
+fn v4_bodyless_reads_allow_the_http_adapter_to_inject_gateway_authority() {
+    let mut request = request();
+    request.path = "/v4/instances/instance/expert-state".to_owned();
+    for name in [
+        "x-sts2-instance-id",
+        "x-sts2-session-id",
+        "x-sts2-lease-id",
+        "x-sts2-lease-epoch",
+    ] {
+        request.headers.remove(name);
+    }
+    assert_eq!(admit(&config(), &request), Ok(()));
+    assert_eq!(response_kind(&config(), &request), Some("state_response"));
+    request.path = "/v4/instances/instance/expert-actions/potion-op-1".to_owned();
+    assert_eq!(admit(&config(), &request), Ok(()));
+    assert_eq!(response_kind(&config(), &request), Some("action_response"));
 }

@@ -13,6 +13,7 @@ pub(crate) use profiles::profile_from_environment;
 use sts2_mcp_server::{
     GatewayAdapter, GatewayError, GatewayRequest, GatewayResponse, JsonValue,
     RUNTIME_V2_PROTOCOL_VERSION, RUNTIME_V3_GAMEPLAY_PROTOCOL_VERSION,
+    RUNTIME_V4_EXPERT_ACTION_PROTOCOL_VERSION,
 };
 
 const MAX_BODY_BYTES: usize = 16 * 1024;
@@ -106,7 +107,11 @@ impl RuntimeGatewayAdapter {
             object.get("protocol_version"),
             Some(JsonValue::String(value)) if value == RUNTIME_V3_GAMEPLAY_PROTOCOL_VERSION
         );
-        if is_runtime_v2 || is_runtime_v3 {
+        let is_runtime_v4_action = matches!(
+            object.get("protocol_version"),
+            Some(JsonValue::String(value)) if value == RUNTIME_V4_EXPERT_ACTION_PROTOCOL_VERSION
+        );
+        if is_runtime_v2 || is_runtime_v3 || is_runtime_v4_action {
             if object.get("instance_id")
                 != Some(&JsonValue::string(self.config.instance_id.as_str()))
                 || object.get("session_id")
@@ -146,6 +151,8 @@ impl GatewayAdapter for RuntimeGatewayAdapter {
     fn forward(&mut self, request: GatewayRequest) -> Result<GatewayResponse, GatewayError> {
         binding::admit(&self.config, &request)?;
         let response_kind = binding::response_kind(&self.config, &request);
+        let expert_state_route = request.method == sts2_mcp_server::GatewayMethod::Get
+            && request.path == format!("/v4/instances/{}/expert-state", self.config.instance_id);
         let correlation = request.correlation.mcp_request_id.stable_text();
         let catalog_read = request.method == sts2_mcp_server::GatewayMethod::Get
             && request.path == format!("/v3/instances/{}/legal-actions", self.config.instance_id);
@@ -156,7 +163,8 @@ impl GatewayAdapter for RuntimeGatewayAdapter {
         {
             return Ok(response);
         }
-        if ((200..300).contains(&response.status) || is_runtime_result(&response.body))
+        if !expert_state_route
+            && ((200..300).contains(&response.status) || is_runtime_result(&response.body))
             && let Some(kind) = response_kind
         {
             binding::response(&self.config, &response.body, &correlation, kind)?;
