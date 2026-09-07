@@ -2,7 +2,7 @@
 
 use std::collections::BTreeMap;
 
-use crate::catalog::{EXPERT_ACTION_TOOL, EXPERT_STATE_TOOL};
+use crate::catalog::{EXPERT_ACTION_TOOL, EXPERT_RECONCILE_TOOL, EXPERT_STATE_TOOL};
 use crate::gateway::{Correlation, GatewayAdapter, GatewayMethod, GatewayRequest};
 use crate::json::JsonValue;
 use crate::protocol::{
@@ -32,6 +32,13 @@ const ACTION_ARGUMENTS: [&str; 8] = [
     "operation_id",
     "action",
 ];
+const RECONCILE_ARGUMENTS: [&str; 5] = [
+    "instance_id",
+    "mcp_session_id",
+    "lease_id",
+    "lease_epoch",
+    "operation_id",
+];
 
 pub(super) fn tools_call<G: GatewayAdapter>(
     server: &mut McpServer<G>,
@@ -49,8 +56,10 @@ pub(super) fn tools_call<G: GatewayAdapter>(
     let Some(tool_name) = params.get("name").and_then(JsonValue::as_string) else {
         return invalid_params(request.id, "tools/call requires a tool name");
     };
-    if !matches!(tool_name, EXPERT_STATE_TOOL | EXPERT_ACTION_TOOL)
-        || server.catalog.descriptor(tool_name).is_none()
+    if !matches!(
+        tool_name,
+        EXPERT_STATE_TOOL | EXPERT_ACTION_TOOL | EXPERT_RECONCILE_TOOL
+    ) || server.catalog.descriptor(tool_name).is_none()
     {
         return RpcResponse::failure(
             Some(request.id),
@@ -74,7 +83,73 @@ pub(super) fn tools_call<G: GatewayAdapter>(
     match tool_name {
         EXPERT_STATE_TOOL => expert_state_call(server, id, arguments, &correlation_id),
         EXPERT_ACTION_TOOL => expert_action_call(server, id, arguments, &correlation_id),
+        EXPERT_RECONCILE_TOOL => expert_reconcile_call(server, id, arguments, &correlation_id),
         _ => invalid_params(id, "Runtime-v4 expert tool is not active"),
+    }
+}
+
+fn expert_reconcile_call<G: GatewayAdapter>(
+    server: &mut McpServer<G>,
+    id: RequestId,
+    arguments: &BTreeMap<String, JsonValue>,
+    correlation_id: &str,
+) -> RpcResponse {
+    if !has_only_arguments(arguments, &RECONCILE_ARGUMENTS) {
+        return invalid_params(
+            id,
+            "sts2.expert_reconcile arguments contain an unsupported field",
+        );
+    }
+    let Some(instance_id) = arguments.get("instance_id").and_then(JsonValue::as_string) else {
+        return invalid_params(id, "instance_id must be a non-empty string");
+    };
+    let Some(mcp_session_id) = arguments
+        .get("mcp_session_id")
+        .and_then(JsonValue::as_string)
+    else {
+        return invalid_params(id, "mcp_session_id must be a non-empty string");
+    };
+    let Some(lease_id) = arguments.get("lease_id").and_then(JsonValue::as_string) else {
+        return invalid_params(id, "lease_id must be a non-empty string");
+    };
+    let Some(operation_id) = arguments
+        .get("operation_id")
+        .and_then(JsonValue::as_string)
+        .filter(|value| super::safe_header_value(value) && !value.contains('/'))
+    else {
+        return invalid_params(id, "operation_id must be a safe non-empty identity");
+    };
+    if !super::safe_segment(instance_id)
+        || !super::safe_header_value(mcp_session_id)
+        || !super::safe_header_value(lease_id)
+        || server
+            .mcp_session_id()
+            .is_some_and(|expected| expected != mcp_session_id)
+    {
+        return invalid_params(
+            id,
+            "expert-reconcile identity is unsafe or not bound to this MCP session",
+        );
+    }
+    let Some(lease_epoch) = super::nonnegative_integer(arguments, "lease_epoch")
+        .filter(|value| *value <= 9_007_199_254_740_991)
+    else {
+        return invalid_params(id, "lease_epoch exceeds the protocol bound");
+    };
+    let request = GatewayRequest {
+        method: GatewayMethod::Get,
+        path: format!("/v4/instances/{instance_id}/expert-actions/{operation_id}"),
+        headers: headers(mcp_session_id, correlation_id),
+        body: None,
+        correlation: Correlation {
+            mcp_session_id: String::from(mcp_session_id),
+            mcp_request_id: id.clone(),
+        },
+    };
+    let _ = lease_epoch;
+    match server.gateway.forward(request) {
+        Ok(response) => expert_action_response(server, id, response),
+        Err(error) => gateway_error_result(id, error),
     }
 }
 

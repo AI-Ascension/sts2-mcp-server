@@ -70,6 +70,7 @@ pub(super) fn admit(config: &RuntimeConfig, request: &GatewayRequest) -> Result<
             _ => return Err(GatewayError::Rejected),
         }
     }
+    let adapter_injected_v4_authority = version == "v4" && request.body.is_none();
     // Runtime-v1 retains its documented configured identity injection. Newer profiles
     // must not silently substitute authority, including for bodyless observation calls.
     if version != "v1" || request.path.ends_with("/coop/synchronization") {
@@ -83,7 +84,7 @@ pub(super) fn admit(config: &RuntimeConfig, request: &GatewayRequest) -> Result<
         ] {
             let supplied = request.headers.get(name);
             if supplied.is_some_and(|value| value != expected)
-                || (request.body.is_none() && supplied.is_none())
+                || (request.body.is_none() && supplied.is_none() && !adapter_injected_v4_authority)
             {
                 return Err(GatewayError::Rejected);
             }

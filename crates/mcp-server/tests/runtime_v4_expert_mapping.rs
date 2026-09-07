@@ -60,6 +60,16 @@ fn action_call(arguments: Value) -> String {
     .to_string()
 }
 
+fn reconcile_call(arguments: Value) -> String {
+    json!({
+        "jsonrpc":"2.0",
+        "id":2,
+        "method":"tools/call",
+        "params":{"name":"sts2.expert_reconcile","arguments":arguments}
+    })
+    .to_string()
+}
+
 #[test]
 fn serialized_gateway_observation_reaches_the_expert_tool() -> Result<(), Box<dyn std::error::Error>>
 {
@@ -111,9 +121,10 @@ fn expert_catalog_is_read_only_and_profile_scoped() -> Result<(), Box<dyn std::e
         &server.handle_frame(r#"{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}"#),
     )?;
     let tools = listed["result"]["tools"].as_array().ok_or("tools absent")?;
-    assert_eq!(tools.len(), 2);
+    assert_eq!(tools.len(), 3);
     assert_eq!(tools[0]["name"], "sts2.expert_state");
     assert_eq!(tools[1]["name"], "sts2.expert_action");
+    assert_eq!(tools[2]["name"], "sts2.expert_reconcile");
     Ok(())
 }
 
@@ -156,6 +167,43 @@ fn expert_action_maps_a_fenced_potion_and_preserves_settlement_witness()
     assert_eq!(request.method, GatewayMethod::Post);
     assert_eq!(request.path, "/v4/instances/instance-1/expert-action");
     assert!(request.body.is_some());
+    assert_eq!(request.correlation.mcp_session_id, "mcp-session-1");
+    Ok(())
+}
+
+#[test]
+fn expert_reconcile_maps_the_same_operation_to_the_gateway_read_route()
+-> Result<(), Box<dyn std::error::Error>> {
+    let mut settled: Value = serde_json::from_str(include_str!(
+        "../../../protocol-artifact/runtime-v4-expert-action/golden/action-settled.json"
+    ))?;
+    let mut observation: Value = serde_json::from_str(GOLDEN)?;
+    observation["generation"] = json!(8);
+    observation["state_id"] = json!("live:8");
+    settled["correlation_id"] = json!("2");
+    settled["observation"] = observation;
+    let mut server = server(&settled.to_string())?;
+    let result: Value = serde_json::from_str(&server.handle_frame(&reconcile_call(json!({
+        "instance_id":"instance-1",
+        "mcp_session_id":"mcp-session-1",
+        "lease_id":"lease-1",
+        "lease_epoch":1,
+        "operation_id":"potion-op-1"
+    }))))?;
+    assert_eq!(result["result"]["isError"], false);
+    let body: Value = serde_json::from_str(
+        result["result"]["content"][0]["text"]
+            .as_str()
+            .ok_or("MCP content text absent")?,
+    )?;
+    assert_eq!(body["status"], "settled");
+    let request = &server.gateway().requests[0];
+    assert_eq!(request.method, GatewayMethod::Get);
+    assert_eq!(
+        request.path,
+        "/v4/instances/instance-1/expert-actions/potion-op-1"
+    );
+    assert!(request.body.is_none());
     assert_eq!(request.correlation.mcp_session_id, "mcp-session-1");
     Ok(())
 }

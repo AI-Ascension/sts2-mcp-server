@@ -6,6 +6,7 @@ use crate::json::JsonValue;
 pub(super) const REVISION: &str = "runtime-v4-expert-mcp";
 pub(super) const EXPERT_STATE_TOOL: &str = "sts2.expert_state";
 pub(super) const EXPERT_ACTION_TOOL: &str = "sts2.expert_action";
+pub(super) const EXPERT_RECONCILE_TOOL: &str = "sts2.expert_reconcile";
 const INSTANCE_ID_PATTERN: &str = "^[A-Za-z0-9_-]{1,128}$";
 const SESSION_ID_PATTERN: &str = "^[A-Za-z0-9_.:/-]{1,128}$";
 
@@ -51,8 +52,56 @@ pub(super) fn build() -> super::ToolCatalog {
                 ),
                 input_schema: action_schema(),
             },
+            ToolDescriptor {
+                name: String::from(EXPERT_RECONCILE_TOOL),
+                description: String::from(
+                    "Read the authoritative result for one previously accepted use_potion operation.",
+                ),
+                input_schema: reconcile_schema(),
+            },
         ],
     }
+}
+
+fn reconcile_schema() -> JsonValue {
+    JsonValue::object([
+        (String::from("type"), JsonValue::string("object")),
+        (String::from("additionalProperties"), JsonValue::Bool(false)),
+        (
+            String::from("required"),
+            JsonValue::Array(
+                [
+                    "instance_id",
+                    "mcp_session_id",
+                    "lease_id",
+                    "lease_epoch",
+                    "operation_id",
+                ]
+                .into_iter()
+                .map(JsonValue::string)
+                .collect(),
+            ),
+        ),
+        (
+            String::from("properties"),
+            JsonValue::object([
+                (
+                    String::from("instance_id"),
+                    bounded_string(INSTANCE_ID_PATTERN),
+                ),
+                (
+                    String::from("mcp_session_id"),
+                    bounded_string(SESSION_ID_PATTERN),
+                ),
+                (String::from("lease_id"), bounded_string(SESSION_ID_PATTERN)),
+                (String::from("lease_epoch"), bounded_counter()),
+                (
+                    String::from("operation_id"),
+                    bounded_string(SESSION_ID_PATTERN),
+                ),
+            ]),
+        ),
+    ])
 }
 
 fn action_schema() -> JsonValue {
