@@ -7,6 +7,8 @@ use crate::transport::{LEGACY_MAX_FRAME_BYTES, MAX_FRAME_BYTES};
 mod coop_synchronization;
 #[path = "catalog_recovery.rs"]
 mod recovery;
+#[path = "catalog_recovery_schema.rs"]
+mod recovery_schema;
 #[path = "catalog_runtime.rs"]
 mod runtime;
 #[path = "catalog_runtime_v2.rs"]

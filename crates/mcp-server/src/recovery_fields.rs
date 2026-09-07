@@ -52,7 +52,7 @@ pub(super) fn wire(value: i64) -> Result<(), &'static str> {
 }
 
 pub(super) fn ttl(ttl: i64, renewal: i64) -> Result<(), &'static str> {
-    if (5..=300).contains(&ttl) && (1..=100).contains(&renewal) {
+    if (5..=300).contains(&ttl) && (1..=100).contains(&renewal) && renewal < ttl {
         Ok(())
     } else {
         Err("recovery lease policy is outside bounds")
