@@ -4,7 +4,21 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
 use std::path::Path;
 
-const SUPPORTED_POLICY_VERSION: i64 = 1;
+#[path = "config_paths.rs"]
+mod paths;
+use paths::{
+    validate_exact_path, validate_exact_paths, validate_ignored_directories,
+    validate_ignored_path_prefixes,
+};
+
+const LEGACY_POLICY_VERSION: i64 = 1;
+const CURRENT_POLICY_VERSION: i64 = 2;
+const MANAGED_STANDARDS_PATH: &str = "standards/tools/standards-sync";
+const KNOWN_RULES: &[&str] = &[
+    "BOUND001", "CFG001", "DOC001", "DOC002", "DOC003", "EXC001", "LANG001", "LIC001", "LIC002",
+    "LIC003", "RUST001", "RUST002", "RUST003", "RUST004", "RUST005", "SIZE001", "WF001", "WF002",
+    "WF003", "WF004", "WF005",
+];
 
 #[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
 pub(crate) enum SizeCategory {
@@ -37,6 +51,8 @@ pub(crate) struct Budget {
 
 #[derive(Debug)]
 pub(crate) struct Policy {
+    pub(crate) policy_version: i64,
+    pub(crate) advisory_rules: BTreeSet<String>,
     pub(crate) required_files: Vec<String>,
     pub(crate) ignored_directories: BTreeSet<String>,
     pub(crate) ignored_path_prefixes: BTreeSet<String>,
@@ -48,6 +64,7 @@ pub(crate) struct Policy {
 enum Section {
     Root,
     Project,
+    Severity,
     Limits,
     Exemptions,
 }
@@ -65,6 +82,8 @@ impl Policy {
         let mut required_files = None;
         let mut ignored_directories = None;
         let mut ignored_path_prefixes = None;
+        let mut mandatory_rules = None;
+        let mut advisory_rules = None;
         let mut limit_values = BTreeMap::new();
         let mut exemptions = BTreeMap::new();
 
@@ -97,6 +116,15 @@ impl Policy {
                     }
                     _ => return Err(format!("unknown project key: {key}")),
                 },
+                Section::Severity => match key {
+                    "mandatory" => {
+                        mandatory_rules = Some(parse_string_array(value, key)?);
+                    }
+                    "advisory" => {
+                        advisory_rules = Some(parse_string_array(value, key)?);
+                    }
+                    _ => return Err(format!("unknown severity key: {key}")),
+                },
                 Section::Limits => {
                     limit_values.insert(key.to_owned(), parse_integer(value, key)?);
                 }
@@ -110,18 +138,56 @@ impl Policy {
             }
         }
 
-        if version != Some(SUPPORTED_POLICY_VERSION) {
+        let policy_version =
+            version.ok_or_else(|| "policy_version must be an integer".to_owned())?;
+        if !matches!(
+            policy_version,
+            LEGACY_POLICY_VERSION | CURRENT_POLICY_VERSION
+        ) {
             return Err(format!(
-                "policy_version must be {SUPPORTED_POLICY_VERSION}, found {version:?}"
+                "policy_version must be {LEGACY_POLICY_VERSION} or {CURRENT_POLICY_VERSION}, found {policy_version}"
             ));
         }
+        let advisory_rules = if policy_version == LEGACY_POLICY_VERSION {
+            BTreeSet::new()
+        } else {
+            let mandatory = mandatory_rules.ok_or("severity.mandatory is missing")?;
+            validate_rule_list(&mandatory, "severity.mandatory", true)?;
+            if !mandatory.iter().any(|rule| rule == "*") {
+                return Err(
+                    "severity.mandatory must include \"*\" as the default classification"
+                        .to_owned(),
+                );
+            }
+            let advisory_values = advisory_rules.ok_or("severity.advisory is missing")?;
+            validate_rule_list(&advisory_values, "severity.advisory", false)?;
+            let advisory: BTreeSet<String> = advisory_values.into_iter().collect();
+            if advisory.is_empty() {
+                return Err("severity.advisory must name at least one rule".to_owned());
+            }
+            if advisory
+                .iter()
+                .any(|rule| mandatory.iter().any(|item| item == rule))
+            {
+                return Err("severity rules cannot be both mandatory and advisory".to_owned());
+            }
+            advisory
+        };
         let required_files = required_files.ok_or("project.required_files is missing")?;
+        validate_exact_paths(&required_files, "required_files")?;
         let ignored_directories =
             ignored_directories.ok_or("project.ignored_directories is missing")?;
+        let ignored_directories = validate_ignored_directories(&ignored_directories)?;
         let ignored_path_prefixes =
             ignored_path_prefixes.ok_or("project.ignored_path_prefixes is missing")?;
+        let ignored_path_prefixes = validate_ignored_path_prefixes(&ignored_path_prefixes)?;
         let limits = parse_limits(&limit_values)?;
+        for path in exemptions.keys() {
+            validate_exact_path(path, "exemptions")?;
+        }
         Ok(Self {
+            policy_version,
+            advisory_rules,
             required_files,
             ignored_directories: ignored_directories.into_iter().collect(),
             ignored_path_prefixes: ignored_path_prefixes.into_iter().collect(),
@@ -135,9 +201,29 @@ impl Policy {
     }
 }
 
+fn validate_rule_list(values: &[String], key: &str, allow_default: bool) -> Result<(), String> {
+    let mut seen = BTreeSet::new();
+    for rule in values {
+        if !seen.insert(rule.as_str()) {
+            return Err(format!("{key} contains duplicate rule {rule}"));
+        }
+        if rule == "*" {
+            if !allow_default {
+                return Err(format!("{key} cannot contain the default wildcard"));
+            }
+        } else if !KNOWN_RULES.contains(&rule.as_str()) {
+            return Err(format!("{key} contains unknown rule {rule}"));
+        } else if !allow_default && rule != "SIZE001" {
+            return Err(format!("{key} cannot demote mandatory rule {rule}"));
+        }
+    }
+    Ok(())
+}
+
 fn parse_section(line: &str) -> Result<Section, String> {
     match line {
         "[project]" => Ok(Section::Project),
+        "[severity]" => Ok(Section::Severity),
         "[limits]" => Ok(Section::Limits),
         "[exemptions]" => Ok(Section::Exemptions),
         _ => Err(format!("unsupported section: {line}")),
@@ -263,35 +349,5 @@ fn strip_comment(line: &str) -> &str {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::{Policy, SizeCategory};
-
-    const LIMITS: &str = "rust_production_preferred = 10\nrust_production_max = 20\n\
-rust_test_preferred = 11\nrust_test_max = 21\ncsharp_production_preferred = 12\n\
-csharp_production_max = 22\ncsharp_test_preferred = 13\ncsharp_test_max = 23\n\
-workflow_preferred = 14\nworkflow_max = 24\nmarkdown_preferred = 15\nmarkdown_max = 25";
-
-    #[test]
-    fn parses_complete_policy() -> Result<(), String> {
-        let text = format!(
-            "policy_version = 1\n[project]\nrequired_files = [\"README.md\"]\n\
-             ignored_directories = [\"target\"]\nignored_path_prefixes = []\n\
-             [limits]\n{LIMITS}\n[exemptions]\n"
-        );
-        let policy = Policy::parse(&text)?;
-        assert_eq!(policy.required_files, ["README.md"]);
-        assert_eq!(policy.budget(SizeCategory::RustProduction).maximum, 20);
-        Ok(())
-    }
-
-    #[test]
-    fn rejects_inverted_budget() {
-        let text = format!(
-            "policy_version = 1\n[project]\nrequired_files = []\n\
-             ignored_directories = []\nignored_path_prefixes = []\n[limits]\n{}\
-             \n[exemptions]\n",
-            LIMITS.replace("rust_production_max = 20", "rust_production_max = 5")
-        );
-        assert!(Policy::parse(&text).is_err());
-    }
-}
+#[path = "config_tests.rs"]
+mod tests;

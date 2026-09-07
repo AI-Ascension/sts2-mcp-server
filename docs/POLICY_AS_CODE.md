@@ -14,8 +14,10 @@ Run from the target root:
 cargo run --locked --package repo-policy -- --strict
 ```
 
-The command is read-only. It returns nonzero when required files are missing, a mandatory rule fails, or
-strict mode promotes a preferred-budget warning to an error.
+The command is read-only. Version 2 returns nonzero when required files or mandatory rules fail; the
+preferred `SIZE001` warning stays advisory under strict mode. Version 1 remains supported for legacy
+callers and its strict mode promotes every warning, so changing policy versions is an explicit
+migration.
 
 ## Enforced rule families
 
@@ -47,3 +49,13 @@ review.
 A policy change must explain the rule, enforcement effect, migration impact, and exact validation. Do not
 weaken a threshold or add an exemption just to make an unrelated change pass. Keep checker output bounded,
 repository-relative, deterministic, and free of credentials or private payloads.
+
+## Production lint scope
+
+The production Clippy lane selects workspace libraries and binaries and forbids
+unwrap, expect, panic, todo and unimplemented on the compiler command line.
+A source-level allowance cannot override that lane. The existing all-target lane
+still checks tests with their scoped allowances. `production_lints` runs real
+compiler fixtures for forbidden constructs, an attempted blanket allowance,
+and valid comments/test-only code. Missing Clippy or an unrelated compiler
+failure cannot satisfy a negative case: its diagnostic must identify the rule.

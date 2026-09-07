@@ -1,5 +1,19 @@
 // SPDX-License-Identifier: MIT
 
+//! Bounded JSON, MCP framing, and owner-local gateway adapter primitives.
+//!
+//! JSON input can be parsed and emitted through the deterministic value representation:
+//!
+//! ```
+//! use sts2_mcp_server::parse_json;
+//!
+//! # fn main() -> Result<(), Box<dyn std::error::Error>> {
+//! let value = parse_json(r#"{"ready":true}"#).map_err(|_| "example JSON rejected")?;
+//! assert_eq!(value.to_json(), r#"{"ready":true}"#);
+//! # Ok(())
+//! # }
+//! ```
+
 mod catalog;
 mod catalog_reobserve;
 mod gateway;

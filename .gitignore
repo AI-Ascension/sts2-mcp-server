@@ -1,5 +1,6 @@
 # Rust build output
 /target/
+standards/tools/standards-sync/target/
 
 # Local IDE and operating-system files
 .idea/
