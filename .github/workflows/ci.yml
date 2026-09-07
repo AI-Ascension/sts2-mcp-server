@@ -24,10 +24,18 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+          fetch-depth: 0
 
       - name: Verify exact Runtime-v3 and co-op semantic surfaces
+        env:
+          BASE_REVISION: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha || github.event.before }}
         run: |
           git diff --check
+          if [[ "$BASE_REVISION" =~ ^[0-9a-f]{40}$ && "$BASE_REVISION" != 0000000000000000000000000000000000000000 ]]; then
+            git diff --check "$BASE_REVISION" HEAD
+          else
+            git show --format= --check HEAD
+          fi
           for tool in sts2.observe sts2.legal_actions sts2.dispatch_action sts2.wait_for_transition sts2.reobserve sts2.recover; do
             grep -Fq "$tool" crates/mcp-server/src/catalog_runtime_v3_gameplay.rs
           done
