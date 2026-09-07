@@ -21,7 +21,9 @@ pub(crate) use runtime_v3_gameplay::{
     RuntimeV3GameplayProjectionContext, project_runtime_v3_gateway_body,
     project_runtime_v3_legal_action, runtime_v3_result_is_error,
 };
-pub(crate) use runtime_v4_expert::project_runtime_v4_expert_gateway_body;
+pub(crate) use runtime_v4_expert::{
+    project_runtime_v4_expert_action_gateway_body, project_runtime_v4_expert_gateway_body,
+};
 
 const ALLOWLISTED_KINDS: [&str; 4] = [
     "state_request",

@@ -48,12 +48,27 @@ pub(super) fn admit(config: &RuntimeConfig, request: &GatewayRequest) -> Result<
     if version != "v3" && version != "v4" && response_kind(config, request).is_none() {
         return Err(GatewayError::Rejected);
     }
-    if version == "v4"
-        && (request.method != GatewayMethod::Get
-            || request.path != format!("/v4/instances/{}/expert-state", config.instance_id)
-            || request.body.is_some())
-    {
-        return Err(GatewayError::Rejected);
+    if version == "v4" {
+        let prefix = format!("/v4/instances/{}/", config.instance_id);
+        let route = request
+            .path
+            .strip_prefix(&prefix)
+            .ok_or(GatewayError::Rejected)?;
+        match (request.method, route) {
+            (GatewayMethod::Get, "expert-state") if request.body.is_none() => {}
+            (GatewayMethod::Post, "expert-action") if request.body.is_some() => {}
+            (GatewayMethod::Get, route)
+                if request.body.is_none() && route.starts_with("expert-actions/") =>
+            {
+                let operation_id = route
+                    .strip_prefix("expert-actions/")
+                    .ok_or(GatewayError::Rejected)?;
+                if !safe_operation_id(operation_id) {
+                    return Err(GatewayError::Rejected);
+                }
+            }
+            _ => return Err(GatewayError::Rejected),
+        }
     }
     // Runtime-v1 retains its documented configured identity injection. Newer profiles
     // must not silently substitute authority, including for bodyless observation calls.
@@ -106,7 +121,31 @@ pub(super) fn response_kind(
             };
         }
     }
+    let prefix = format!("/v4/instances/{}/", config.instance_id);
+    if let Some(route) = request.path.strip_prefix(&prefix) {
+        return match (request.method, route) {
+            (GatewayMethod::Get, "expert-state") => Some("state_response"),
+            (GatewayMethod::Post, "expert-action") => Some("action_response"),
+            (GatewayMethod::Get, route)
+                if route.starts_with("expert-actions/")
+                    && safe_operation_id(route.strip_prefix("expert-actions/").unwrap_or("")) =>
+            {
+                Some("action_response")
+            }
+            _ => None,
+        };
+    }
     None
+}
+
+fn safe_operation_id(value: &str) -> bool {
+    !value.is_empty()
+        && value.len() <= 128
+        && !value.contains("..")
+        && !value.contains('/')
+        && value
+            .bytes()
+            .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'-' | b'_' | b'.' | b':'))
 }
 
 pub(super) fn response(
