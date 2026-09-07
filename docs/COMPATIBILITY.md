@@ -63,10 +63,11 @@ host to a supported compatibility row.
 The source/component update at MCP head `901c9edd94833fca6bfe322e0c515f91c8b2b281`, integrated
 in merge `5fc337b880b6c38389661c865003e304a02d1136`, binds action and reconcile responses to the
 request's correlation, instance, gateway session, lease/epoch, and operation identities. Dispatch
-also checks any returned action against the request. For a settled action, the nested observation's
-`state_id` and `generation` must match the outer response, and the transition's `before_generation`
-must match the dispatch generation. The exact-head source/component review passed 125 clean-head
-workspace tests plus focused binding checks; it is synthetic component evidence.
+also checks any returned action against the request. Settled responses bind nested observation
+`state_id` and `generation` to the outer response; settled dispatch responses also require the
+transition's `before_generation` to match the dispatch generation. The exact-head source/component
+review passed 125 clean-head workspace tests plus focused binding checks; it is synthetic component
+evidence.
 
 | Copied artifact | Schema `$id` | Schema digest |
 | --- | --- | --- |
@@ -76,8 +77,9 @@ workspace tests plus focused binding checks; it is synthetic component evidence.
 Native host legality, settled effects, provider execution, cross-consumer integration, deployment,
 and release remain unverified.
 
-The profile is compatible only with the exact `runtime-v1` schema digest and allowlisted response
-shapes. It makes no provider, game-rule, gameplay mutation, or release-support claim.
+The `runtime-v1-mcp` profile is compatible only with the exact `runtime-v1` schema digest and
+allowlisted response shapes. It makes no provider, game-rule, gameplay mutation, or release-support
+claim.
 
 Runtime-v2 consumes the exact handed-off schema digest
 `f7963b19c8ed5bbdc02c08e83c7a2e16c4771ed5eb798b29a8208d7a917a86c2`. Its MCP mapping is a thin

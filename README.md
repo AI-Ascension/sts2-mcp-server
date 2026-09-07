@@ -112,9 +112,10 @@ Dated source/component evidence (2026-09-07) at MCP source head
 `901c9edd94833fca6bfe322e0c515f91c8b2b281`,
 integrated in merge `5fc337b880b6c38389661c865003e304a02d1136`, binds action and reconcile
 responses to the request's correlation, instance, gateway session, lease/epoch, and operation
-identities; dispatch also checks any returned action against the request. A settled action's nested
-observation must match its outer `state_id` and `generation`, and its `before_generation` must match
-the dispatch generation. The copied artifacts pin schema IDs and digests
+identities; dispatch also checks any returned action against the request. Settled responses bind
+nested observation `state_id` and `generation` to the outer response; settled dispatch responses
+also require `before_generation` to match the dispatch generation. The copied artifacts pin schema
+IDs and digests
 `sts2-runtime-v4-expert` / `0ee034d5da83f34e9fa0ba23038738d56ef8cfccb1c6e752af3ab63d212c8e42` and
 `sts2-runtime-v4-expert-action` / `393318bda8c3522c0ecbacc78b95471a9f4dc3f825169d2048f4c74a7b7f2929`.
 Independent source/component checks passed; native host legality, settled effects, provider
