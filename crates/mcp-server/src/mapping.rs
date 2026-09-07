@@ -14,12 +14,16 @@ use crate::protocol_artifact::{
 };
 use crate::server::McpServer;
 
+const INVALID_REQUEST_ID: &str = "request id contains an unsafe or oversized header value";
+
 #[path = "mapping_coop_synchronization.rs"]
 mod coop_synchronization;
 #[path = "mapping_response.rs"]
 mod response;
 #[path = "mapping_runtime.rs"]
 mod runtime;
+#[path = "mapping_runtime_map.rs"]
+mod runtime_map;
 #[path = "mapping_runtime_v2.rs"]
 mod runtime_v2;
 #[path = "mapping_runtime_v3_gameplay.rs"]
@@ -34,6 +38,9 @@ pub(crate) fn tools_call<G: GatewayAdapter>(
     }
     if server.catalog.is_runtime_v3_gameplay() {
         return runtime_v3_gameplay::tools_call(server, request);
+    }
+    if server.catalog.is_runtime_map_v1() {
+        return runtime_map::tools_call(server, request);
     }
     if server.catalog.is_runtime_v2() {
         return runtime_v2::tools_call(server, request);
@@ -65,10 +72,7 @@ pub(crate) fn tools_call<G: GatewayAdapter>(
     let id = request.id;
     let correlation_id = id.stable_text();
     if !safe_header_value(&correlation_id) {
-        return invalid_params(
-            id,
-            "request id contains an unsafe or oversized header value",
-        );
+        return invalid_params(id, INVALID_REQUEST_ID);
     }
     match tool_name {
         GET_STATE_TOOL => state_call(server, id, arguments, &correlation_id),

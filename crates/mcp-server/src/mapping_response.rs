@@ -3,9 +3,10 @@
 use crate::gateway::GatewayResponse;
 use crate::json::JsonValue;
 use crate::projection::{
-    RuntimeV2Context, RuntimeV3GameplayProjectionContext, project_gateway_body,
-    project_runtime_gateway_body, project_runtime_v2_gateway_body, project_runtime_v3_gateway_body,
-    projection_is_error, runtime_v2_result_is_error, runtime_v3_result_is_error,
+    RuntimeMapProjectionContext, RuntimeV2Context, RuntimeV3GameplayProjectionContext,
+    project_gateway_body, project_runtime_gateway_body, project_runtime_map_gateway_body,
+    project_runtime_v2_gateway_body, project_runtime_v3_gateway_body, projection_is_error,
+    runtime_v2_result_is_error, runtime_v3_result_is_error,
 };
 use crate::protocol::{RequestId, RpcResponse};
 
@@ -13,6 +14,8 @@ use crate::protocol::{RequestId, RpcResponse};
 pub(super) const LEGACY_MAX_RESPONSE_BYTES: usize = 16 * 1024;
 /// Projected tool content limit for the Runtime-v3 semantic profile only.
 pub(super) const RUNTIME_V3_MAX_RESPONSE_BYTES: usize = 128 * 1024;
+/// Projected tool content limit for the complete Runtime-map-v1 graph.
+pub(super) const MAP_MAX_RESPONSE_BYTES: usize = 256 * 1024;
 
 pub(super) fn gateway_success(
     id: RequestId,
@@ -132,6 +135,26 @@ pub(super) fn gateway_success_v3(
         body,
         !(200..300).contains(&response.status) || runtime_v3_result_is_error(&projection),
     )
+}
+
+pub(super) fn gateway_success_map(
+    id: RequestId,
+    response: GatewayResponse,
+    context: &RuntimeMapProjectionContext,
+) -> RpcResponse {
+    let projection = project_runtime_map_gateway_body(&response.body, context);
+    let Ok(projection) = projection else {
+        return super::tool_result(
+            id,
+            "gateway response is not a valid Runtime-map-v1 envelope",
+            true,
+        );
+    };
+    let body = projection.to_json();
+    if body.len() > MAP_MAX_RESPONSE_BYTES {
+        return super::tool_result(id, "gateway returned an oversized map response", true);
+    }
+    super::tool_result(id, body, !(200..300).contains(&response.status))
 }
 
 #[cfg(test)]

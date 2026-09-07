@@ -159,3 +159,20 @@ STS2_COOP_GATEWAY_BINARY=/path/to/reviewed/sts2-gateway-runtime \
 
 Use separate Cargo target directories for the two worktrees. This test supplies disposable
 coordinator reports; it proves executable coordination transport, not native multiplayer.
+
+## Runtime-map profile checks
+
+`runtime_map_v1.rs` verifies the exact seven-tool catalog, `sts2.map_snapshot` argument schema,
+configured MCP-session binding, bodyless GET path, explicit gateway authority, complete corrected
+golden projection, and stale/foreign/unknown-field rejection. `runtime_map_v1_artifact.rs` checks
+the protocol commit `d9ffb190ad8990e15f43d7992581dcb2d60b1971`, schema digest
+`6340f3cbe6c1b5728144fe89fdfdf8645acf2f59a77c0e0c30ebfeafc77515d8`, copied manifest, schema,
+conformance case, three goldens, and every checksum entry. The executable TCP adapter test covers
+the same profile across the actual HTTP framing boundary.
+
+Projection validation preserves overlapping coordinates and disconnected visible components while
+rejecting duplicate graph IDs, unknown edge endpoints, cycles, stale generations, invalid visited
+position/history references, duplicate bindings or action-option IDs, and over-limit content.
+Profile frame/body/projected-content limits are 256 KiB; existing profiles retain their historical
+limits. These checks are source/component and artifact-integrity evidence, not host map freshness,
+visualizer, provider, or gameplay evidence.

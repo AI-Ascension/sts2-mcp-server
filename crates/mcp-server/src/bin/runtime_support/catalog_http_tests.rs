@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 
+use super::http::MAP_MAX_RESPONSE_BYTES;
 use super::*;
 use std::io::{BufRead, Read, Write};
 use std::net::TcpListener;
@@ -96,6 +97,40 @@ fn compact_catalog_refusal_survives_the_real_http_adapter() -> Result<(), String
         assert_eq!(result.contains("reobserve"), accepted);
         assert!(!result.contains("secret-marker"));
     }
+    Ok(())
+}
+
+#[test]
+fn map_profile_crosses_the_real_http_adapter_with_a_complete_response() -> Result<(), String> {
+    let listener = TcpListener::bind("127.0.0.1:0").map_err(|error| error.to_string())?;
+    let mut config = config();
+    config.gateway_address = listener.local_addr().map_err(|error| error.to_string())?;
+    let body = include_str!(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../protocol-artifact/runtime-map-v1/golden/snapshot-response.json"
+    ))
+    .replace("\"instance-1\"", "\"configured-instance\"")
+    .replace("\"session-1\"", "\"configured-session\"")
+    .replace("\"lease-1\"", "\"configured-lease\"");
+    let server_thread = std::thread::spawn(move || serve(listener, 200, body));
+    let adapter = RuntimeGatewayAdapter::new(config, MAP_MAX_RESPONSE_BYTES);
+    let mut server = sts2_mcp_server::McpServer::with_catalog_and_sessions(
+        adapter,
+        sts2_mcp_server::ToolCatalog::runtime_map_v1(),
+        "configured-session",
+        "configured-session",
+    );
+    let output = server.handle_frame(
+        r#"{"jsonrpc":"2.0","id":"corr-42","method":"tools/call","params":{"name":"sts2.map_snapshot","arguments":{"instance_id":"configured-instance","mcp_session_id":"configured-session","lease_id":"configured-lease","lease_epoch":7,"generation":42}}}"#,
+    );
+    let fixture = server_thread
+        .join()
+        .map_err(|_| "HTTP fixture thread failed".to_owned())?;
+    if let Err(error) = fixture {
+        return Err(format!("{error}; MCP output: {output}"));
+    }
+    assert!(output.contains("\"isError\":false"), "{output}");
+    assert!(output.contains("map:1:1:0"), "{output}");
     Ok(())
 }
 

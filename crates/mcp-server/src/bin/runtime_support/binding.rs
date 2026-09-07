@@ -20,6 +20,7 @@ pub(super) fn is_runtime_result(body: &JsonValue) -> bool {
                             | "wait_response"
                             | "reobserve_response"
                             | "recover_response"
+                            | "snapshot_response"
                     )
             )
     )
@@ -89,6 +90,9 @@ pub(super) fn response_kind(
                     Some("synchronization_response")
                 }
                 (GatewayMethod::Get, "state") => Some("state_response"),
+                (GatewayMethod::Get, "map-snapshot") if version == "v1" => {
+                    Some("snapshot_response")
+                }
                 (GatewayMethod::Post, "action") => Some("action_response"),
                 (GatewayMethod::Get, route)
                     if version == "v2" && route.starts_with("operations/") =>

@@ -6,12 +6,15 @@ use crate::protocol_artifact::{POC_MAX_GENERATION, POC_MAX_SETTLED_EFFECTS, POC_
 
 #[path = "projection_runtime.rs"]
 mod runtime;
+#[path = "projection_runtime_map.rs"]
+mod runtime_map;
 #[path = "projection_runtime_v2.rs"]
 mod runtime_v2;
 #[path = "projection_runtime_v3_gameplay.rs"]
 mod runtime_v3_gameplay;
 
 pub(crate) use runtime::project_runtime_gateway_body;
+pub(crate) use runtime_map::{RuntimeMapProjectionContext, project_runtime_map_gateway_body};
 pub(crate) use runtime_v2::{
     RuntimeV2Context, project_runtime_v2_gateway_body, runtime_v2_result_is_error,
 };

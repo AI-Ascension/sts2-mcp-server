@@ -216,3 +216,17 @@ lifecycle route, keeps no lifecycle state, and the gateway authorizes the reques
 scope and decides whether the recovery happens. A scope denial is the typed `-32007` error, not an
 unknown outcome. `tests/runtime_v3_gameplay_regressions/recovery_ownership.rs` pins the route, the
 envelope, and the absence of any other request.
+
+## Runtime-map MCP row
+
+| Surface | Producer pin | Current evidence | Result |
+| --- | --- | --- | --- |
+| `runtime-map-v1-mcp` catalog and mapping | protocol commit `d9ffb190ad8990e15f43d7992581dcb2d60b1971`, schema digest `6340f3cbe6c1b5728144fe89fdfdf8645acf2f59a77c0e0c30ebfeafc77515d8` | artifact checksum/schema tests, catalog and mapping tests, and a real TCP adapter test | Confirmed source/component behavior and copied-artifact integrity; host and visualizer compatibility unverified |
+| `sts2.map_snapshot` | bodyless `GET /v1/instances/{id}/map-snapshot` | explicit MCP/gateway session and authority context, complete graph projection, stale/foreign/unknown-field rejection | Additive profile behavior confirmed in doubles and loopback adapter; live map freshness unverified |
+
+`STS2_RUNTIME_PROFILE=runtime-map-v1` selects seven tools and 256 KiB frame, gateway-body, and
+projected-content limits. The six Runtime-v3 tools and all legacy profile bounds remain unchanged.
+The map projection preserves overlapping coordinates and disconnected visible components, requires
+visited current/history references, and keeps stable graph IDs, host action IDs, and opaque action
+option IDs independent. Mixed revisions, invalid action-option IDs, stale generations, unknown
+fields, and malformed bindings fail closed without retries or synthetic successful snapshots.

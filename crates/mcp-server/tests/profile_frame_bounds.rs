@@ -35,7 +35,7 @@ fn padded_frame(total_bytes: usize) -> String {
     frame
 }
 
-fn profiles() -> [(&'static str, ToolCatalog, usize); 4] {
+fn profiles() -> [(&'static str, ToolCatalog, usize); 5] {
     [
         ("poc-v1-mcp", ToolCatalog::default(), LEGACY_MAX_FRAME_BYTES),
         (
@@ -51,6 +51,11 @@ fn profiles() -> [(&'static str, ToolCatalog, usize); 4] {
         (
             "runtime-v3-gameplay-mcp",
             ToolCatalog::runtime_v3_gameplay(),
+            MAX_FRAME_BYTES,
+        ),
+        (
+            "runtime-map-v1-mcp",
+            ToolCatalog::runtime_map_v1(),
             MAX_FRAME_BYTES,
         ),
     ]

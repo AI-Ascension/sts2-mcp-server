@@ -12,7 +12,8 @@ pub(crate) use profiles::profile_from_environment;
 
 use sts2_mcp_server::{
     GatewayAdapter, GatewayError, GatewayRequest, GatewayResponse, JsonValue,
-    RUNTIME_V2_PROTOCOL_VERSION, RUNTIME_V3_GAMEPLAY_PROTOCOL_VERSION,
+    RUNTIME_MAP_V1_PROTOCOL_VERSION, RUNTIME_V2_PROTOCOL_VERSION,
+    RUNTIME_V3_GAMEPLAY_PROTOCOL_VERSION,
 };
 
 const MAX_BODY_BYTES: usize = 16 * 1024;
@@ -106,7 +107,11 @@ impl RuntimeGatewayAdapter {
             object.get("protocol_version"),
             Some(JsonValue::String(value)) if value == RUNTIME_V3_GAMEPLAY_PROTOCOL_VERSION
         );
-        if is_runtime_v2 || is_runtime_v3 {
+        let is_runtime_map = matches!(
+            object.get("protocol_version"),
+            Some(JsonValue::String(value)) if value == RUNTIME_MAP_V1_PROTOCOL_VERSION
+        );
+        if is_runtime_v2 || is_runtime_v3 || is_runtime_map {
             if object.get("instance_id")
                 != Some(&JsonValue::string(self.config.instance_id.as_str()))
                 || object.get("session_id")
