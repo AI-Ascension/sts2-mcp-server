@@ -23,8 +23,9 @@ digest `fb934d3157485aaf6e13e6ebbb213ec8a14c7fc6f5eeebc06b7a22c1f0009217`.
 
 ## Verification
 
-All commands ran in the isolated MCP worktree on pinned Rust 1.97.1 with
-`CARGO_TARGET_DIR=/home/timot/ascension-watchdog-work/20260906/targets/mcp-h6r`:
+All commands ran in the isolated MCP worktree on pinned Rust 1.97.1 with a
+disposable isolated Cargo target directory. The machine-local target path is
+intentionally omitted from committed evidence:
 
 ```text
 cargo fmt --all --check                                      PASS

@@ -5,52 +5,52 @@ use sts2_mcp_server::{
     BOOTSTRAP_TOOL, GatewayAdapter, GatewayError, GatewayMethod, GatewayRequest, GatewayResponse,
     HOST_FENCE_TOOL, JsonValue, LEASE_ACQUIRE_TOOL, LEASE_RENEW_TOOL, LEASE_REVOKE_TOOL, McpServer,
     OPERATION_DISPATCH_TOOL, OPERATION_INTENT_TOOL, OPERATION_LOOKUP_TOOL,
-    OPERATION_RECONCILE_TOOL, RECOVERY_RUNTIME_V3_SCHEMA_DIGEST, ToolCatalog, parse_json,
-    validate_recovery_request, validate_recovery_response,
+    OPERATION_RECONCILE_TOOL, ToolCatalog, parse_json, validate_recovery_request,
+    validate_recovery_response,
 };
 
-const BOOTSTRAP_REQUEST: &str = include_str!(
-    "../../../protocol-artifact/watchdog-recovery-v1/fixtures/valid/bootstrap-request.json"
-);
-const BOOTSTRAP_RESPONSE: &str = include_str!(
-    "../../../protocol-artifact/watchdog-recovery-v1/fixtures/valid/bootstrap-response.json"
-);
-const HOST_FENCE_REQUEST: &str = include_str!(
-    "../../../protocol-artifact/watchdog-recovery-v1/fixtures/valid/host-fence-request.json"
-);
-const LEASE_ACQUIRE_REQUEST: &str = include_str!(
-    "../../../protocol-artifact/watchdog-recovery-v1/fixtures/valid/lease-acquire-request.json"
-);
-const LEASE_RENEW_REQUEST: &str = include_str!(
-    "../../../protocol-artifact/watchdog-recovery-v1/fixtures/valid/lease-renew-request.json"
-);
-const LEASE_REVOKE_REQUEST: &str = include_str!(
-    "../../../protocol-artifact/watchdog-recovery-v1/fixtures/valid/lease-revoke-request.json"
-);
-const LEASE_ACQUIRE_RESPONSE: &str = include_str!(
-    "../../../protocol-artifact/watchdog-recovery-v1/fixtures/valid/lease-acquire-response.json"
-);
-const OPERATION_INTENT_REQUEST: &str = include_str!(
-    "../../../protocol-artifact/watchdog-recovery-v1/fixtures/valid/operation-intent-request.json"
-);
-const OPERATION_DISPATCH_REQUEST: &str = include_str!(
-    "../../../protocol-artifact/watchdog-recovery-v1/fixtures/valid/operation-dispatch-request.json"
-);
-const OPERATION_LOOKUP_REQUEST: &str = include_str!(
-    "../../../protocol-artifact/watchdog-recovery-v1/fixtures/valid/operation-lookup-request.json"
-);
-const OPERATION_RECONCILE_REQUEST: &str = include_str!(
-    "../../../protocol-artifact/watchdog-recovery-v1/fixtures/valid/operation-reconcile-request.json"
-);
+macro_rules! valid_fixture {
+    ($name:literal) => {
+        include_str!(concat!(
+            "../../../protocol-artifact/watchdog-recovery-v1/fixtures/valid/",
+            $name
+        ))
+    };
+}
+
+const BOOTSTRAP_REQUEST: &str = valid_fixture!("bootstrap-request.json");
+const BOOTSTRAP_RESPONSE: &str = valid_fixture!("bootstrap-response.json");
+const HOST_FENCE_REQUEST: &str = valid_fixture!("host-fence-request.json");
+const LEASE_ACQUIRE_REQUEST: &str = valid_fixture!("lease-acquire-request.json");
+const LEASE_RENEW_REQUEST: &str = valid_fixture!("lease-renew-request.json");
+const LEASE_REVOKE_REQUEST: &str = valid_fixture!("lease-revoke-request.json");
+const LEASE_ACQUIRE_RESPONSE: &str = valid_fixture!("lease-acquire-response.json");
+const OPERATION_INTENT_REQUEST: &str = valid_fixture!("operation-intent-request.json");
+const OPERATION_DISPATCH_REQUEST: &str = valid_fixture!("operation-dispatch-request.json");
+const OPERATION_LOOKUP_REQUEST: &str = valid_fixture!("operation-lookup-request.json");
+const OPERATION_RECONCILE_REQUEST: &str = valid_fixture!("operation-reconcile-request.json");
+const RECOVERY_FIXTURES: [(&str, &str); 9] = [
+    (BOOTSTRAP_TOOL, BOOTSTRAP_REQUEST),
+    (HOST_FENCE_TOOL, HOST_FENCE_REQUEST),
+    (LEASE_ACQUIRE_TOOL, LEASE_ACQUIRE_REQUEST),
+    (LEASE_RENEW_TOOL, LEASE_RENEW_REQUEST),
+    (LEASE_REVOKE_TOOL, LEASE_REVOKE_REQUEST),
+    (OPERATION_INTENT_TOOL, OPERATION_INTENT_REQUEST),
+    (OPERATION_DISPATCH_TOOL, OPERATION_DISPATCH_REQUEST),
+    (OPERATION_LOOKUP_TOOL, OPERATION_LOOKUP_REQUEST),
+    (OPERATION_RECONCILE_TOOL, OPERATION_RECONCILE_REQUEST),
+];
+const LEASE_SCHEMA_FIXTURES: [(&str, &str); 4] = [
+    (LEASE_RENEW_TOOL, LEASE_RENEW_REQUEST),
+    (LEASE_REVOKE_TOOL, LEASE_REVOKE_REQUEST),
+    (OPERATION_INTENT_TOOL, OPERATION_INTENT_REQUEST),
+    (OPERATION_DISPATCH_TOOL, OPERATION_DISPATCH_REQUEST),
+];
 
 #[derive(Clone)]
 enum GatewayOutcome {
     Error(GatewayError),
-    Response {
-        status: u16,
-        body: JsonValue,
-        replace_correlation: bool,
-    },
+    Response(JsonValue),
 }
 
 struct RecordingGateway {
@@ -66,14 +66,10 @@ impl RecordingGateway {
         }
     }
 
-    fn response(body: JsonValue, replace_correlation: bool) -> Self {
+    fn response(body: JsonValue) -> Self {
         Self {
             requests: Vec::new(),
-            outcome: GatewayOutcome::Response {
-                status: 200,
-                body,
-                replace_correlation,
-            },
+            outcome: GatewayOutcome::Response(body),
         }
     }
 }
@@ -83,22 +79,16 @@ impl GatewayAdapter for RecordingGateway {
         self.requests.push(request);
         match self.outcome.clone() {
             GatewayOutcome::Error(error) => Err(error),
-            GatewayOutcome::Response {
-                status,
-                mut body,
-                replace_correlation,
-            } => {
-                if replace_correlation {
-                    let correlation = self
-                        .requests
-                        .last()
-                        .map(|request| request.correlation.mcp_request_id.stable_text())
-                        .ok_or(GatewayError::MalformedResponse)?;
-                    body.as_object_mut()
-                        .ok_or(GatewayError::MalformedResponse)?
-                        .insert("correlation_id".to_owned(), JsonValue::string(correlation));
-                }
-                Ok(GatewayResponse { status, body })
+            GatewayOutcome::Response(mut body) => {
+                let correlation = self
+                    .requests
+                    .last()
+                    .map(|request| request.correlation.mcp_request_id.stable_text())
+                    .ok_or(GatewayError::MalformedResponse)?;
+                body.as_object_mut()
+                    .ok_or(GatewayError::MalformedResponse)?
+                    .insert("correlation_id".to_owned(), JsonValue::string(correlation));
+                Ok(GatewayResponse { status: 200, body })
             }
         }
     }
@@ -119,8 +109,7 @@ fn server(gateway: RecordingGateway) -> McpServer<RecordingGateway> {
 }
 
 fn fixture_payload(fixture: &str) -> Result<JsonValue, String> {
-    let frame = parse_json(fixture)?;
-    frame
+    parse_json(fixture)?
         .as_object()
         .and_then(|object| object.get("payload"))
         .cloned()
@@ -132,36 +121,6 @@ fn call(tool: &str, payload: &JsonValue, session: &str) -> String {
         "{{\"jsonrpc\":\"2.0\",\"id\":\"call-1\",\"method\":\"tools/call\",\"params\":{{\"name\":\"{tool}\",\"arguments\":{{\"mcp_session_id\":\"{session}\",\"payload\":{}}}}}}}",
         payload.to_json()
     )
-}
-
-fn operation_payload_with_approved_action_digest() -> Result<JsonValue, String> {
-    let mut payload = fixture_payload(OPERATION_INTENT_REQUEST)?;
-    let operation = payload
-        .as_object_mut()
-        .and_then(|object| object.get_mut("operation"))
-        .and_then(JsonValue::as_object_mut)
-        .ok_or_else(|| String::from("operation fixture is missing operation"))?;
-    let action = operation
-        .get_mut("action")
-        .and_then(JsonValue::as_object_mut)
-        .ok_or_else(|| String::from("operation fixture is missing action"))?;
-    action.insert(
-        String::from("schema_digest"),
-        JsonValue::string(RECOVERY_RUNTIME_V3_SCHEMA_DIGEST),
-    );
-    Ok(payload)
-}
-
-fn operation_dispatch_payload() -> Result<JsonValue, String> {
-    let mut payload = operation_payload_with_approved_action_digest()?;
-    let operation = payload
-        .as_object_mut()
-        .and_then(|object| object.get_mut("operation"))
-        .and_then(JsonValue::as_object_mut)
-        .ok_or_else(|| String::from("operation fixture is missing operation"))?;
-    operation.remove("expected_boundary");
-    operation.remove("action");
-    Ok(payload)
 }
 
 fn bootstrap_payload_with_policy(ttl: i64, renewal: i64) -> Result<JsonValue, String> {
@@ -180,51 +139,123 @@ fn bootstrap_payload_with_policy(ttl: i64, renewal: i64) -> Result<JsonValue, St
 }
 
 fn listed_tool_schema(listed: &Value, tool: &str) -> Result<Value, String> {
-    let descriptor = listed
-        .get("result")
-        .and_then(|result| result.get("tools"))
-        .and_then(Value::as_array)
+    listed["result"]["tools"]
+        .as_array()
         .and_then(|tools| {
             tools
                 .iter()
-                .find(|candidate| candidate.get("name") == Some(&Value::String(tool.to_owned())))
+                .find(|candidate| candidate.get("name").and_then(Value::as_str) == Some(tool))
         })
-        .ok_or_else(|| format!("catalog is missing {tool}"))?;
-    descriptor
-        .get("inputSchema")
+        .and_then(|descriptor| descriptor.get("inputSchema"))
         .cloned()
         .ok_or_else(|| format!("{tool} has no input schema"))
 }
 
-#[test]
-fn recovery_catalog_is_exactly_the_nine_sideband_tools() -> Result<(), String> {
+fn listed_catalog() -> Result<Value, Box<dyn std::error::Error>> {
     let mut server = server(RecordingGateway::error(GatewayError::Timeout));
-    let response = server
-        .handle_frame("{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"tools/list\",\"params\":{}}");
-    let value: Value = serde_json::from_str(&response).map_err(|error| error.to_string())?;
-    let tools = value
-        .get("result")
-        .and_then(|result| result.get("tools"))
-        .and_then(Value::as_array)
-        .ok_or_else(|| String::from("tools/list did not return a tool array"))?;
-    let mut names = tools
-        .iter()
-        .filter_map(|tool| tool.get("name").and_then(Value::as_str))
-        .collect::<Vec<_>>();
-    names.sort_unstable();
-    assert_eq!(
-        names,
-        vec![
-            "watchdog.bootstrap",
-            "watchdog.host_fence",
-            "watchdog.lease_acquire",
-            "watchdog.lease_renew",
-            "watchdog.lease_revoke",
-            "watchdog.operation_dispatch",
-            "watchdog.operation_intent",
-            "watchdog.operation_lookup",
-            "watchdog.operation_reconcile",
-        ]
+    Ok(serde_json::from_str(&server.handle_frame(
+        "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"tools/list\",\"params\":{}}",
+    ))?)
+}
+
+fn schema_arguments(fixture: &str) -> Result<Value, Box<dyn std::error::Error>> {
+    Ok(
+        json!({"mcp_session_id":"mcp-session","payload":serde_json::from_str::<Value>(fixture)?["payload"].clone()}),
+    )
+}
+
+fn set_schema_value(
+    value: &mut Value,
+    path: &str,
+    field: &str,
+    replacement: Value,
+) -> Result<(), String> {
+    value
+        .pointer_mut(path)
+        .and_then(Value::as_object_mut)
+        .ok_or_else(|| format!("schema fixture path is not an object: {path}"))?
+        .insert(field.to_owned(), replacement);
+    Ok(())
+}
+
+fn assert_schema_policy(
+    validator: &jsonschema::Validator,
+    baseline: &Value,
+    path: &str,
+    label: &str,
+) -> Result<(), String> {
+    for (ttl, renewal) in [(5, 4), (100, 99), (101, 100), (300, 100)] {
+        let mut candidate = baseline.clone();
+        for (field, value) in [("ttl_seconds", ttl), ("renewal_interval_seconds", renewal)] {
+            set_schema_value(&mut candidate, path, field, json!(value))?;
+        }
+        assert!(
+            validator.is_valid(&candidate),
+            "{label} rejected valid {ttl}/{renewal} policy"
+        );
+        set_schema_value(&mut candidate, path, "renewal_interval_seconds", json!(ttl))?;
+        assert!(
+            !validator.is_valid(&candidate),
+            "{label} accepted invalid {ttl}/{ttl} policy"
+        );
+    }
+    Ok(())
+}
+
+fn assert_schema_case(
+    listed: &Value,
+    tool: &str,
+    fixture: &str,
+    policy: &str,
+    identity: &str,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let schema = listed_tool_schema(listed, tool)?;
+    let validator = jsonschema::draft202012::options().build(&schema)?;
+    let baseline = schema_arguments(fixture)?;
+    assert_schema_policy(&validator, &baseline, policy, tool)?;
+    let mut wrong_identity = baseline.clone();
+    set_schema_value(
+        &mut wrong_identity,
+        identity,
+        "instance_id",
+        json!("not-a-uuid"),
+    )?;
+    assert!(
+        !validator.is_valid(&wrong_identity),
+        "{tool} accepted bad identity"
+    );
+    let mut unknown = baseline;
+    set_schema_value(&mut unknown, policy, "unexpected", Value::Null)?;
+    assert!(
+        !validator.is_valid(&unknown),
+        "{tool} accepted nested unknown field"
+    );
+    Ok(())
+}
+
+fn assert_closed_schema(
+    listed: &Value,
+    tool: &str,
+    fixture: &str,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let schema = listed_tool_schema(listed, tool)?;
+    let validator = jsonschema::draft202012::options().build(&schema)?;
+    let arguments = schema_arguments(fixture)?;
+    assert!(
+        validator.is_valid(&arguments),
+        "{tool} rejected its valid fixture"
+    );
+    let mut unknown = arguments.clone();
+    unknown["payload"]["unexpected"] = Value::Null;
+    assert!(
+        !validator.is_valid(&unknown),
+        "{tool} advertised an open payload object"
+    );
+    let mut wrong_type = arguments;
+    wrong_type["payload"] = json!("not-an-object");
+    assert!(
+        !validator.is_valid(&wrong_type),
+        "{tool} omitted the payload object type"
     );
     Ok(())
 }
@@ -232,57 +263,27 @@ fn recovery_catalog_is_exactly_the_nine_sideband_tools() -> Result<(), String> {
 #[test]
 fn recovery_catalog_advertises_closed_bounded_request_payloads()
 -> Result<(), Box<dyn std::error::Error>> {
-    let mut server = server(RecordingGateway::error(GatewayError::Timeout));
-    let listed: Value = serde_json::from_str(
-        &server
-            .handle_frame("{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"tools/list\",\"params\":{}}"),
+    let listed = listed_catalog()?;
+    assert_eq!(listed["result"]["tools"].as_array().map(Vec::len), Some(9));
+    for (tool, fixture) in RECOVERY_FIXTURES {
+        assert_closed_schema(&listed, tool, fixture)?;
+    }
+    assert_schema_case(
+        &listed,
+        BOOTSTRAP_TOOL,
+        BOOTSTRAP_REQUEST,
+        "/payload/lease_policy",
+        "/payload",
     )?;
-    for (tool, fixture) in [
-        (BOOTSTRAP_TOOL, BOOTSTRAP_REQUEST),
-        (HOST_FENCE_TOOL, HOST_FENCE_REQUEST),
-        (LEASE_ACQUIRE_TOOL, LEASE_ACQUIRE_REQUEST),
-        (LEASE_RENEW_TOOL, LEASE_RENEW_REQUEST),
-        (LEASE_REVOKE_TOOL, LEASE_REVOKE_REQUEST),
-        (OPERATION_INTENT_TOOL, OPERATION_INTENT_REQUEST),
-        (OPERATION_DISPATCH_TOOL, OPERATION_DISPATCH_REQUEST),
-        (OPERATION_LOOKUP_TOOL, OPERATION_LOOKUP_REQUEST),
-        (OPERATION_RECONCILE_TOOL, OPERATION_RECONCILE_REQUEST),
-    ] {
-        let schema = listed_tool_schema(&listed, tool)?;
-        let validator = jsonschema::draft202012::options().build(&schema)?;
-        let payload = serde_json::from_str::<Value>(fixture)?["payload"].clone();
-        let arguments = json!({
-            "mcp_session_id": "mcp-session",
-            "payload": payload,
-        });
-        assert!(
-            validator.is_valid(&arguments),
-            "{tool} rejected its valid fixture"
-        );
-
-        let mut unknown = arguments.clone();
-        unknown["payload"]
-            .as_object_mut()
-            .ok_or("catalog payload schema is not an object")?
-            .insert("unexpected".to_owned(), Value::Null);
-        assert!(
-            !validator.is_valid(&unknown),
-            "{tool} advertised an open payload object"
-        );
-
-        let mut wrong_type = arguments;
-        wrong_type["payload"] = json!("not-an-object");
-        assert!(
-            !validator.is_valid(&wrong_type),
-            "{tool} omitted the payload object type"
-        );
+    for (tool, fixture) in LEASE_SCHEMA_FIXTURES {
+        assert_schema_case(&listed, tool, fixture, "/payload/lease", "/payload/lease")?;
     }
     Ok(())
 }
 
 #[test]
 fn recovery_mapping_uses_fixed_route_capability_and_no_retry_after_timeout() -> Result<(), String> {
-    let payload = operation_dispatch_payload()?;
+    let payload = fixture_payload(OPERATION_DISPATCH_REQUEST)?;
     let mut server = server(RecordingGateway::error(GatewayError::Timeout));
     let response = server.handle_frame(&call(
         "watchdog.operation_dispatch",
@@ -374,7 +375,7 @@ fn not_found_is_typed_without_claiming_non_execution_and_response_secrets_are_re
 
     let lease_request = fixture_payload(LEASE_ACQUIRE_REQUEST)?;
     let lease_response = parse_json(LEASE_ACQUIRE_RESPONSE)?;
-    let mut redacted = server(RecordingGateway::response(lease_response, true));
+    let mut redacted = server(RecordingGateway::response(lease_response));
     let response = redacted.handle_frame(&call(
         "watchdog.lease_acquire",
         &lease_request,
