@@ -2,20 +2,18 @@
 
 use std::collections::BTreeMap;
 
-use crate::catalog::{GET_STATE_TOOL, MAX_IDENTIFIER_BYTES, SUBMIT_ACTION_TOOL};
-use crate::gateway::{Correlation, GatewayAdapter, GatewayError, GatewayMethod, GatewayRequest};
+use crate::catalog::{GET_STATE_TOOL, SUBMIT_ACTION_TOOL};
+use crate::gateway::{Correlation, GatewayAdapter, GatewayMethod, GatewayRequest};
 use crate::json::JsonValue;
 use crate::protocol::{
     INVALID_PARAMS, METHOD_NOT_FOUND, RequestId, RpcError, RpcRequest, RpcResponse,
-};
-use crate::protocol_artifact::{
-    POC_ARTIFACT, POC_GENERATOR, POC_MAX_GENERATION, POC_PROTOCOL_VERSION, POC_SCHEMA_DIGEST,
-    POC_SCHEMA_SOURCE,
 };
 use crate::server::McpServer;
 
 #[path = "mapping_coop_synchronization.rs"]
 mod coop_synchronization;
+#[path = "mapping_helpers.rs"]
+mod helpers;
 #[path = "mapping_response.rs"]
 mod response;
 #[path = "mapping_runtime.rs"]
@@ -26,6 +24,12 @@ mod runtime_v2;
 mod runtime_v3_gameplay;
 #[path = "mapping_runtime_v4_expert.rs"]
 mod runtime_v4_expert;
+
+pub(crate) use helpers::safe_segment;
+use helpers::{
+    forward, gateway_error_result, has_only_arguments, headers, invalid_params, non_empty_string,
+    nonnegative_integer, poc_action_request, request_context, safe_header_value, tool_result,
+};
 
 pub(crate) fn tools_call<G: GatewayAdapter>(
     server: &mut McpServer<G>,
@@ -140,8 +144,8 @@ fn action_call<G: GatewayAdapter>(
             return invalid_params(id, message);
         }
     };
-    let Some(generation) =
-        nonnegative_integer(arguments, "generation").filter(|value| *value <= POC_MAX_GENERATION)
+    let Some(generation) = nonnegative_integer(arguments, "generation")
+        .filter(|value| *value <= crate::protocol_artifact::POC_MAX_GENERATION)
     else {
         return invalid_params(id, "generation exceeds the protocol bound");
     };
@@ -173,147 +177,4 @@ fn action_call<G: GatewayAdapter>(
         },
     };
     forward(server, id, gateway_request)
-}
-
-fn forward<G: GatewayAdapter>(
-    server: &mut McpServer<G>,
-    id: RequestId,
-    request: GatewayRequest,
-) -> RpcResponse {
-    match server.gateway.forward(request) {
-        Ok(response) => response::gateway_success(id, response, server.catalog.is_runtime_v1()),
-        Err(error) => gateway_error_result(id, error),
-    }
-}
-
-fn gateway_error_result(id: RequestId, error: GatewayError) -> RpcResponse {
-    let (code, message) = match error {
-        GatewayError::Unauthorized => (-32001, "gateway authorization failed"),
-        GatewayError::Forbidden => (-32007, "gateway scope authorization failed"),
-        GatewayError::NotFound => (-32004, "gateway target was not found"),
-        GatewayError::Unavailable => (-32003, "gateway is unavailable"),
-        GatewayError::Timeout => (-32008, "gateway request timed out"),
-        GatewayError::MalformedResponse => (-32002, "gateway returned an invalid response"),
-        GatewayError::Rejected => (-32005, "gateway rejected the request"),
-    };
-    tool_result(id, format!("gateway error {code}: {message}"), true)
-}
-
-fn tool_result(id: RequestId, text: impl Into<String>, is_error: bool) -> RpcResponse {
-    RpcResponse::success(
-        id,
-        JsonValue::object([
-            (
-                "content".to_owned(),
-                JsonValue::Array(vec![JsonValue::object([
-                    ("type".to_owned(), JsonValue::string("text")),
-                    ("text".to_owned(), JsonValue::string(text)),
-                ])]),
-            ),
-            ("isError".to_owned(), JsonValue::Bool(is_error)),
-        ]),
-    )
-}
-
-fn invalid_params(id: RequestId, message: impl Into<String>) -> RpcResponse {
-    RpcResponse::failure(Some(id), RpcError::new(INVALID_PARAMS, message))
-}
-
-fn has_only_arguments(arguments: &BTreeMap<String, JsonValue>, allowed: &[&str]) -> bool {
-    arguments.keys().all(|key| allowed.contains(&key.as_str()))
-}
-
-fn non_empty_string<'a>(arguments: &'a BTreeMap<String, JsonValue>, key: &str) -> Option<&'a str> {
-    arguments
-        .get(key)
-        .and_then(JsonValue::as_string)
-        .filter(|value| !value.is_empty())
-}
-
-fn request_context(arguments: &BTreeMap<String, JsonValue>) -> Result<(&str, &str), &'static str> {
-    let instance_id = non_empty_string(arguments, "instance_id")
-        .ok_or("instance_id must be a non-empty string")?;
-    let session_id = non_empty_string(arguments, "mcp_session_id")
-        .ok_or("mcp_session_id must be a non-empty string")?;
-    if !safe_segment(instance_id) || !safe_header_value(session_id) {
-        return Err("instance_id or mcp_session_id contains an unsafe or oversized value");
-    }
-    Ok((instance_id, session_id))
-}
-
-fn nonnegative_integer(arguments: &BTreeMap<String, JsonValue>, key: &str) -> Option<i64> {
-    match arguments.get(key) {
-        Some(JsonValue::Number(value)) if *value >= 0 => Some(*value),
-        _ => None,
-    }
-}
-
-fn headers(session_id: &str, correlation_id: &str) -> BTreeMap<String, String> {
-    BTreeMap::from([
-        (String::from("x-mcp-session-id"), String::from(session_id)),
-        (
-            String::from("x-mcp-request-id"),
-            String::from(correlation_id),
-        ),
-    ])
-}
-
-fn poc_action_request(
-    correlation_id: &str,
-    instance_id: &str,
-    generation: i64,
-    action_id: &str,
-    units: i64,
-) -> JsonValue {
-    JsonValue::object([
-        (
-            "action".to_owned(),
-            JsonValue::object([
-                ("action_id".to_owned(), JsonValue::string(action_id)),
-                ("units".to_owned(), JsonValue::Number(units)),
-            ]),
-        ),
-        (
-            "correlation_id".to_owned(),
-            JsonValue::string(correlation_id),
-        ),
-        ("error_code".to_owned(), JsonValue::Null),
-        ("generation".to_owned(), JsonValue::Number(generation)),
-        ("instance_id".to_owned(), JsonValue::string(instance_id)),
-        ("kind".to_owned(), JsonValue::string("action_request")),
-        ("observation".to_owned(), JsonValue::Null),
-        (
-            "protocol_version".to_owned(),
-            JsonValue::string(POC_PROTOCOL_VERSION),
-        ),
-        (
-            "provenance".to_owned(),
-            JsonValue::object([
-                ("artifact".to_owned(), JsonValue::string(POC_ARTIFACT)),
-                ("generator".to_owned(), JsonValue::string(POC_GENERATOR)),
-                ("source".to_owned(), JsonValue::string(POC_SCHEMA_SOURCE)),
-            ]),
-        ),
-        (
-            "schema_digest".to_owned(),
-            JsonValue::string(POC_SCHEMA_DIGEST),
-        ),
-        ("status".to_owned(), JsonValue::Null),
-    ])
-}
-
-pub(crate) fn safe_segment(value: &str) -> bool {
-    !value.is_empty()
-        && value.len() <= MAX_IDENTIFIER_BYTES
-        && value
-            .bytes()
-            .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'-' | b'_'))
-}
-
-fn safe_header_value(value: &str) -> bool {
-    !value.is_empty()
-        && value.len() <= MAX_IDENTIFIER_BYTES
-        && value.bytes().all(|byte| {
-            byte.is_ascii_alphanumeric() || matches!(byte, b'-' | b'_' | b'.' | b':' | b'/')
-        })
 }

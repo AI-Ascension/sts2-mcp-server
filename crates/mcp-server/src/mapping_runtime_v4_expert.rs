@@ -17,6 +17,10 @@ use crate::server::McpServer;
 
 use super::{gateway_error_result, has_only_arguments, headers, invalid_params, tool_result};
 
+#[path = "mapping_runtime_v4_expert_helpers.rs"]
+mod helpers;
+use helpers::{expert_error_result, valid_potion_action};
+
 const ARGUMENTS: [&str; 2] = ["instance_id", "mcp_session_id"];
 const ACTION_ARGUMENTS: [&str; 8] = [
     "instance_id",
@@ -217,34 +221,6 @@ fn expert_action_response<G: GatewayAdapter>(
     tool_result(id, response.body.to_json(), response.status != 200)
 }
 
-fn valid_potion_action(value: &JsonValue) -> bool {
-    let Some(object) = value.as_object() else {
-        return false;
-    };
-    if object.len() != 2 {
-        return false;
-    }
-    let Some(action_id) = object.get("action_id").and_then(JsonValue::as_string) else {
-        return false;
-    };
-    if !super::safe_header_value(action_id) {
-        return false;
-    }
-    let Some(action) = object.get("action").and_then(JsonValue::as_object) else {
-        return false;
-    };
-    action.len() == 3
-        && action.get("kind") == Some(&JsonValue::string("use_potion"))
-        && action
-            .get("potion_id")
-            .and_then(JsonValue::as_string)
-            .is_some_and(super::safe_header_value)
-        && matches!(
-            action.get("target_id"),
-            Some(JsonValue::Null) | Some(JsonValue::String(_))
-        )
-}
-
 fn expert_state_call<G: GatewayAdapter>(
     server: &mut McpServer<G>,
     id: RequestId,
@@ -312,28 +288,4 @@ fn expert_state_call<G: GatewayAdapter>(
         Ok(response) => expert_error_result(id, response.status, &response.body),
         Err(error) => gateway_error_result(id, error),
     }
-}
-
-fn expert_error_result(id: RequestId, status: u16, body: &JsonValue) -> RpcResponse {
-    let Some(object) = body.as_object() else {
-        return tool_result(
-            id,
-            format!("gateway returned Runtime-v4 status {status}"),
-            true,
-        );
-    };
-    if object.len() != 1
-        || !matches!(object.get("error_code"), Some(JsonValue::String(value))
-            if !value.is_empty()
-                && value.len() <= 128
-                && value.bytes().all(|byte| byte.is_ascii_alphanumeric()
-                    || matches!(byte, b'-' | b'_' | b'.' | b':' | b'/')))
-    {
-        return tool_result(
-            id,
-            format!("gateway returned Runtime-v4 status {status}"),
-            true,
-        );
-    }
-    tool_result(id, body.to_json(), true)
 }
