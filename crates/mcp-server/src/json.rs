@@ -28,14 +28,21 @@ impl JsonValue {
         Self::String(value.into())
     }
 
-    pub(crate) fn as_object(&self) -> Option<&BTreeMap<String, Self>> {
+    pub fn as_object(&self) -> Option<&BTreeMap<String, Self>> {
         match self {
             Self::Object(value) => Some(value),
             _ => None,
         }
     }
 
-    pub(crate) fn as_string(&self) -> Option<&str> {
+    pub fn as_object_mut(&mut self) -> Option<&mut BTreeMap<String, Self>> {
+        match self {
+            Self::Object(value) => Some(value),
+            _ => None,
+        }
+    }
+
+    pub fn as_string(&self) -> Option<&str> {
         match self {
             Self::String(value) => Some(value),
             _ => None,

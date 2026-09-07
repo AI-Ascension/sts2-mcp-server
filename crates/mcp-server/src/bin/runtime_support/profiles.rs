@@ -41,8 +41,16 @@ pub(crate) fn profile_for_name(profile: Option<&str>) -> Result<RuntimeProfile, 
             catalog: ToolCatalog::coop_synchronization(),
             max_response_bytes: 16 * 1024,
         }),
+        "watchdog-recovery-v1" => {
+            sts2_mcp_server::verify_recovery_artifact()
+                .map_err(|_| String::from("watchdog recovery artifact verification failed"))?;
+            Ok(RuntimeProfile {
+                catalog: ToolCatalog::watchdog_recovery_v1(),
+                max_response_bytes: sts2_mcp_server::RECOVERY_MAX_RESPONSE_BYTES,
+            })
+        }
         value => Err(format!(
-            "STS2_RUNTIME_PROFILE must be runtime-v1, runtime-v2, runtime-v3-gameplay, or coop-synchronization-v1, got {value}"
+            "STS2_RUNTIME_PROFILE must be runtime-v1, runtime-v2, runtime-v3-gameplay, coop-synchronization-v1, or watchdog-recovery-v1, got {value}"
         )),
     }
 }

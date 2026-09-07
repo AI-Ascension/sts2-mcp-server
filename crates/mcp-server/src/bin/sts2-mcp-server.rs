@@ -19,13 +19,17 @@ fn run() -> Result<(), String> {
     let profile = runtime_http::profile_from_environment()?;
     let gateway_session_id = config.session_id.clone();
     let mcp_session_id = config.mcp_session_id.clone();
+    let recovery_principal_id = config.recovery_principal_id.clone();
+    let recovery_role = config.recovery_role.clone();
+    let recovery_proof = config.recovery_proof.clone();
     let adapter = runtime_http::RuntimeGatewayAdapter::new(config, profile.max_response_bytes);
     let mut server = McpServer::with_catalog_and_sessions(
         adapter,
         profile.catalog,
         gateway_session_id,
         mcp_session_id,
-    );
+    )
+    .with_recovery_identity(recovery_principal_id, recovery_role, recovery_proof);
     let max_frame_bytes = server.catalog().max_frame_bytes();
     let stdin = io::stdin();
     let mut input = stdin.lock();

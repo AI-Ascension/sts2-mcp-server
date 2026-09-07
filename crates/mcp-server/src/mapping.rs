@@ -16,6 +16,8 @@ use crate::server::McpServer;
 
 #[path = "mapping_coop_synchronization.rs"]
 mod coop_synchronization;
+#[path = "mapping_recovery.rs"]
+mod recovery_profile;
 #[path = "mapping_response.rs"]
 mod response;
 #[path = "mapping_runtime.rs"]
@@ -31,6 +33,9 @@ pub(crate) fn tools_call<G: GatewayAdapter>(
 ) -> RpcResponse {
     if server.catalog.is_coop_synchronization() {
         return coop_synchronization::tools_call(server, request);
+    }
+    if server.catalog.is_watchdog_recovery_v1() {
+        return recovery_profile::tools_call(server, request);
     }
     if server.catalog.is_runtime_v3_gameplay() {
         return runtime_v3_gameplay::tools_call(server, request);
@@ -62,8 +67,7 @@ pub(crate) fn tools_call<G: GatewayAdapter>(
             RpcError::new(INVALID_PARAMS, "tools/call arguments must be an object"),
         );
     };
-    let id = request.id;
-    let correlation_id = id.stable_text();
+    let (correlation_id, id) = (request.id.stable_text(), request.id);
     if !safe_header_value(&correlation_id) {
         return invalid_params(
             id,

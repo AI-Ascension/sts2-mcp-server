@@ -9,6 +9,7 @@ use sts2_mcp_server::{
     RUNTIME_V3_GAMEPLAY_PROTOCOL_VERSION, parse_json,
 };
 
+use super::binding::is_recovery_result;
 use super::binding::is_runtime_result;
 use super::http::{self, ReadError, read_response, write_request};
 use super::{RuntimeConfig, map_io};
@@ -26,11 +27,13 @@ pub(super) fn exchange(
         GatewayMethod::Get => "GET",
         GatewayMethod::Post => "POST",
     };
+    let is_recovery = super::value_is_recovery(&request);
     let headers = request_headers(
         config,
         request.headers,
         &request.correlation.mcp_request_id.stable_text(),
         body.len(),
+        is_recovery,
     );
     write_request(
         &mut stream,
@@ -60,6 +63,7 @@ fn request_headers(
     supplied: BTreeMap<String, String>,
     correlation: &str,
     body_length: usize,
+    is_recovery: bool,
 ) -> BTreeMap<String, String> {
     let mut headers = supplied;
     headers.insert(
@@ -67,17 +71,19 @@ fn request_headers(
         format!("Bearer {}", config.gateway_token),
     );
     headers.insert(String::from("Host"), config.gateway_address.to_string());
-    headers.insert(
-        String::from("x-sts2-instance-id"),
-        config.instance_id.clone(),
-    );
-    headers.insert(String::from("x-sts2-caller-id"), config.caller_id.clone());
-    headers.insert(String::from("x-sts2-session-id"), config.session_id.clone());
-    headers.insert(String::from("x-sts2-lease-id"), config.lease_id.clone());
-    headers.insert(
-        String::from("x-sts2-lease-epoch"),
-        config.lease_epoch.to_string(),
-    );
+    if !is_recovery {
+        headers.insert(
+            String::from("x-sts2-instance-id"),
+            config.instance_id.clone(),
+        );
+        headers.insert(String::from("x-sts2-caller-id"), config.caller_id.clone());
+        headers.insert(String::from("x-sts2-session-id"), config.session_id.clone());
+        headers.insert(String::from("x-sts2-lease-id"), config.lease_id.clone());
+        headers.insert(
+            String::from("x-sts2-lease-epoch"),
+            config.lease_epoch.to_string(),
+        );
+    }
     headers.insert(
         String::from("x-sts2-correlation-id"),
         correlation.to_owned(),
@@ -94,6 +100,15 @@ fn request_headers(
 
 pub(super) fn classify(response: GatewayResponse) -> Result<GatewayResponse, GatewayError> {
     let GatewayResponse { status, body } = response;
+    if is_recovery_result(&body) {
+        // A recovery envelope is authoritative even when the HTTP status
+        // carries an error class (for example PERSISTENCE_UNAVAILABLE).  The
+        // mapping layer projects the validated result and marks it as an MCP
+        // tool error; converting it to transport uncertainty would discard a
+        // durable gateway status.  Bare non-envelope HTTP errors still take
+        // the typed status branches below.
+        return Ok(GatewayResponse { status, body });
+    }
     match status {
         408 | 502 | 503 | 504
             if is_runtime_result(&body)

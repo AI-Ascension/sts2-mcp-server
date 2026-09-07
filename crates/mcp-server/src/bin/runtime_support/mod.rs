@@ -4,6 +4,14 @@ use std::net::SocketAddr;
 
 mod binding;
 use binding::is_runtime_result;
+mod config;
+use config::{
+    gateway_address, optional_recovery_proof, recovery_or_gateway_token, recovery_profile_selected,
+    required_or_default, safe_header_value, safe_recovery_principal, safe_recovery_uuid, safe_token,
+    value_is_recovery,
+};
+#[cfg(test)]
+use config::configured_value;
 mod exchange;
 mod http;
 mod profiles;
@@ -11,8 +19,8 @@ use http::ReadError;
 pub(crate) use profiles::profile_from_environment;
 
 use sts2_mcp_server::{
-    GatewayAdapter, GatewayError, GatewayRequest, GatewayResponse, JsonValue,
-    RUNTIME_V2_PROTOCOL_VERSION, RUNTIME_V3_GAMEPLAY_PROTOCOL_VERSION,
+    GatewayAdapter, GatewayError, GatewayRequest, GatewayResponse, JsonValue, RECOVERY_CONTRACT,
+    RECOVERY_MAX_FRAME_BYTES, RUNTIME_V2_PROTOCOL_VERSION, RUNTIME_V3_GAMEPLAY_PROTOCOL_VERSION,
 };
 
 const MAX_BODY_BYTES: usize = 16 * 1024;
@@ -27,6 +35,9 @@ pub(crate) struct RuntimeConfig {
     pub(crate) mcp_session_id: String,
     pub(crate) lease_id: String,
     pub(crate) lease_epoch: i64,
+    pub(crate) recovery_principal_id: String,
+    pub(crate) recovery_role: String,
+    pub(crate) recovery_proof: Option<String>,
 }
 
 impl RuntimeConfig {
@@ -35,7 +46,7 @@ impl RuntimeConfig {
             "STS2_GATEWAY_ADDR",
             "127.0.0.1:15525",
         )?)?;
-        let gateway_token = required("STS2_GATEWAY_TOKEN")?;
+        let gateway_token = recovery_or_gateway_token()?;
         let instance_id = required_or_default("STS2_INSTANCE_ID", "instance-1")?;
         let caller_id = required_or_default("STS2_CALLER_ID", "harness")?;
         let session_id = required_or_default("STS2_SESSION_ID", "session-1")?;
@@ -59,10 +70,35 @@ impl RuntimeConfig {
             }
         }
         if !safe_token(&gateway_token) {
+            let token_name = if recovery_profile_selected() {
+                "STS2_RECOVERY_TOKEN"
+            } else {
+                "STS2_GATEWAY_TOKEN"
+            };
+            return Err(format!("{token_name} is empty, unsafe, or oversized"));
+        }
+        if recovery_profile_selected() && !safe_recovery_uuid(&instance_id) {
             return Err(String::from(
-                "STS2_GATEWAY_TOKEN is empty, unsafe, or oversized",
+                "STS2_INSTANCE_ID must be a UUID for the recovery profile",
             ));
         }
+        let recovery_principal_id = required_or_default(
+            "STS2_RECOVERY_PRINCIPAL_ID",
+            "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+        )?;
+        let recovery_role = required_or_default("STS2_RECOVERY_ROLE", "harness")?;
+        if !safe_recovery_principal(&recovery_principal_id) {
+            return Err(String::from("STS2_RECOVERY_PRINCIPAL_ID is not a UUID"));
+        }
+        if !matches!(
+            recovery_role.as_str(),
+            "gateway" | "watchdog" | "harness" | "host" | "mod" | "operator"
+        ) {
+            return Err(String::from(
+                "STS2_RECOVERY_ROLE is not an approved actor role",
+            ));
+        }
+        let recovery_proof = optional_recovery_proof()?;
         Ok(Self {
             gateway_address,
             gateway_token,
@@ -72,6 +108,9 @@ impl RuntimeConfig {
             mcp_session_id,
             lease_id,
             lease_epoch,
+            recovery_principal_id,
+            recovery_role,
+            recovery_proof,
         })
     }
 }
@@ -98,6 +137,7 @@ impl RuntimeGatewayAdapter {
         let JsonValue::Object(mut object) = value.clone() else {
             return Err(GatewayError::Rejected);
         };
+        let is_recovery = object.get("contract") == Some(&JsonValue::string(RECOVERY_CONTRACT));
         let is_runtime_v2 = matches!(
             object.get("protocol_version"),
             Some(JsonValue::String(value)) if value == RUNTIME_V2_PROTOCOL_VERSION
@@ -106,7 +146,11 @@ impl RuntimeGatewayAdapter {
             object.get("protocol_version"),
             Some(JsonValue::String(value)) if value == RUNTIME_V3_GAMEPLAY_PROTOCOL_VERSION
         );
-        if is_runtime_v2 || is_runtime_v3 {
+        if is_recovery {
+            // Recovery frames are closed protocol objects.  Their authority and
+            // identity fields are validated by `binding::admit`; injecting the
+            // gameplay identity fields here would change the signed contract.
+        } else if is_runtime_v2 || is_runtime_v3 {
             if object.get("instance_id")
                 != Some(&JsonValue::string(self.config.instance_id.as_str()))
                 || object.get("session_id")
@@ -135,7 +179,12 @@ impl RuntimeGatewayAdapter {
             );
         }
         let encoded = JsonValue::Object(object).to_json();
-        if encoded.len() > MAX_BODY_BYTES {
+        let limit = if value_is_recovery(request) {
+            RECOVERY_MAX_FRAME_BYTES
+        } else {
+            MAX_BODY_BYTES
+        };
+        if encoded.len() > limit {
             return Err(GatewayError::Rejected);
         }
         Ok(encoded.into_bytes())
@@ -145,12 +194,25 @@ impl RuntimeGatewayAdapter {
 impl GatewayAdapter for RuntimeGatewayAdapter {
     fn forward(&mut self, request: GatewayRequest) -> Result<GatewayResponse, GatewayError> {
         binding::admit(&self.config, &request)?;
+        let recovery_kind = sts2_mcp_server::recovery_kind_for_path(&request.path);
         let response_kind = binding::response_kind(&self.config, &request);
         let correlation = request.correlation.mcp_request_id.stable_text();
         let catalog_read = request.method == sts2_mcp_server::GatewayMethod::Get
             && request.path == format!("/v3/instances/{}/legal-actions", self.config.instance_id);
         let body = self.body(&request)?;
         let response = exchange::exchange(&self.config, request, body, self.max_response_bytes)?;
+        if let Some(kind) = recovery_kind {
+            // A successful response must be a validated recovery frame.  For
+            // an HTTP error, preserve a valid recovery error frame when the
+            // gateway supplied one, while still mapping a bounded transport
+            // error body to its typed status below (rather than converting an
+            // ordinary 401/403/503 response into an unknown mutation).
+            if (200..300).contains(&response.status) || binding::is_recovery_result(&response.body)
+            {
+                binding::recovery_response(&response.body, kind, &correlation)?;
+            }
+            return exchange::classify(response);
+        }
         if catalog_read
             && sts2_mcp_server::catalog_reobserve_body(&response, &correlation).is_some()
         {
@@ -172,52 +234,6 @@ fn map_io(error: ReadError) -> GatewayError {
         ReadError::Oversized => GatewayError::MalformedResponse,
         ReadError::Unavailable => GatewayError::Unavailable,
     }
-}
-
-fn required(name: &str) -> Result<String, String> {
-    std::env::var(name).map_err(|_| format!("{name} is required"))
-}
-
-fn gateway_address(value: &str) -> Result<SocketAddr, String> {
-    let address: SocketAddr = value
-        .parse()
-        .map_err(|_| String::from("STS2_GATEWAY_ADDR must be a numeric loopback socket address"))?;
-    if !address.ip().is_loopback() || address.port() == 0 {
-        return Err(String::from(
-            "STS2_GATEWAY_ADDR must be loopback with a nonzero port",
-        ));
-    }
-    Ok(address)
-}
-
-fn safe_token(value: &str) -> bool {
-    !value.is_empty() && value.len() <= 256 && value.bytes().all(|byte| byte.is_ascii_graphic())
-}
-
-fn required_or_default(name: &str, default: &str) -> Result<String, String> {
-    configured_value(name, std::env::var(name), default)
-}
-
-fn configured_value(
-    name: &str,
-    supplied: Result<String, std::env::VarError>,
-    default: &str,
-) -> Result<String, String> {
-    match supplied {
-        Ok(value) if !value.is_empty() => Ok(value),
-        Ok(_) => Err(format!("{name} must not be empty")),
-        Err(std::env::VarError::NotPresent) => Ok(String::from(default)),
-        Err(std::env::VarError::NotUnicode(_)) => Err(format!("{name} is not valid UTF-8")),
-    }
-}
-
-fn safe_header_value(value: &str) -> bool {
-    !value.is_empty()
-        && value.len() <= 128
-        && !value.contains("..")
-        && value.bytes().all(|byte| {
-            byte.is_ascii_alphanumeric() || matches!(byte, b'-' | b'_' | b'.' | b':' | b'/')
-        })
 }
 
 #[cfg(test)]

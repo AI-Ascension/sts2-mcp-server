@@ -18,6 +18,9 @@ fn config() -> RuntimeConfig {
         mcp_session_id: String::from("configured-session"),
         lease_id: String::from("configured-lease"),
         lease_epoch: 7,
+        recovery_principal_id: String::from("aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"),
+        recovery_role: String::from("harness"),
+        recovery_proof: None,
     }
 }
 
@@ -114,6 +117,28 @@ fn runtime_result_recognition_includes_reconcile_response() {
         String::from("kind"),
         JsonValue::string("reconcile_request"),
     )])));
+}
+
+#[test]
+fn recovery_envelopes_preserve_http_error_status_for_projection() -> Result<(), String> {
+    let body = JsonValue::object([(
+        String::from("contract"),
+        JsonValue::string(sts2_mcp_server::RECOVERY_CONTRACT),
+    )]);
+    let response = super::exchange::classify(GatewayResponse { status: 503, body })
+        .map_err(|error| format!("recovery error envelope remains projectable: {error:?}"))?;
+    assert_eq!(response.status, 503);
+    assert!(
+        super::exchange::classify(GatewayResponse {
+            status: 503,
+            body: JsonValue::object([(
+                String::from("error"),
+                JsonValue::string("persistence_unavailable"),
+            )]),
+        })
+        .is_err()
+    );
+    Ok(())
 }
 
 #[test]

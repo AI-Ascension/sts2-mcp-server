@@ -11,6 +11,10 @@ use crate::json::JsonValue;
 #[path = "protocol_artifact_runtime_v2_hash.rs"]
 mod hash;
 
+pub(crate) fn sha256_hex_for_recovery(bytes: &[u8]) -> String {
+    hash::sha256_hex(bytes)
+}
+
 /// Version consumed by the Runtime-v2 MCP mapping.
 pub const RUNTIME_V2_PROTOCOL_VERSION: &str = "runtime-v2";
 /// SHA-256 of the canonical Runtime-v2 schema source bytes.

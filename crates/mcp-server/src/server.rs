@@ -17,6 +17,9 @@ pub struct McpServer<G> {
     pub(crate) catalog: ToolCatalog,
     pub(crate) gateway_session_id: Option<String>,
     pub(crate) mcp_session_id: Option<String>,
+    pub(crate) recovery_principal_id: String,
+    pub(crate) recovery_role: String,
+    pub(crate) recovery_proof: Option<String>,
 }
 
 impl<G: GatewayAdapter> McpServer<G> {
@@ -26,6 +29,9 @@ impl<G: GatewayAdapter> McpServer<G> {
             catalog: ToolCatalog::default(),
             gateway_session_id: None,
             mcp_session_id: None,
+            recovery_principal_id: String::from("aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"),
+            recovery_role: String::from("harness"),
+            recovery_proof: None,
         }
     }
 
@@ -35,6 +41,9 @@ impl<G: GatewayAdapter> McpServer<G> {
             catalog,
             gateway_session_id: None,
             mcp_session_id: None,
+            recovery_principal_id: String::from("aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"),
+            recovery_role: String::from("harness"),
+            recovery_proof: None,
         }
     }
 
@@ -55,7 +64,22 @@ impl<G: GatewayAdapter> McpServer<G> {
             catalog,
             gateway_session_id: Some(gateway_session_id.into()),
             mcp_session_id: Some(mcp_session_id.into()),
+            recovery_principal_id: String::from("aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"),
+            recovery_role: String::from("harness"),
+            recovery_proof: None,
         }
+    }
+
+    pub fn with_recovery_identity(
+        mut self,
+        principal_id: impl Into<String>,
+        role: impl Into<String>,
+        proof: Option<String>,
+    ) -> Self {
+        self.recovery_principal_id = principal_id.into();
+        self.recovery_role = role.into();
+        self.recovery_proof = proof;
+        self
     }
 
     /// Compatibility entry point: an empty string means no notification response.

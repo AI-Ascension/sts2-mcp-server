@@ -5,12 +5,19 @@ use crate::transport::{LEGACY_MAX_FRAME_BYTES, MAX_FRAME_BYTES};
 
 #[path = "catalog_coop_synchronization.rs"]
 mod coop_synchronization;
+#[path = "catalog_recovery.rs"]
+mod recovery;
 #[path = "catalog_runtime.rs"]
 mod runtime;
 #[path = "catalog_runtime_v2.rs"]
 mod runtime_v2;
 #[path = "catalog_runtime_v3_gameplay.rs"]
 mod runtime_v3_gameplay;
+pub use recovery::{
+    BOOTSTRAP_TOOL, HOST_FENCE_TOOL, LEASE_ACQUIRE_TOOL, LEASE_RENEW_TOOL, LEASE_REVOKE_TOOL,
+    OPERATION_DISPATCH_TOOL, OPERATION_INTENT_TOOL, OPERATION_LOOKUP_TOOL,
+    OPERATION_RECONCILE_TOOL,
+};
 
 pub const GET_STATE_TOOL: &str = "get_state";
 pub const SUBMIT_ACTION_TOOL: &str = "submit_action";
@@ -215,12 +222,17 @@ impl ToolCatalog {
         coop_synchronization::build()
     }
 
+    #[must_use]
+    pub fn watchdog_recovery_v1() -> Self {
+        recovery::build()
+    }
+
     /// Largest MCP frame this profile accepts. The poc, runtime-v1, and runtime-v2
     /// profiles keep their historical 16 KiB limit; only the Runtime-v3 semantic
     /// profile accepts frames up to [`MAX_FRAME_BYTES`].
     #[must_use]
     pub fn max_frame_bytes(&self) -> usize {
-        if self.is_runtime_v3_gameplay() {
+        if self.is_runtime_v3_gameplay() || self.is_watchdog_recovery_v1() {
             MAX_FRAME_BYTES
         } else {
             LEGACY_MAX_FRAME_BYTES
@@ -241,6 +253,10 @@ impl ToolCatalog {
 
     pub(crate) fn is_coop_synchronization(&self) -> bool {
         self.revision == coop_synchronization::REVISION
+    }
+
+    pub(crate) fn is_watchdog_recovery_v1(&self) -> bool {
+        self.revision == recovery::REVISION
     }
 
     pub(crate) fn descriptor(&self, name: &str) -> Option<&ToolDescriptor> {

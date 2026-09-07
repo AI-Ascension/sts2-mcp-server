@@ -32,6 +32,9 @@ pub(super) fn admit(config: &RuntimeConfig, request: &GatewayRequest) -> Result<
     {
         return Err(GatewayError::Rejected);
     }
+    if let Some(kind) = sts2_mcp_server::recovery_kind_for_path(&request.path) {
+        return admit_recovery(config, request, kind);
+    }
     let version = request
         .path
         .split('/')
@@ -68,6 +71,41 @@ pub(super) fn admit(config: &RuntimeConfig, request: &GatewayRequest) -> Result<
         }
     }
     Ok(())
+}
+
+fn admit_recovery(
+    config: &RuntimeConfig,
+    request: &GatewayRequest,
+    kind: &str,
+) -> Result<(), GatewayError> {
+    if request.method != GatewayMethod::Post {
+        return Err(GatewayError::Rejected);
+    }
+    let body = request.body.as_ref().ok_or(GatewayError::Rejected)?;
+    let JsonValue::Object(object) = body else {
+        return Err(GatewayError::Rejected);
+    };
+    let correlation = object
+        .get("correlation_id")
+        .and_then(JsonValue::as_string)
+        .ok_or(GatewayError::Rejected)?;
+    if request.correlation.mcp_request_id.stable_text() != correlation
+        || request.headers.get("x-mcp-request-id").map(String::as_str) != Some(correlation)
+        || request
+            .headers
+            .get("x-sts2-recovery-capability")
+            .map(String::as_str)
+            != sts2_mcp_server::recovery_capability(kind)
+    {
+        return Err(GatewayError::Rejected);
+    }
+    sts2_mcp_server::validate_recovery_request(
+        body,
+        kind,
+        correlation,
+        Some(config.instance_id.as_str()),
+    )
+    .map_err(|_| GatewayError::Rejected)
 }
 
 #[cfg(test)]
@@ -126,4 +164,17 @@ pub(super) fn response(
         return Err(GatewayError::MalformedResponse);
     }
     Ok(())
+}
+
+pub(super) fn recovery_response(
+    body: &JsonValue,
+    kind: &str,
+    correlation: &str,
+) -> Result<(), GatewayError> {
+    sts2_mcp_server::validate_recovery_response(body, kind, correlation)
+        .map_err(|_| GatewayError::MalformedResponse)
+}
+
+pub(super) fn is_recovery_result(body: &JsonValue) -> bool {
+    matches!(body, JsonValue::Object(object) if object.get("contract") == Some(&JsonValue::string("watchdog-recovery-v1")))
 }
