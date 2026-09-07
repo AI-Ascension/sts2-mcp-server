@@ -205,5 +205,27 @@ fn expert_reconcile_maps_the_same_operation_to_the_gateway_read_route()
     );
     assert!(request.body.is_none());
     assert_eq!(request.correlation.mcp_session_id, "mcp-session-1");
+    assert_eq!(
+        request
+            .headers
+            .get("x-sts2-instance-id")
+            .map(String::as_str),
+        Some("instance-1")
+    );
+    assert_eq!(
+        request.headers.get("x-sts2-session-id").map(String::as_str),
+        Some("gateway-session-1")
+    );
+    assert_eq!(
+        request.headers.get("x-sts2-lease-id").map(String::as_str),
+        Some("lease-1")
+    );
+    assert_eq!(
+        request
+            .headers
+            .get("x-sts2-lease-epoch")
+            .map(String::as_str),
+        Some("1")
+    );
     Ok(())
 }
