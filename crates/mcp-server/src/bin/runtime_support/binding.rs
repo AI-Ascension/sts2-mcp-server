@@ -51,7 +51,10 @@ pub(super) fn admit(config: &RuntimeConfig, request: &GatewayRequest) -> Result<
     }
     // Runtime-v1 retains its documented configured identity injection. Newer profiles
     // must not silently substitute authority, including for bodyless observation calls.
-    if version != "v1" || request.path.ends_with("/coop/synchronization") {
+    let is_legacy_v1_injection = version == "v1"
+        && !request.path.ends_with("/coop/synchronization")
+        && !request.path.ends_with("/map-snapshot");
+    if !is_legacy_v1_injection {
         // MCP correlation sessions are a separate namespace; only explicit gateway
         // authority headers/body fields are compared with configured gateway identity.
         for (name, expected) in [

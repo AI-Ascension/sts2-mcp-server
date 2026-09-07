@@ -69,13 +69,32 @@ fn map_snapshot_call<G: GatewayAdapter>(
         Ok(context) => context,
         Err(message) => return invalid_params(id, message),
     };
+    let mut request_headers = headers(&context.mcp_session_id, correlation_id);
+    request_headers.extend([
+        (
+            String::from("x-sts2-instance-id"),
+            context.projection.instance_id.clone(),
+        ),
+        (
+            String::from("x-sts2-session-id"),
+            context.projection.session_id.clone(),
+        ),
+        (
+            String::from("x-sts2-lease-id"),
+            context.projection.lease_id.clone(),
+        ),
+        (
+            String::from("x-sts2-lease-epoch"),
+            context.projection.lease_epoch.to_string(),
+        ),
+    ]);
     let request = GatewayRequest {
         method: GatewayMethod::Get,
         path: format!(
             "/v1/instances/{}/map-snapshot",
             context.projection.instance_id
         ),
-        headers: headers(&context.mcp_session_id, correlation_id),
+        headers: request_headers,
         body: None,
         correlation: Correlation {
             mcp_session_id: context.mcp_session_id.clone(),

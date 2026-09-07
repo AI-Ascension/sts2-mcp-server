@@ -101,6 +101,18 @@ fn map_snapshot_maps_one_fenced_read_route_and_projects_the_complete_graph() -> 
         request.headers.get("x-mcp-session-id").map(String::as_str),
         Some("mcp-1")
     );
+    for (name, expected) in [
+        ("x-sts2-instance-id", "instance-1"),
+        ("x-sts2-session-id", "session-1"),
+        ("x-sts2-lease-id", "lease-1"),
+        ("x-sts2-lease-epoch", "7"),
+    ] {
+        assert_eq!(
+            request.headers.get(name).map(String::as_str),
+            Some(expected),
+            "map authority header {name}"
+        );
+    }
     Ok(())
 }
 
