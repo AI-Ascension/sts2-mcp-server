@@ -97,6 +97,13 @@ pub(super) fn project(body: &JsonValue) -> Result<JsonValue, &'static str> {
             if observed_generation != generation {
                 return Err("Runtime-v4 settled observation generation does not match response");
             }
+            let observed_state_id = observation
+                .as_object()
+                .and_then(|value| value.get("state_id"))
+                .ok_or("Runtime-v4 settled observation state_id is missing")?;
+            if Some(observed_state_id) != root.get("state_id") {
+                return Err("Runtime-v4 settled observation state_id does not match response");
+            }
             let transition = exact_object(
                 root.get("transition"),
                 &[

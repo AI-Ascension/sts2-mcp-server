@@ -161,8 +161,21 @@ fn expert_reconcile_call<G: GatewayAdapter>(
             mcp_request_id: id.clone(),
         },
     };
+    let binding = ExpertResponseBinding {
+        correlation_id: correlation_id.to_owned(),
+        instance_id: instance_id.to_owned(),
+        session_id: server
+            .gateway_session_id()
+            .unwrap_or(mcp_session_id)
+            .to_owned(),
+        lease_id: lease_id.to_owned(),
+        lease_epoch,
+        generation: None,
+        operation_id: operation_id.to_owned(),
+        action: None,
+    };
     match server.gateway.forward(request) {
-        Ok(response) => expert_action_response(server, id, response),
+        Ok(response) => expert_action_response(id, response, binding),
         Err(error) => gateway_error_result(id, error),
     }
 }

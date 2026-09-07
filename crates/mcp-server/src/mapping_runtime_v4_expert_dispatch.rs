@@ -1,5 +1,59 @@
 // SPDX-License-Identifier: MIT
 
+#[derive(Clone, Debug)]
+struct ExpertResponseBinding {
+    correlation_id: String,
+    instance_id: String,
+    session_id: String,
+    lease_id: String,
+    lease_epoch: i64,
+    generation: Option<i64>,
+    operation_id: String,
+    action: Option<JsonValue>,
+}
+
+impl ExpertResponseBinding {
+    fn matches(&self, body: &JsonValue) -> bool {
+        let Some(root) = body.as_object() else {
+            return false;
+        };
+        for (field, expected) in [
+            ("correlation_id", self.correlation_id.as_str()),
+            ("instance_id", self.instance_id.as_str()),
+            ("session_id", self.session_id.as_str()),
+            ("lease_id", self.lease_id.as_str()),
+            ("operation_id", self.operation_id.as_str()),
+        ] {
+            if root.get(field).and_then(JsonValue::as_string) != Some(expected) {
+                return false;
+            }
+        }
+        if root.get("lease_epoch") != Some(&JsonValue::Number(self.lease_epoch)) {
+            return false;
+        }
+        if let Some(expected_action) = self.action.as_ref() {
+            let Some(response_action) = root.get("action") else {
+                return false;
+            };
+            if !matches!(response_action, JsonValue::Null) && response_action != expected_action {
+                return false;
+            }
+        }
+        if let Some(expected_generation) = self.generation
+            && root.get("status").and_then(JsonValue::as_string) == Some("settled")
+        {
+            let before = root
+                .get("transition")
+                .and_then(JsonValue::as_object)
+                .and_then(|transition| transition.get("before_generation"));
+            if before != Some(&JsonValue::Number(expected_generation)) {
+                return false;
+            }
+        }
+        true
+    }
+}
+
 fn expert_action_call<G: GatewayAdapter>(
     server: &mut McpServer<G>,
     id: RequestId,
@@ -124,23 +178,32 @@ fn expert_action_call<G: GatewayAdapter>(
             mcp_request_id: id.clone(),
         },
     };
+    let binding = ExpertResponseBinding {
+        correlation_id: correlation_id.to_owned(),
+        instance_id: instance_id.to_owned(),
+        session_id: server.gateway_session_id().unwrap_or(mcp_session_id).to_owned(),
+        lease_id: lease_id.to_owned(),
+        lease_epoch,
+        generation: Some(generation),
+        operation_id: operation_id.to_owned(),
+        action: Some(action.clone()),
+    };
     match server.gateway.forward(request) {
-        Ok(response) => expert_action_response(server, id, response),
+        Ok(response) => expert_action_response(id, response, binding),
         Err(error) => gateway_error_result(id, error),
     }
 }
 
-fn expert_action_response<G: GatewayAdapter>(
-    _server: &mut McpServer<G>,
+fn expert_action_response(
     id: RequestId,
     response: crate::gateway::GatewayResponse,
+    binding: ExpertResponseBinding,
 ) -> RpcResponse {
     if !(response.status == 200 || response.status == 409 || response.status == 503)
         || crate::projection::project_runtime_v4_expert_action_gateway_body(&response.body).is_err()
+        || !binding.matches(&response.body)
     {
         return expert_error_result(id, response.status, &response.body);
     }
     tool_result(id, response.body.to_json(), response.status != 200)
 }
-
-

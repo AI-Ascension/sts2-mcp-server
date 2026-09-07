@@ -138,6 +138,7 @@ fn expert_action_maps_a_fenced_potion_and_preserves_settlement_witness()
     observation["generation"] = json!(8);
     observation["state_id"] = json!("live:8");
     settled["correlation_id"] = json!("1");
+    settled["session_id"] = json!("gateway-session-1");
     settled["observation"] = observation;
     let mut server = server(&settled.to_string())?;
     let arguments = json!({
@@ -181,6 +182,7 @@ fn expert_reconcile_maps_the_same_operation_to_the_gateway_read_route()
     observation["generation"] = json!(8);
     observation["state_id"] = json!("live:8");
     settled["correlation_id"] = json!("2");
+    settled["session_id"] = json!("gateway-session-1");
     settled["observation"] = observation;
     let mut server = server(&settled.to_string())?;
     let result: Value = serde_json::from_str(&server.handle_frame(&reconcile_call(json!({
@@ -228,4 +230,74 @@ fn expert_reconcile_maps_the_same_operation_to_the_gateway_read_route()
         Some("1")
     );
     Ok(())
+}
+
+fn root_settlement_response() -> Result<Value, Box<dyn std::error::Error>> {
+    let mut settled: Value = serde_json::from_str(include_str!(
+        "../../../protocol-artifact/runtime-v4-expert-action/golden/action-settled.json"
+    ))?;
+    let mut observation: Value = serde_json::from_str(GOLDEN)?;
+    observation["generation"] = settled["generation"].clone();
+    observation["state_id"] = settled["state_id"].clone();
+    settled["correlation_id"] = json!("1");
+    settled["session_id"] = json!("gateway-session-1");
+    settled["observation"] = observation;
+    Ok(settled)
+}
+
+fn root_action_response(body: Value) -> Result<Value, Box<dyn std::error::Error>> {
+    let mut server = server(&body.to_string())?;
+    let args = json!({
+        "instance_id":"instance-1", "mcp_session_id":"mcp-session-1",
+        "lease_id":"lease-1", "lease_epoch":1, "generation":7,
+        "state_id":"live:7", "operation_id":"potion-op-1",
+        "action":{"action_id":"potion:7:potion:fire:enemy:1",
+            "action":{"kind":"use_potion","potion_id":"potion:fire","target_id":"enemy:1"}}
+    });
+    Ok(serde_json::from_str(
+        &server.handle_frame(&action_call(args)),
+    )?)
+}
+
+fn root_assert_rejected(changed: Value) -> Result<(), Box<dyn std::error::Error>> {
+    assert_eq!(
+        root_action_response(root_settlement_response()?)?["result"]["isError"],
+        false
+    );
+    assert_eq!(
+        root_action_response(changed)?["result"]["isError"],
+        true,
+        "MCP returned a contradictory settlement as successful tool content"
+    );
+    Ok(())
+}
+
+#[test]
+fn root_rejects_settled_nested_state_from_another_response()
+-> Result<(), Box<dyn std::error::Error>> {
+    let mut changed = root_settlement_response()?;
+    changed["observation"]["state_id"] = json!("foreign-state");
+    root_assert_rejected(changed)
+}
+
+#[test]
+fn root_rejects_settlement_from_another_dispatch_generation()
+-> Result<(), Box<dyn std::error::Error>> {
+    let mut changed = root_settlement_response()?;
+    changed["transition"]["before_generation"] = json!(6);
+    root_assert_rejected(changed)
+}
+
+#[test]
+fn root_rejects_settlement_for_another_operation() -> Result<(), Box<dyn std::error::Error>> {
+    let mut changed = root_settlement_response()?;
+    changed["operation_id"] = json!("other-operation");
+    root_assert_rejected(changed)
+}
+
+#[test]
+fn root_rejects_settlement_for_another_correlation() -> Result<(), Box<dyn std::error::Error>> {
+    let mut changed = root_settlement_response()?;
+    changed["correlation_id"] = json!("other-request");
+    root_assert_rejected(changed)
 }
