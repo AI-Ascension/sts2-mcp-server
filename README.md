@@ -29,7 +29,7 @@ protocol target a second source of boundary behavior.
 ## Evidence and provenance
 
 No live MCP transport, gateway connection, game load, host compatibility, provider call, release, or
-deployment has been run from this target. Those boundaries are `runtime-unverified`. The local seam and
+deployment has been run from this target. Those boundaries are unverified. The local seam and
 fake-gateway tests are deterministic build/test evidence only. Documentation, policy tooling, and
 fixtures must be original or carry explicit provenance and redistribution rights. Proprietary game files,
 saves, credentials, personal paths, and copied implementation source do not belong here.

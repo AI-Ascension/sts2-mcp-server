@@ -11,13 +11,13 @@ does.
 
 The target now contains a local no-I/O package and fake-gateway tests, but no accepted external MCP
 profile, frozen gateway API, live server, or release artifact. The current status is
-`runtime-unverified` for live MCP framing, gateway mapping, authentication, downstream readiness,
+`unverified` for live MCP framing, gateway mapping, authentication, downstream readiness,
 timeout/cancellation behavior, and end-to-end operation effects.
 
 | Subject | Current identity | Evidence |
 | --- | --- | --- |
-| Target package | sts2-mcp-server 0.0.0; local revision wave2-local-v0 | statically derived; not an external compatibility claim |
-| Repository policy | target-local Rust repo-policy, version 0.0.0 | statically derived after local checks |
+| Target package | sts2-mcp-server 0.0.0; local revision wave2-local-v0 | source-derived; not an external compatibility claim |
+| Repository policy | target-local Rust repo-policy, version 0.0.0 | source-derived after local checks |
 | Rust toolchain | `1.97.1`, edition 2024 | declared; compilation is a local gate |
 | MCP protocol revision | not frozen | unverified; pin a first-party revision before implementation |
 | Gateway API revision | not frozen | unverified; consume an approved versioned description |
