@@ -13,6 +13,8 @@ use crate::protocol::{RequestId, RpcResponse};
 pub(super) const LEGACY_MAX_RESPONSE_BYTES: usize = 16 * 1024;
 /// Projected tool content limit for the Runtime-v3 semantic profile only.
 pub(super) const RUNTIME_V3_MAX_RESPONSE_BYTES: usize = 128 * 1024;
+/// Projected content limit for the direct Runtime-v4 expert-state profile.
+pub(super) const RUNTIME_V4_EXPERT_MAX_RESPONSE_BYTES: usize = 128 * 1024;
 
 pub(super) fn gateway_success(
     id: RequestId,

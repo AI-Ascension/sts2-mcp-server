@@ -56,9 +56,30 @@ host to a supported compatibility row.
 | --- | --- | --- | --- |
 | `runtime-v1-mcp` | Fixed single-instance runtime adapter | Mapping/artifact tests, component TCP lane, and authorized exact-host trace | Bounded adapter path confirmed for STS2 v0.107.1 Windows x86-64; gameplay and broader compatibility unverified |
 | `runtime-v2-mcp` | `GET /v2/instances/{id}/state`, `POST /v2/instances/{id}/action`, `GET /v2/instances/{id}/operations/{operation_id}` | Copied-artifact checksum, deterministic mapping/projection tests, profile and identity unit tests | Source/fake seam confirmed; live gateway, host settlement, gameplay mutation, and end-to-end compatibility unverified |
+| `runtime-v4-expert-mcp` | `GET /v4/instances/{id}/expert-state`, `POST /v4/instances/{id}/expert-action`, `GET /v4/instances/{id}/expert-actions/{operation_id}` | Exact-head source/component review at MCP `901c9ed`, integrated at `5fc337b` | Request binding and bounded projection confirmed; native host legality, settled effects, provider execution, cross-consumer integration, deployment, and release unverified |
 
-The profile is compatible only with the exact `runtime-v1` schema digest and allowlisted response
-shapes. It makes no provider, game-rule, gameplay mutation, or release-support claim.
+### Dated Runtime-v4 request-binding update — 2026-09-07
+
+The source/component update at MCP head `901c9edd94833fca6bfe322e0c515f91c8b2b281`, integrated
+in merge `5fc337b880b6c38389661c865003e304a02d1136`, binds action and reconcile responses to the
+request's correlation, instance, gateway session, lease/epoch, and operation identities. Dispatch
+also checks any returned action against the request. Settled responses bind nested observation
+`state_id` and `generation` to the outer response; settled dispatch responses also require the
+transition's `before_generation` to match the dispatch generation. The exact-head source/component
+review passed 125 clean-head workspace tests plus focused binding checks; it is synthetic component
+evidence.
+
+| Copied artifact | Schema `$id` | Schema digest |
+| --- | --- | --- |
+| `sts2-protocol/runtime-v4-expert` | `sts2-runtime-v4-expert` | `0ee034d5da83f34e9fa0ba23038738d56ef8cfccb1c6e752af3ab63d212c8e42` |
+| `sts2-protocol/runtime-v4-expert-action` | `sts2-runtime-v4-expert-action` | `393318bda8c3522c0ecbacc78b95471a9f4dc3f825169d2048f4c74a7b7f2929` |
+
+Native host legality, settled effects, provider execution, cross-consumer integration, deployment,
+and release remain unverified.
+
+The `runtime-v1-mcp` profile is compatible only with the exact `runtime-v1` schema digest and
+allowlisted response shapes. It makes no provider, game-rule, gameplay mutation, or release-support
+claim.
 
 Runtime-v2 consumes the exact handed-off schema digest
 `f7963b19c8ed5bbdc02c08e83c7a2e16c4771ed5eb798b29a8208d7a917a86c2`. Its MCP mapping is a thin

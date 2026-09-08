@@ -5,6 +5,18 @@ exists.
 
 ## Unreleased
 
+- 2026-09-07: Record the Runtime-v4 expert source/component binding at MCP head
+  `901c9edd94833fca6bfe322e0c515f91c8b2b281`, integrated in merge
+  `5fc337b880b6c38389661c865003e304a02d1136`. Action and reconcile responses are bound to
+  correlation, instance, gateway session, lease/epoch, and operation identities. Settled responses
+  bind nested `state_id`/`generation` to the outer response; settled dispatch responses also require
+  `before_generation` to match the dispatch generation. Copied schema IDs and digests are
+  `sts2-runtime-v4-expert` / `0ee034d5da83f34e9fa0ba23038738d56ef8cfccb1c6e752af3ab63d212c8e42`
+  and `sts2-runtime-v4-expert-action` /
+  `393318bda8c3522c0ecbacc78b95471a9f4dc3f825169d2048f4c74a7b7f2929`. This is synthetic
+  source/component evidence; native host legality, settled effects, provider execution,
+  cross-consumer integration, deployment, and release remain unverified.
+
 - Complete the read-only co-op synchronization tool as the explicit executable profile
   `coop-synchronization-v1`, with strict configured-identity admission, complete response
   validation, and real gateway/MCP transport verification. The unpublished broader prototype
