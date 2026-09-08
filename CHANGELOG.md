@@ -19,10 +19,15 @@ exists.
 
 - Add the additive `runtime-map-v1-mcp` profile with seven tools, including the read-only
   `sts2.map_snapshot` bodyless gateway mapping. Pin protocol commit
-  `7c448bd8d7a695ada48830176f3d738286caafe4` and schema digest
+  `b3d3034f32e68d70c9e681f906ee37d74db153c4` and schema digest
   `ceab0d2dfc471d1ec36d12edaf4654b8c7fdced06548bf47265e11c63f98115b`; validate complete visible
   graph projections at 256 KiB while preserving all legacy profile catalogs and limits. Live host
   map freshness and visualizer compatibility remain unverified.
+
+- Record the merged current MCP main source head `10c4532167fcb91d577ddf3a71cb4759c28bef08` for
+  the bounded `runtime-map-v1` profile and copied-artifact consumer. This is source/component and
+  artifact-copy evidence; host extraction, native map visibility, navigation, gameplay, release,
+  and publication remain unverified.
 
 - Complete the read-only co-op synchronization tool as the explicit executable profile
   `coop-synchronization-v1`, with strict configured-identity admission, complete response
