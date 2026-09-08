@@ -69,6 +69,7 @@ directory run:
 cargo metadata --locked --no-deps --format-version 1
 sha256sum -c --ignore-missing protocol-artifact/poc-v1/SHA256SUMS
 (cd protocol-artifact/runtime-v2 && sha256sum -c SHA256SUMS)
+(cd protocol-artifact/runtime-map-v1 && sha256sum -c SHA256SUMS)
 cargo test --locked --package sts2-mcp-server --test artifact
 cargo test --locked --package sts2-mcp-server --test runtime_v2_artifact --test runtime_v2_mapping
 cargo fmt --all --check
@@ -135,3 +136,9 @@ disconnect/recovery, stale lease fencing, and rejected unknown or regressing rep
 downstream game connections. It provides no action, vote, shared-effect, or peer-game authority;
 native multiplayer observation and actuation remain unverified. See the
 [dated executable evidence](docs/evidence/coop-synchronization-20260906.md).
+
+The additive `runtime-map-v1` profile selects the six Runtime-v3 gameplay tools plus the read-only
+`sts2.map_snapshot` tool. It maps a bodyless GET to the gateway's fixed map snapshot route, validates
+the corrected visible-map artifact and generation-bound graph projection, and uses 256 KiB frame,
+response, and projected-content limits. Legacy profiles remain unchanged; host map freshness and
+visualizer rendering remain unverified. See [ADR 0016](docs/decisions/0016-runtime-map-profile.md).

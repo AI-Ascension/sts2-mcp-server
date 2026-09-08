@@ -7,6 +7,8 @@ use crate::transport::{LEGACY_MAX_FRAME_BYTES, MAX_FRAME_BYTES};
 mod coop_synchronization;
 #[path = "catalog_runtime.rs"]
 mod runtime;
+#[path = "catalog_runtime_map.rs"]
+mod runtime_map;
 #[path = "catalog_runtime_v2.rs"]
 mod runtime_v2;
 #[path = "catalog_runtime_v3_gameplay.rs"]
@@ -23,6 +25,7 @@ pub const DISPATCH_ACTION_TOOL: &str = "sts2.dispatch_action";
 pub const WAIT_FOR_TRANSITION_TOOL: &str = "sts2.wait_for_transition";
 pub const REOBSERVE_TOOL: &str = "sts2.reobserve";
 pub const RECOVER_TOOL: &str = "sts2.recover";
+pub const MAP_SNAPSHOT_TOOL: &str = "sts2.map_snapshot";
 pub const COOP_SYNCHRONIZATION_TOOL: &str = coop_synchronization::SYNC_TOOL;
 pub const EXPERT_STATE_TOOL: &str = runtime_v4_expert::EXPERT_STATE_TOOL;
 pub const EXPERT_ACTION_TOOL: &str = runtime_v4_expert::EXPERT_ACTION_TOOL;
@@ -221,6 +224,11 @@ impl ToolCatalog {
     }
 
     #[must_use]
+    pub fn runtime_map_v1() -> Self {
+        runtime_map::build()
+    }
+
+    #[must_use]
     pub fn coop_synchronization() -> Self {
         coop_synchronization::build()
     }
@@ -230,7 +238,8 @@ impl ToolCatalog {
     /// profile accepts frames up to [`MAX_FRAME_BYTES`].
     #[must_use]
     pub fn max_frame_bytes(&self) -> usize {
-        if self.is_runtime_v3_gameplay() || self.is_runtime_v4_expert() {
+        if self.is_runtime_v3_gameplay() || self.is_runtime_v4_expert() || self.is_runtime_map_v1()
+        {
             MAX_FRAME_BYTES
         } else {
             LEGACY_MAX_FRAME_BYTES
@@ -251,6 +260,10 @@ impl ToolCatalog {
 
     pub(crate) fn is_runtime_v4_expert(&self) -> bool {
         self.revision == runtime_v4_expert::REVISION
+    }
+
+    pub(crate) fn is_runtime_map_v1(&self) -> bool {
+        self.revision == runtime_map::REVISION
     }
 
     pub(crate) fn is_coop_synchronization(&self) -> bool {

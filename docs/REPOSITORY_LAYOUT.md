@@ -48,3 +48,18 @@ output, proprietary files, saves, credentials, and machine-specific paths are no
 Shared naming and exception rules are normative in the aggregate NAMING_CONVENTIONS.md, with machine
 readable ownership in naming-registry.yaml.
 The MCP adapter owns its mapping names but preserves standard JSON-RPC and MCP member spellings.
+
+## Runtime-map additions
+
+```text
+protocol-artifact/runtime-map-v1/             copied manifest, schema, goldens, and checksums
+schemas/runtime-map-v1.schema.json            source-path schema companion
+conformance/cases/runtime-map-v1.json         implementation-neutral consumer case
+crates/mcp-server/src/catalog_runtime_map.rs  additive seven-tool catalog
+crates/mcp-server/src/mapping_runtime_map.rs  fixed route and argument mapping
+crates/mcp-server/src/projection_runtime_map* complete graph/result validation
+```
+
+The protocol owner remains responsible for the neutral model and conformance meaning. MCP owns
+framing, catalog selection, session binding, fixed gateway mapping, and safe projection; it does
+not import game-mod or visualizer implementation.
