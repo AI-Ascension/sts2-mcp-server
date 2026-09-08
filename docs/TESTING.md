@@ -165,9 +165,11 @@ coordinator reports; it proves executable coordination transport, not native mul
 `runtime_map_v1.rs` verifies the exact seven-tool catalog, `sts2.map_snapshot` argument schema,
 configured MCP-session binding, bodyless GET path, explicit gateway authority, complete corrected
 golden projection, and stale/foreign/unknown-field rejection. `runtime_map_v1_artifact.rs` checks
-protocol commit `7c448bd8d7a695ada48830176f3d738286caafe4`, schema digest
+the copied artifact bytes associated with recorded protocol source commit
+`b3d3034f32e68d70c9e681f906ee37d74db153c4`, schema digest
 `ceab0d2dfc471d1ec36d12edaf4654b8c7fdced06548bf47265e11c63f98115b`, copied manifest, schema,
-conformance case, three goldens, and every checksum entry. The executable TCP adapter test covers
+conformance case, three goldens, and every checksum entry; separate source reconciliation establishes
+the commit provenance. The executable TCP adapter test covers
 the same profile across the actual HTTP framing boundary.
 
 Projection validation preserves overlapping coordinates and disconnected visible components while

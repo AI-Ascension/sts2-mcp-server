@@ -180,7 +180,7 @@ projection of the complete visible graph. Gateway owns lease and gateway identit
 game-mod owns host observation and map meaning.
 
 The selected profile uses 256 KiB frame, gateway-body, and projected-content limits. Its projection
-consumes the corrected protocol artifact at commit `7c448bd8d7a695ada48830176f3d738286caafe4` and
+consumes the corrected protocol artifact at merged main commit `b3d3034f32e68d70c9e681f906ee37d74db153c4` and
 digest `ceab0d2dfc471d1ec36d12edaf4654b8c7fdced06548bf47265e11c63f98115b`. It preserves
 overlapping coordinates and disconnected visible components, checks visited position/history
 relationships, and keeps graph, host-action, and opaque action-option identities separate. Legacy

@@ -109,7 +109,7 @@ used in the recorded Windows/Linux campaign and replay runs; model-played Victor
 multiplayer, and broader compatibility remain `unverified`.
 
 The additive `runtime-v4-expert` profile is selected with `STS2_RUNTIME_PROFILE=runtime-v4-expert`.
-Dated source/component evidence (2026-09-07) at MCP source head
+Historical source/component evidence (2026-09-07) at MCP source head
 `901c9edd94833fca6bfe322e0c515f91c8b2b281`,
 integrated in merge `5fc337b880b6c38389661c865003e304a02d1136`, binds action and reconcile
 responses to the request's correlation, instance, gateway session, lease/epoch, and operation
@@ -142,3 +142,12 @@ The additive `runtime-map-v1` profile selects the six Runtime-v3 gameplay tools 
 the corrected visible-map artifact and generation-bound graph projection, and uses 256 KiB frame,
 response, and projected-content limits. Legacy profiles remain unchanged; host map freshness and
 visualizer rendering remain unverified. See [ADR 0016](docs/decisions/0016-runtime-map-profile.md).
+
+Dated current-main source/component update (2026-09-08): merged MCP main
+`10c4532167fcb91d577ddf3a71cb4759c28bef08` contains the additive
+`runtime-map-v1` profile and copied-artifact consumer. Its producer pin is merged protocol main
+`b3d3034f32e68d70c9e681f906ee37d74db153c4` at schema digest
+`ceab0d2dfc471d1ec36d12edaf4654b8c7fdced06548bf47265e11c63f98115b`. This records
+source/component and artifact-copy scope; host extraction, live map freshness, visualizer
+validation, native map visibility, navigation, gameplay, release, and publication remain
+unverified.

@@ -242,7 +242,7 @@ envelope, and the absence of any other request.
 
 | Surface | Producer pin | Current evidence | Result |
 | --- | --- | --- | --- |
-| `runtime-map-v1-mcp` catalog and mapping | protocol commit `7c448bd8d7a695ada48830176f3d738286caafe4`, schema digest `ceab0d2dfc471d1ec36d12edaf4654b8c7fdced06548bf47265e11c63f98115b` | artifact checksum/schema tests, catalog and mapping tests, and a real TCP adapter test | Confirmed source/component behavior and copied-artifact integrity; host and visualizer compatibility unverified |
+| `runtime-map-v1-mcp` catalog and mapping | merged protocol main commit `b3d3034f32e68d70c9e681f906ee37d74db153c4`, schema digest `ceab0d2dfc471d1ec36d12edaf4654b8c7fdced06548bf47265e11c63f98115b` | artifact checksum/schema tests, catalog and mapping tests, and a real TCP adapter test at MCP main `10c4532167fcb91d577ddf3a71cb4759c28bef08` | Confirmed source/component behavior and copied-artifact integrity; host and visualizer compatibility unverified |
 | `sts2.map_snapshot` | bodyless `GET /v1/instances/{id}/map-snapshot` | explicit MCP/gateway session and authority context, complete graph projection, stale/foreign/unknown-field rejection | Additive profile behavior confirmed in doubles and loopback adapter; live map freshness unverified |
 
 `STS2_RUNTIME_PROFILE=runtime-map-v1` selects seven tools and 256 KiB frame, gateway-body, and
