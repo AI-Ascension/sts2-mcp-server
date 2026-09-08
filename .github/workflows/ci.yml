@@ -57,6 +57,16 @@ jobs:
             (cd "protocol-artifact/$profile" && sha256sum --check SHA256SUMS)
           done
 
+      - name: Verify every copied protocol artifact inventory
+        # Discovers every SHA256SUMS under protocol-artifact/ so a profile copied later
+        # (for example runtime-v4-expert or runtime-v4-expert-action) cannot be missed.
+        run: |
+          inventories=$(find protocol-artifact -mindepth 2 -name SHA256SUMS -type f | LC_ALL=C sort)
+          test -n "$inventories"
+          for inventory in $inventories; do
+            (cd "$(dirname "$inventory")" && sha256sum --check SHA256SUMS)
+          done
+
       - name: Validate copied POC schema and fixtures
         run: cargo test --locked --package sts2-mcp-server --test artifact
 
