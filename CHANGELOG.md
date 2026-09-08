@@ -17,6 +17,13 @@ exists.
   source/component evidence; native host legality, settled effects, provider execution,
   cross-consumer integration, deployment, and release remain unverified.
 
+- Add the additive `runtime-map-v1-mcp` profile with seven tools, including the read-only
+  `sts2.map_snapshot` bodyless gateway mapping. Pin protocol commit
+  `7c448bd8d7a695ada48830176f3d738286caafe4` and schema digest
+  `ceab0d2dfc471d1ec36d12edaf4654b8c7fdced06548bf47265e11c63f98115b`; validate complete visible
+  graph projections at 256 KiB while preserving all legacy profile catalogs and limits. Live host
+  map freshness and visualizer compatibility remain unverified.
+
 - Complete the read-only co-op synchronization tool as the explicit executable profile
   `coop-synchronization-v1`, with strict configured-identity admission, complete response
   validation, and real gateway/MCP transport verification. The unpublished broader prototype

@@ -35,6 +35,13 @@ impl JsonValue {
         }
     }
 
+    pub(crate) fn as_array(&self) -> Option<&Vec<Self>> {
+        match self {
+            Self::Array(value) => Some(value),
+            _ => None,
+        }
+    }
+
     pub(crate) fn as_string(&self) -> Option<&str> {
         match self {
             Self::String(value) => Some(value),

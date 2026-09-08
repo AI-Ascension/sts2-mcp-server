@@ -20,6 +20,7 @@ pub(super) fn is_runtime_result(body: &JsonValue) -> bool {
                             | "wait_response"
                             | "reobserve_response"
                             | "recover_response"
+                            | "snapshot_response"
                     )
             )
     )
@@ -73,7 +74,10 @@ pub(super) fn admit(config: &RuntimeConfig, request: &GatewayRequest) -> Result<
     let adapter_injected_v4_authority = version == "v4" && request.body.is_none();
     // Runtime-v1 retains its documented configured identity injection. Newer profiles
     // must not silently substitute authority, including for bodyless observation calls.
-    if version != "v1" || request.path.ends_with("/coop/synchronization") {
+    let is_legacy_v1_injection = version == "v1"
+        && !request.path.ends_with("/coop/synchronization")
+        && !request.path.ends_with("/map-snapshot");
+    if !is_legacy_v1_injection {
         // MCP correlation sessions are a separate namespace; only explicit gateway
         // authority headers/body fields are compared with configured gateway identity.
         for (name, expected) in [
@@ -112,6 +116,9 @@ pub(super) fn response_kind(
                     Some("synchronization_response")
                 }
                 (GatewayMethod::Get, "state") => Some("state_response"),
+                (GatewayMethod::Get, "map-snapshot") if version == "v1" => {
+                    Some("snapshot_response")
+                }
                 (GatewayMethod::Post, "action") => Some("action_response"),
                 (GatewayMethod::Get, route)
                     if version == "v2" && route.starts_with("operations/") =>

@@ -170,3 +170,19 @@ and projects every field. Both are actual consumers of the same copied artifact.
 prototype remains preserved in history under ADR 0012; ADR 0015 implements its admitted
 read-only scope. The response's source label is retained, and no action/vote/effect tool or
 peer-report ingestion capability is exposed. Gateway owns roster, freshness and authority.
+
+## Runtime-map profile
+
+ADR 0016 adds the additive `runtime-map-v1-mcp` catalog. It keeps the six Runtime-v3 gameplay
+tools and appends the read-only `sts2.map_snapshot` tool. MCP owns its bounded argument schema,
+configured MCP-session fence, fixed bodyless `GET /v1/instances/{id}/map-snapshot` mapping, and
+projection of the complete visible graph. Gateway owns lease and gateway identity admission; the
+game-mod owns host observation and map meaning.
+
+The selected profile uses 256 KiB frame, gateway-body, and projected-content limits. Its projection
+consumes the corrected protocol artifact at commit `7c448bd8d7a695ada48830176f3d738286caafe4` and
+digest `ceab0d2dfc471d1ec36d12edaf4654b8c7fdced06548bf47265e11c63f98115b`. It preserves
+overlapping coordinates and disconnected visible components, checks visited position/history
+relationships, and keeps graph, host-action, and opaque action-option identities separate. Legacy
+profiles and their bounds remain unchanged. This source/component adapter does not prove host map
+freshness, visualizer rendering, or navigation effects.

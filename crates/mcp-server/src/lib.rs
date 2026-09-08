@@ -8,6 +8,7 @@ mod mapping;
 mod projection;
 mod protocol;
 mod protocol_artifact;
+mod protocol_artifact_runtime_map;
 mod protocol_artifact_runtime_v2;
 mod protocol_artifact_runtime_v3_gameplay;
 mod protocol_artifact_runtime_v4_expert;
@@ -16,9 +17,9 @@ mod transport;
 
 pub use catalog::COOP_SYNCHRONIZATION_TOOL;
 pub use catalog::{
-    CapabilityCatalog, DISPATCH_ACTION_TOOL, GET_STATE_TOOL, LEGAL_ACTIONS_TOOL, OBSERVE_TOOL,
-    RECONCILE_ACTION_TOOL, RECOVER_TOOL, REOBSERVE_TOOL, SUBMIT_ACTION_TOOL, ToolCatalog,
-    ToolDescriptor, WAIT_FOR_TRANSITION_TOOL,
+    CapabilityCatalog, DISPATCH_ACTION_TOOL, GET_STATE_TOOL, LEGAL_ACTIONS_TOOL, MAP_SNAPSHOT_TOOL,
+    OBSERVE_TOOL, RECONCILE_ACTION_TOOL, RECOVER_TOOL, REOBSERVE_TOOL, SUBMIT_ACTION_TOOL,
+    ToolCatalog, ToolDescriptor, WAIT_FOR_TRANSITION_TOOL,
 };
 pub use catalog::{EXPERT_ACTION_TOOL, EXPERT_RECONCILE_TOOL, EXPERT_STATE_TOOL};
 pub use catalog_reobserve::catalog_reobserve_body;
@@ -35,6 +36,13 @@ pub use protocol_artifact::{
     POC_MAX_UNITS, POC_PROTOCOL_VERSION, POC_SCHEMA_DIGEST, POC_SCHEMA_SOURCE, RUNTIME_ACTION_ID,
     RUNTIME_ARTIFACT, RUNTIME_GENERATOR, RUNTIME_MAX_GENERATION, RUNTIME_PROTOCOL_VERSION,
     RUNTIME_SCHEMA_DIGEST, RUNTIME_SCHEMA_SOURCE, verify_poc_artifact,
+};
+pub use protocol_artifact_runtime_map::{
+    RUNTIME_MAP_V1_ARTIFACT, RUNTIME_MAP_V1_GENERATOR, RUNTIME_MAP_V1_MAX_BINDINGS,
+    RUNTIME_MAP_V1_MAX_EDGES, RUNTIME_MAP_V1_MAX_GENERATION, RUNTIME_MAP_V1_MAX_HISTORY,
+    RUNTIME_MAP_V1_MAX_MESSAGE_BYTES, RUNTIME_MAP_V1_MAX_NODES, RUNTIME_MAP_V1_PROTOCOL_VERSION,
+    RUNTIME_MAP_V1_SCHEMA_DIGEST, RUNTIME_MAP_V1_SCHEMA_SOURCE, RuntimeMapArtifactError,
+    verify_runtime_map_artifact,
 };
 pub use protocol_artifact_runtime_v2::{
     RUNTIME_V2_ACTION_ID, RUNTIME_V2_ARTIFACT, RUNTIME_V2_EFFECT_KIND, RUNTIME_V2_GENERATOR,
