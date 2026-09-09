@@ -140,7 +140,10 @@ pub(super) fn expert_rest_action_call<G: GatewayAdapter>(
         return invalid_params(id, "action must be one valid typed native rest-site action");
     }
 
-    let session_id = server.gateway_session_id().unwrap_or(mcp_session_id);
+    let session_id = server
+        .gateway_session_id()
+        .unwrap_or(mcp_session_id)
+        .to_owned();
     let body = JsonValue::object([
         (
             "protocol_version".into(),
@@ -170,7 +173,7 @@ pub(super) fn expert_rest_action_call<G: GatewayAdapter>(
         ("profile".into(), JsonValue::string("expert-rest-action")),
         ("correlation_id".into(), JsonValue::string(correlation_id)),
         ("instance_id".into(), JsonValue::string(instance_id)),
-        ("session_id".into(), JsonValue::string(session_id)),
+        ("session_id".into(), JsonValue::string(session_id.as_str())),
         ("lease_id".into(), JsonValue::string(lease_id)),
         ("lease_epoch".into(), JsonValue::Number(lease_epoch)),
         ("generation".into(), JsonValue::Number(generation)),
@@ -187,7 +190,7 @@ pub(super) fn expert_rest_action_call<G: GatewayAdapter>(
     let mut request_headers = headers(mcp_session_id, correlation_id);
     request_headers.extend([
         ("x-sts2-instance-id".into(), instance_id.into()),
-        ("x-sts2-session-id".into(), session_id.into()),
+        ("x-sts2-session-id".into(), session_id.clone()),
         ("x-sts2-lease-id".into(), lease_id.into()),
         ("x-sts2-lease-epoch".into(), lease_epoch.to_string()),
     ]);
@@ -204,7 +207,7 @@ pub(super) fn expert_rest_action_call<G: GatewayAdapter>(
     let binding = RestResponseBinding {
         correlation_id: correlation_id.to_owned(),
         instance_id: instance_id.to_owned(),
-        session_id: session_id.to_owned(),
+        session_id: session_id.clone(),
         lease_id: lease_id.to_owned(),
         lease_epoch,
         generation: Some(generation),
@@ -212,12 +215,13 @@ pub(super) fn expert_rest_action_call<G: GatewayAdapter>(
         action: Some(action.clone()),
     };
     match server.gateway.forward(request) {
-        Ok(response) => expert_rest_action_response(id, response, binding),
+        Ok(response) => expert_rest_action_response(server, id, response, binding),
         Err(error) => gateway_error_result(id, error),
     }
 }
 
-pub(super) fn expert_rest_action_response(
+pub(super) fn expert_rest_action_response<G: GatewayAdapter>(
+    server: &mut McpServer<G>,
     id: RequestId,
     response: GatewayResponse,
     binding: RestResponseBinding,
@@ -234,11 +238,36 @@ pub(super) fn expert_rest_action_response(
         Some("cancelled") => response.status == 499,
         _ => false,
     };
+    let admission = server
+        .rest_action_selection_admission(
+            &binding.instance_id,
+            &binding.session_id,
+            &binding.lease_id,
+            binding.lease_epoch,
+            &response.body,
+        )
+        .cloned();
     let projection =
-        crate::projection::project_runtime_v4_expert_rest_action_gateway_body(&response.body);
+        crate::projection::project_runtime_v4_expert_rest_action_gateway_body_with_admission(
+            &response.body,
+            admission.as_ref(),
+        );
     let binding_matches = binding.matches(&response.body);
     if !valid_status || projection.is_err() || !binding_matches {
         return expert_error_result(id, response.status, &response.body);
+    }
+    if !server.remember_rest_action_selection(
+        &binding.instance_id,
+        &binding.session_id,
+        &binding.lease_id,
+        binding.lease_epoch,
+        &response.body,
+    ) {
+        return tool_result(
+            id,
+            "Runtime-v4 REST selector admission capacity is exhausted",
+            true,
+        );
     }
     let is_error = matches!(
         status.and_then(JsonValue::as_string),

@@ -9,8 +9,15 @@ use crate::protocol_artifact_runtime_v4_expert_rest_action::{
     RUNTIME_V4_EXPERT_REST_ACTION_SCHEMA_DIGEST, RUNTIME_V4_EXPERT_REST_ACTION_SCHEMA_SOURCE,
 };
 
+#[path = "projection_runtime_v4_expert_rest_action_admission.rs"]
+mod admission;
 #[path = "projection_runtime_v4_expert_rest_action_shape.rs"]
 mod shape;
+
+pub(crate) use admission::{
+    RestActionSelectionAdmission, RestActionSelectionKey, rest_action_selection_admission,
+    rest_action_selection_id,
+};
 
 const ROOT_FIELDS: [&str; 19] = [
     "protocol_version",
@@ -34,8 +41,30 @@ const ROOT_FIELDS: [&str; 19] = [
     "error_code",
 ];
 
+#[allow(dead_code)]
 pub(crate) fn project_runtime_v4_expert_rest_action_gateway_body(
     body: &JsonValue,
+) -> Result<JsonValue, &'static str> {
+    project_runtime_v4_expert_rest_action_gateway_body_inner(body, None, false)
+}
+
+/// Projects a response received through the stateful MCP adapter.
+///
+/// A selector response may close the visible choice surface before the final
+/// completion receipt is returned. In that path, completion is admitted only
+/// when this process has retained the selector catalog from an earlier valid
+/// response for the same bound instance, session, lease, and selection.
+pub(crate) fn project_runtime_v4_expert_rest_action_gateway_body_with_admission(
+    body: &JsonValue,
+    admission: Option<&RestActionSelectionAdmission>,
+) -> Result<JsonValue, &'static str> {
+    project_runtime_v4_expert_rest_action_gateway_body_inner(body, admission, true)
+}
+
+fn project_runtime_v4_expert_rest_action_gateway_body_inner(
+    body: &JsonValue,
+    admission: Option<&RestActionSelectionAdmission>,
+    require_prior_selection_admission: bool,
 ) -> Result<JsonValue, &'static str> {
     let root = exact_object(Some(body), &ROOT_FIELDS)?;
     validate_metadata(root)?;
@@ -72,7 +101,12 @@ pub(crate) fn project_runtime_v4_expert_rest_action_gateway_body(
             require_null(root.get("effect_witness"))?;
             require_null(root.get("error_code"))?;
         }
-        "settled" => validate_settled(root, generation)?,
+        "settled" => validate_settled(
+            root,
+            generation,
+            admission,
+            require_prior_selection_admission,
+        )?,
         "rejected" | "unknown" | "cancelled" => {
             shape::validate_action_reference(root.get("action"))?;
             require_null(root.get("observation"))?;
@@ -116,6 +150,8 @@ fn validate_metadata(root: &BTreeMap<String, JsonValue>) -> Result<(), &'static 
 fn validate_settled(
     root: &BTreeMap<String, JsonValue>,
     generation: i64,
+    admission: Option<&RestActionSelectionAdmission>,
+    require_prior_selection_admission: bool,
 ) -> Result<(), &'static str> {
     shape::validate_action_reference(root.get("action"))?;
     let observation = root
@@ -143,6 +179,8 @@ fn validate_settled(
         root.get("operation_id")
             .and_then(JsonValue::as_string)
             .ok_or("Runtime-v4 operation identity is missing")?,
+        admission,
+        require_prior_selection_admission,
     )
 }
 
@@ -189,6 +227,17 @@ pub(super) fn require_null(value: Option<&JsonValue>) -> Result<(), &'static str
     matches!(value, Some(JsonValue::Null))
         .then_some(())
         .ok_or("Runtime-v4 REST nullable field is not null")
+}
+
+pub(super) fn exact_fields(
+    object: &BTreeMap<String, JsonValue>,
+    fields: &[&str],
+) -> Result<(), &'static str> {
+    if object.len() == fields.len() && fields.iter().all(|field| object.contains_key(*field)) {
+        Ok(())
+    } else {
+        Err("Runtime-v4 REST transition contains unknown or missing fields")
+    }
 }
 
 #[cfg(test)]

@@ -30,7 +30,9 @@ pub(crate) use runtime_v4_expert::{
     project_runtime_v4_expert_action_gateway_body, project_runtime_v4_expert_gateway_body,
 };
 pub(crate) use runtime_v4_expert_rest_action::{
-    project_runtime_v4_expert_rest_action_gateway_body,
+    RestActionSelectionAdmission, RestActionSelectionKey,
+    project_runtime_v4_expert_rest_action_gateway_body_with_admission,
+    rest_action_selection_admission, rest_action_selection_id,
     validate_runtime_v4_expert_rest_action_reference,
 };
 

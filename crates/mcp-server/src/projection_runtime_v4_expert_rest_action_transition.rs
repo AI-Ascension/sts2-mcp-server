@@ -4,7 +4,8 @@ use std::collections::BTreeMap;
 
 use crate::json::JsonValue;
 
-use super::super::{bounded_number, require_null};
+use super::super::{bounded_number, exact_fields, require_null};
+use super::RestActionSelectionAdmission;
 use super::selector::{
     positive_count, selected_ids, selection_kind, validate_completed_choices, validate_option,
     validate_selector,
@@ -17,6 +18,8 @@ pub(super) fn validate_transition(
     observation: &BTreeMap<String, JsonValue>,
     generation: i64,
     operation_id: &str,
+    admission: Option<&RestActionSelectionAdmission>,
+    require_prior_selection_admission: bool,
 ) -> Result<(), &'static str> {
     let transition = transition_value
         .as_object()
@@ -99,7 +102,12 @@ pub(super) fn validate_transition(
             }
             require_null(transition.get("effect_witness"))?;
             require_null(root.get("effect_witness"))?;
-            validate_selector(transition.get("selector"), option_id, observation)?;
+            validate_selector(
+                transition.get("selector"),
+                option_id,
+                observation,
+                admission,
+            )?;
         }
         "rest_option_selection_progressed" => {
             exact_fields(
@@ -163,7 +171,15 @@ pub(super) fn validate_transition(
             {
                 return Err("Runtime-v4 REST action choice is absent from transition");
             }
-            validate_selector(transition.get("selector"), option_id, observation)?;
+            if require_prior_selection_admission && admission.is_none() {
+                return Err("Runtime-v4 REST selection progress lacks prior admission");
+            }
+            validate_selector(
+                transition.get("selector"),
+                option_id,
+                observation,
+                admission,
+            )?;
             let selector = transition
                 .get("selector")
                 .and_then(JsonValue::as_object)
@@ -229,7 +245,17 @@ pub(super) fn validate_transition(
             if selected.len() != required {
                 return Err("Runtime-v4 REST selection count is incomplete");
             }
-            validate_completed_choices(observation, selection_kind, &selected)?;
+            if require_prior_selection_admission && admission.is_none() {
+                return Err("Runtime-v4 REST selection completion lacks prior admission");
+            }
+            validate_completed_choices(
+                observation,
+                option_id,
+                selection_kind,
+                &selected,
+                admission,
+                require_prior_selection_admission,
+            )?;
             if option_id == "mend"
                 && action_payload.get("kind").and_then(JsonValue::as_string)
                     == Some("select_player")
@@ -276,12 +302,4 @@ fn transition_number(
     field: &str,
 ) -> Result<i64, &'static str> {
     bounded_number(transition.get(field))
-}
-
-fn exact_fields(object: &BTreeMap<String, JsonValue>, fields: &[&str]) -> Result<(), &'static str> {
-    if object.len() == fields.len() && fields.iter().all(|field| object.contains_key(*field)) {
-        Ok(())
-    } else {
-        Err("Runtime-v4 REST transition contains unknown or missing fields")
-    }
 }

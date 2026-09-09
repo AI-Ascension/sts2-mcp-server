@@ -171,7 +171,7 @@ fn expert_rest_reconcile_call<G: GatewayAdapter>(
         action: None,
     };
     match server.gateway.forward(request) {
-        Ok(response) => dispatch::expert_rest_action_response(id, response, binding),
+        Ok(response) => dispatch::expert_rest_action_response(server, id, response, binding),
         Err(error) => gateway_error_result(id, error),
     }
 }

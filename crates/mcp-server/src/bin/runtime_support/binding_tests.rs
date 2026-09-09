@@ -190,6 +190,40 @@ fn v4_reconcile_rejects_stale_lease_and_epoch_before_http() {
 }
 
 #[test]
+fn v4_rest_reconcile_route_reaches_the_loopback_gateway() {
+    use std::io::{Read, Write};
+    use std::net::TcpListener;
+    use std::thread;
+    use std::time::Duration;
+
+    let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+    let mut config = config();
+    config.gateway_address = listener.local_addr().unwrap();
+    let worker = thread::spawn(move || {
+        let (mut socket, _) = listener.accept().unwrap();
+        socket
+            .set_read_timeout(Some(Duration::from_secs(1)))
+            .unwrap();
+        let mut bytes = [0; 8192];
+        assert!(socket.read(&mut bytes).unwrap() > 0);
+        let body = r#"{"protocol_version":"runtime-v4-expert-rest-action-v1","kind":"action_response","instance_id":"instance","session_id":"session","lease_id":"lease","lease_epoch":1,"correlation_id":"request","operation_id":"operation","status":"unknown","action":{"action_id":"rest-option:7:heal","action":{"kind":"rest_option","rest_option_id":"heal"}},"generation":7,"state_id":"live:7","observation":null,"transition":null,"effect_witness":null,"error_code":"sts2.runtime/unknown"}"#;
+        socket
+            .write_all(format!("HTTP/1.1 503 Unknown\r\nContent-Type: application/json\r\nContent-Length: {}\r\n\r\n{body}", body.len()).as_bytes())
+            .unwrap();
+    });
+    let mut request = request();
+    request.path = String::from("/v4/instances/instance/expert-rest-actions/operation");
+    let mut adapter = super::super::RuntimeGatewayAdapter::new(
+        config,
+        super::super::http::LEGACY_MAX_RESPONSE_BYTES,
+    );
+    let response = adapter.forward(request).unwrap();
+    assert_eq!(response.status, 503);
+    assert!(response.body.to_json().contains("unknown"));
+    worker.join().unwrap();
+}
+
+#[test]
 fn response_is_bound_to_configured_identity_request_and_route() {
     let fields = BTreeMap::from([
         (String::from("instance_id"), JsonValue::string("instance")),

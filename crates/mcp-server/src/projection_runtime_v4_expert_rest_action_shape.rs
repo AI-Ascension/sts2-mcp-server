@@ -4,7 +4,7 @@ use std::collections::BTreeMap;
 
 use crate::json::JsonValue;
 
-use super::{exact_object, validate_identity};
+use super::{RestActionSelectionAdmission, exact_object, validate_identity};
 
 #[path = "projection_runtime_v4_expert_rest_action_selector.rs"]
 mod selector;
@@ -21,6 +21,8 @@ pub(super) fn validate_transition(
     observation: &BTreeMap<String, JsonValue>,
     generation: i64,
     operation_id: &str,
+    admission: Option<&RestActionSelectionAdmission>,
+    require_prior_selection_admission: bool,
 ) -> Result<(), &'static str> {
     transition::validate_transition(
         root,
@@ -28,6 +30,8 @@ pub(super) fn validate_transition(
         observation,
         generation,
         operation_id,
+        admission,
+        require_prior_selection_admission,
     )
 }
 

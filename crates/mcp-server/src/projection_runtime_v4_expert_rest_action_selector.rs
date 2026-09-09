@@ -4,7 +4,11 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use crate::json::JsonValue;
 
-use super::{exact_object, validate_identity};
+use super::{RestActionSelectionAdmission, exact_object, validate_identity};
+
+#[path = "projection_runtime_v4_expert_rest_action_completion.rs"]
+mod completion;
+pub(super) use completion::validate_completed_choices;
 
 pub(super) fn validate_option(
     value: Option<&JsonValue>,
@@ -46,6 +50,7 @@ pub(super) fn validate_selector(
     value: Option<&JsonValue>,
     option_id: &str,
     observation: &BTreeMap<String, JsonValue>,
+    admission: Option<&RestActionSelectionAdmission>,
 ) -> Result<(), &'static str> {
     let selector = exact_object(
         value,
@@ -75,6 +80,13 @@ pub(super) fn validate_selector(
     if selected.len() > required || remaining != required - selected.len() {
         return Err("Runtime-v4 REST selector counts are inconsistent");
     }
+    if let Some(admission) = admission
+        && (admission.option_id != option_id
+            || admission.selection_kind != selection_kind
+            || admission.required_count != required)
+    {
+        return Err("Runtime-v4 REST selector differs from prior admission");
+    }
     let state = observation
         .get("state")
         .and_then(JsonValue::as_object)
@@ -102,29 +114,18 @@ pub(super) fn validate_selector(
     if visible_choice_ids.len() != choices.len() {
         return Err("Runtime-v4 REST selector choice identities are invalid");
     }
-    let visible_choice_ids = if selection_kind == "card" {
-        let deck = observation
-            .get("player")
-            .and_then(JsonValue::as_object)
-            .and_then(|player| player.get("deck"))
-            .and_then(JsonValue::as_array)
-            .ok_or("Runtime-v4 REST card selector has no visible deck")?;
-        deck.iter()
-            .filter_map(|card| {
-                card.as_object()
-                    .and_then(|card| card.get("card_id"))
-                    .and_then(JsonValue::as_string)
-                    .map(str::to_owned)
-            })
-            .collect()
-    } else {
-        visible_choice_ids
-    };
     if selected
         .iter()
         .any(|choice| !visible_choice_ids.contains(choice))
     {
         return Err("Runtime-v4 REST selector choice is not visible");
+    }
+    if let Some(admission) = admission
+        && selected
+            .iter()
+            .any(|choice| !admission.choice_ids.contains(choice))
+    {
+        return Err("Runtime-v4 REST selector choice exceeds prior admission");
     }
     let legal_actions = selector
         .get("legal_actions")
@@ -154,6 +155,12 @@ pub(super) fn validate_selector(
             .get("action")
             .and_then(JsonValue::as_object)
             .ok_or("Runtime-v4 REST legal action payload is missing")?;
+        if let Some(admission) = admission
+            && let Some(choice) = selection_choice_id(payload)
+            && !admission.choice_ids.contains(choice)
+        {
+            return Err("Runtime-v4 REST selector choice exceeds prior admission");
+        }
         let kind = payload
             .get("kind")
             .and_then(JsonValue::as_string)
@@ -218,6 +225,14 @@ pub(super) fn validate_selector(
     Ok(())
 }
 
+fn selection_choice_id(payload: &BTreeMap<String, JsonValue>) -> Option<&str> {
+    match payload.get("kind").and_then(JsonValue::as_string) {
+        Some("select_card") => payload.get("card_id").and_then(JsonValue::as_string),
+        Some("select_player") => payload.get("player_id").and_then(JsonValue::as_string),
+        _ => None,
+    }
+}
+
 pub(super) fn selection_kind(value: Option<&JsonValue>) -> Result<&str, &'static str> {
     match value.and_then(JsonValue::as_string) {
         Some(value @ ("card" | "player")) => Ok(value),
@@ -274,37 +289,6 @@ fn ensure_unselected(value: Option<&JsonValue>, selected: &[String]) -> Result<(
         .ok_or("Runtime-v4 REST selector choice is missing")?;
     if selected.iter().any(|item| item == choice) {
         Err("Runtime-v4 REST selector offers an already selected choice")
-    } else {
-        Ok(())
-    }
-}
-
-pub(super) fn validate_completed_choices(
-    observation: &BTreeMap<String, JsonValue>,
-    selection_kind: &str,
-    selected: &[String],
-) -> Result<(), &'static str> {
-    if selection_kind == "player" {
-        if selected.iter().any(|value| !value.starts_with("player:")) {
-            return Err("Runtime-v4 REST player selection identity is invalid");
-        }
-        return Ok(());
-    }
-    let deck = observation
-        .get("player")
-        .and_then(JsonValue::as_object)
-        .and_then(|player| player.get("deck"))
-        .and_then(JsonValue::as_array)
-        .ok_or("Runtime-v4 REST card selection has no visible deck")?;
-    if selected.iter().any(|selected| {
-        !deck.iter().any(|card| {
-            card.as_object()
-                .and_then(|card| card.get("card_id"))
-                .and_then(JsonValue::as_string)
-                == Some(selected.as_str())
-        })
-    }) {
-        Err("Runtime-v4 REST card selection is not visible in the observation")
     } else {
         Ok(())
     }

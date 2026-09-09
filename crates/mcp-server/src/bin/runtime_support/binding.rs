@@ -64,10 +64,13 @@ pub(super) fn admit(config: &RuntimeConfig, request: &GatewayRequest) -> Result<
             (GatewayMethod::Post, "expert-action") if request.body.is_some() => {}
             (GatewayMethod::Post, "expert-rest-action") if request.body.is_some() => {}
             (GatewayMethod::Get, route)
-                if request.body.is_none() && route.starts_with("expert-actions/") =>
+                if request.body.is_none()
+                    && (route.starts_with("expert-actions/")
+                        || route.starts_with("expert-rest-actions/")) =>
             {
                 let operation_id = route
                     .strip_prefix("expert-actions/")
+                    .or_else(|| route.strip_prefix("expert-rest-actions/"))
                     .ok_or(GatewayError::Rejected)?;
                 if !safe_operation_id(operation_id) {
                     return Err(GatewayError::Rejected);

@@ -1,8 +1,11 @@
 // SPDX-License-Identifier: MIT
 
+use std::collections::BTreeMap;
+
 use crate::catalog::ToolCatalog;
 use crate::gateway::GatewayAdapter;
 use crate::json::JsonValue;
+use crate::projection::{RestActionSelectionAdmission, RestActionSelectionKey};
 use crate::protocol::{
     INVALID_PARAMS, METHOD_NOT_FOUND, PARSE_ERROR, RpcError, RpcRequest, RpcResponse,
 };
@@ -17,7 +20,16 @@ pub struct McpServer<G> {
     pub(crate) catalog: ToolCatalog,
     pub(crate) gateway_session_id: Option<String>,
     pub(crate) mcp_session_id: Option<String>,
+    pub(crate) rest_action_selections: BTreeMap<RestActionSelectionKey, RestActionSelectionContext>,
 }
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub(crate) struct RestActionSelectionContext {
+    pub(crate) admission: RestActionSelectionAdmission,
+    pub(crate) terminal: bool,
+}
+
+const MAX_REST_ACTION_SELECTIONS: usize = 128;
 
 impl<G: GatewayAdapter> McpServer<G> {
     pub fn new(gateway: G) -> Self {
@@ -26,6 +38,7 @@ impl<G: GatewayAdapter> McpServer<G> {
             catalog: ToolCatalog::default(),
             gateway_session_id: None,
             mcp_session_id: None,
+            rest_action_selections: BTreeMap::new(),
         }
     }
 
@@ -35,6 +48,7 @@ impl<G: GatewayAdapter> McpServer<G> {
             catalog,
             gateway_session_id: None,
             mcp_session_id: None,
+            rest_action_selections: BTreeMap::new(),
         }
     }
 
@@ -55,6 +69,7 @@ impl<G: GatewayAdapter> McpServer<G> {
             catalog,
             gateway_session_id: Some(gateway_session_id.into()),
             mcp_session_id: Some(mcp_session_id.into()),
+            rest_action_selections: BTreeMap::new(),
         }
     }
 
@@ -90,6 +105,85 @@ impl<G: GatewayAdapter> McpServer<G> {
 
     pub(crate) fn mcp_session_id(&self) -> Option<&str> {
         self.mcp_session_id.as_deref()
+    }
+
+    pub(crate) fn rest_action_selection_admission(
+        &self,
+        instance_id: &str,
+        session_id: &str,
+        lease_id: &str,
+        lease_epoch: i64,
+        body: &JsonValue,
+    ) -> Option<&RestActionSelectionAdmission> {
+        let selection_id = crate::projection::rest_action_selection_id(body)?;
+        self.rest_action_selections
+            .get(&RestActionSelectionKey {
+                instance_id: instance_id.to_owned(),
+                session_id: session_id.to_owned(),
+                lease_id: lease_id.to_owned(),
+                lease_epoch,
+                selection_id: selection_id.to_owned(),
+            })
+            .map(|context| &context.admission)
+    }
+
+    pub(crate) fn remember_rest_action_selection(
+        &mut self,
+        instance_id: &str,
+        session_id: &str,
+        lease_id: &str,
+        lease_epoch: i64,
+        body: &JsonValue,
+    ) -> bool {
+        let Some(selection_id) = crate::projection::rest_action_selection_id(body) else {
+            return true;
+        };
+        let key = RestActionSelectionKey {
+            instance_id: instance_id.to_owned(),
+            session_id: session_id.to_owned(),
+            lease_id: lease_id.to_owned(),
+            lease_epoch,
+            selection_id: selection_id.to_owned(),
+        };
+        let terminal = body
+            .as_object()
+            .and_then(|root| root.get("transition"))
+            .and_then(JsonValue::as_object)
+            .and_then(|transition| transition.get("kind"))
+            .and_then(JsonValue::as_string)
+            == Some("rest_option_selection_completed");
+        if terminal {
+            let Some(context) = self.rest_action_selections.get_mut(&key) else {
+                return false;
+            };
+            context.terminal = true;
+            return true;
+        }
+        let Some((_, admission)) = crate::projection::rest_action_selection_admission(body) else {
+            return true;
+        };
+        if self.rest_action_selections.len() >= MAX_REST_ACTION_SELECTIONS
+            && !self.rest_action_selections.contains_key(&key)
+        {
+            let Some(eviction_key) = self
+                .rest_action_selections
+                .iter()
+                .find_map(|(key, context)| context.terminal.then(|| key.clone()))
+            else {
+                // Never discard an active catalog. The caller must fail closed
+                // rather than surface a selector it cannot later reconcile.
+                return false;
+            };
+            self.rest_action_selections.remove(&eviction_key);
+        }
+        self.rest_action_selections.insert(
+            key,
+            RestActionSelectionContext {
+                admission,
+                terminal: false,
+            },
+        );
+        true
     }
 
     fn dispatch(&mut self, request: RpcRequest) -> RpcResponse {
