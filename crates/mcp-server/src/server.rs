@@ -13,7 +13,9 @@ use crate::transport::{FrameCodec, FrameError};
 
 #[path = "server_runtime_v4_expert_rest_action.rs"]
 mod runtime_v4_expert_rest_action;
-pub(crate) use runtime_v4_expert_rest_action::RestActionOperationContext;
+pub(crate) use runtime_v4_expert_rest_action::{
+    RestActionOperationContext, RestActionOperationSelection,
+};
 
 #[path = "server_runtime_v4_expert_rest_action_capacity.rs"]
 mod runtime_v4_expert_rest_action_capacity;
@@ -40,6 +42,7 @@ pub struct McpServer<G> {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub(crate) struct RestActionSelectionContext {
     pub(crate) admission: RestActionSelectionAdmission,
+    pub(crate) generation: i64,
     pub(crate) terminal: bool,
 }
 
@@ -125,85 +128,6 @@ impl<G: GatewayAdapter> McpServer<G> {
 
     pub(crate) fn mcp_session_id(&self) -> Option<&str> {
         self.mcp_session_id.as_deref()
-    }
-
-    pub(crate) fn rest_action_selection_admission(
-        &self,
-        instance_id: &str,
-        session_id: &str,
-        lease_id: &str,
-        lease_epoch: i64,
-        body: &JsonValue,
-    ) -> Option<&RestActionSelectionAdmission> {
-        let selection_id = crate::projection::rest_action_selection_id(body)?;
-        self.rest_action_selections
-            .get(&RestActionSelectionKey {
-                instance_id: instance_id.to_owned(),
-                session_id: session_id.to_owned(),
-                lease_id: lease_id.to_owned(),
-                lease_epoch,
-                selection_id: selection_id.to_owned(),
-            })
-            .map(|context| &context.admission)
-    }
-
-    pub(crate) fn remember_rest_action_selection(
-        &mut self,
-        instance_id: &str,
-        session_id: &str,
-        lease_id: &str,
-        lease_epoch: i64,
-        body: &JsonValue,
-    ) -> bool {
-        let Some(selection_id) = crate::projection::rest_action_selection_id(body) else {
-            return true;
-        };
-        let key = RestActionSelectionKey {
-            instance_id: instance_id.to_owned(),
-            session_id: session_id.to_owned(),
-            lease_id: lease_id.to_owned(),
-            lease_epoch,
-            selection_id: selection_id.to_owned(),
-        };
-        let terminal = body
-            .as_object()
-            .and_then(|root| root.get("transition"))
-            .and_then(JsonValue::as_object)
-            .and_then(|transition| transition.get("kind"))
-            .and_then(JsonValue::as_string)
-            == Some("rest_option_selection_completed");
-        if terminal {
-            let Some(context) = self.rest_action_selections.get_mut(&key) else {
-                return false;
-            };
-            context.terminal = true;
-            return true;
-        }
-        let Some((_, admission)) = crate::projection::rest_action_selection_admission(body) else {
-            return true;
-        };
-        if self.rest_action_selections.len() >= MAX_REST_ACTION_SELECTIONS
-            && !self.rest_action_selections.contains_key(&key)
-        {
-            let Some(eviction_key) = self
-                .rest_action_selections
-                .iter()
-                .find_map(|(key, context)| context.terminal.then(|| key.clone()))
-            else {
-                // Never discard an active catalog. The caller must fail closed
-                // rather than surface a selector it cannot later reconcile.
-                return false;
-            };
-            self.rest_action_selections.remove(&eviction_key);
-        }
-        self.rest_action_selections.insert(
-            key,
-            RestActionSelectionContext {
-                admission,
-                terminal: false,
-            },
-        );
-        true
     }
 
     fn dispatch(&mut self, request: RpcRequest) -> RpcResponse {

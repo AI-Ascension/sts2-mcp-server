@@ -172,6 +172,7 @@ pub(super) fn expert_rest_action_call<G: GatewayAdapter>(
         generation,
         state_id: state_id.to_owned(),
         action: action.clone(),
+        selection: None,
     };
     if !server.rest_action_operation_is_compatible(operation_id, &operation_context) {
         return invalid_params(
