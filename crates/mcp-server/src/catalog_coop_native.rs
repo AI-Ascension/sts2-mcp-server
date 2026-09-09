@@ -13,6 +13,7 @@ pub(super) const VOTE_TOOL: &str = "sts2.coop_native_vote";
 pub(super) const REJOIN_TOOL: &str = "sts2.coop_native_rejoin";
 pub(super) const EFFECT_TOOL: &str = "sts2.coop_native_effect";
 pub(super) const RECOVER_TOOL: &str = "sts2.coop_native_recover";
+pub(super) const LEGAL_CATALOG_TOOL: &str = "sts2.coop_native_legal_catalog";
 
 pub(super) fn build() -> super::ToolCatalog {
     super::ToolCatalog {
@@ -107,6 +108,11 @@ pub(super) fn build() -> super::ToolCatalog {
                     &[(String::from("recovery"), schema::recovery_schema())],
                 ),
             ),
+            descriptor(
+                LEGAL_CATALOG_TOOL,
+                "Read the producer-owned native action and shared-vote catalog for one host generation.",
+                legal_catalog_schema(),
+            ),
         ],
     }
 }
@@ -151,6 +157,19 @@ fn common_properties() -> Vec<(String, JsonValue)> {
         ),
         (String::from("lease_epoch"), generation()),
     ]
+}
+
+fn legal_catalog_schema() -> JsonValue {
+    schema(
+        &[
+            "instance_id",
+            "mcp_session_id",
+            "lease_id",
+            "lease_epoch",
+            "expected_host_generation",
+        ],
+        &[(String::from("expected_host_generation"), generation())],
+    )
 }
 
 fn identity(pattern: &str) -> JsonValue {

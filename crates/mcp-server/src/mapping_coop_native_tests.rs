@@ -85,7 +85,7 @@ fn common() -> &'static str {
 }
 
 #[test]
-fn catalog_has_six_native_tools_and_candidate_frame_bound() -> Result<(), String> {
+fn catalog_has_seven_native_tools_and_candidate_frame_bound() -> Result<(), String> {
     let catalog = ToolCatalog::coop_native();
     let names = [
         COOP_NATIVE_OBSERVATION_TOOL,
@@ -94,6 +94,7 @@ fn catalog_has_six_native_tools_and_candidate_frame_bound() -> Result<(), String
         COOP_NATIVE_REJOIN_TOOL,
         COOP_NATIVE_EFFECT_TOOL,
         COOP_NATIVE_RECOVER_TOOL,
+        COOP_NATIVE_LEGAL_CATALOG_TOOL,
     ];
     let listed = catalog.to_json();
     let tools = listed
@@ -111,6 +112,43 @@ fn catalog_has_six_native_tools_and_candidate_frame_bound() -> Result<(), String
         }));
     }
     assert_eq!(catalog.max_frame_bytes(), 256 * 1024);
+    Ok(())
+}
+
+#[test]
+fn maps_legal_catalog_to_generation_bound_read_route() -> Result<(), String> {
+    let response = parse_json(
+        r#"{"instance_id":"instance-1","session_id":"session-1","lease_id":"lease-1","lease_epoch":1,"host_generation":1,"actor_peer":"peer:host1","legal_actions":[{"kind":"end_turn","action_id":"turn:1","target_peer":null}],"legal_votes":[{"proposal_id":"event:1","voter_peer":"peer:host1","choice":"accept"}]}"#,
+    )?;
+    let mut server = server(GatewayResponse {
+        status: 200,
+        body: response,
+    });
+    let arguments = format!(r#"{{{},"expected_host_generation":1}}"#, common());
+    let output = server.handle_frame(&frame(
+        "corr-catalog",
+        COOP_NATIVE_LEGAL_CATALOG_TOOL,
+        &arguments,
+    ));
+    assert!(output.contains(r#""isError":false"#), "{output}");
+    let request = server
+        .gateway()
+        .requests
+        .first()
+        .ok_or_else(|| String::from("legal catalog did not reach gateway"))?;
+    assert_eq!(request.method, GatewayMethod::Get);
+    assert_eq!(
+        request.path,
+        "/v1/instances/instance-1/coop/native/legal-catalog"
+    );
+    assert_eq!(request.body, None);
+    assert_eq!(
+        request
+            .headers
+            .get("x-sts2-host-generation")
+            .map(String::as_str),
+        Some("1")
+    );
     Ok(())
 }
 

@@ -12,6 +12,7 @@ use crate::server::McpServer;
 
 use super::context::{Context, EnvelopePayload, envelope};
 use super::gateway::forward;
+use super::gateway::forward_legal_catalog;
 use super::request::{action, generation, operation_id, peer, recovery, vote};
 
 pub(super) fn observation_call<G: GatewayAdapter>(
@@ -21,6 +22,20 @@ pub(super) fn observation_call<G: GatewayAdapter>(
 ) -> RpcResponse {
     let request = context.gateway_request(GatewayMethod::Get, "observation", None, id.clone());
     forward(server, id, request, &context, "observation", None)
+}
+
+pub(super) fn legal_catalog_call<G: GatewayAdapter>(
+    server: &mut McpServer<G>,
+    id: RequestId,
+    arguments: &BTreeMap<String, JsonValue>,
+    context: Context,
+) -> RpcResponse {
+    let expected_generation = match generation(arguments, "expected_host_generation") {
+        Ok(value) => value,
+        Err(message) => return invalid_params(id, message),
+    };
+    let request = context.legal_catalog_request(expected_generation, id.clone());
+    forward_legal_catalog(server, id, request, &context, expected_generation)
 }
 
 pub(super) fn action_call<G: GatewayAdapter>(

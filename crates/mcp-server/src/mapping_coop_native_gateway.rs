@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 
 use crate::gateway::{GatewayAdapter, GatewayError, GatewayRequest};
+use crate::projection::project_coop_native_legal_catalog;
 use crate::projection::project_coop_native_response;
 use crate::protocol::{RequestId, RpcResponse};
 use crate::server::McpServer;
@@ -22,6 +23,27 @@ pub(super) fn forward<G: GatewayAdapter>(
             expected_kind,
             response.status,
             expected_operation,
+        ) {
+            Ok((body, is_error)) => crate::mapping::tool_result(id, body.to_json(), is_error),
+            Err(message) => crate::mapping::tool_result(id, message, true),
+        },
+        Err(error) => gateway_error(id, error),
+    }
+}
+
+pub(super) fn forward_legal_catalog<G: GatewayAdapter>(
+    server: &mut McpServer<G>,
+    id: RequestId,
+    request: GatewayRequest,
+    context: &Context,
+    expected_generation: i64,
+) -> RpcResponse {
+    match server.gateway.forward(request) {
+        Ok(response) => match project_coop_native_legal_catalog(
+            &response.body,
+            &context.projection_context(),
+            expected_generation,
+            response.status,
         ) {
             Ok((body, is_error)) => crate::mapping::tool_result(id, body.to_json(), is_error),
             Err(message) => crate::mapping::tool_result(id, message, true),

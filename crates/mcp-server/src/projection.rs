@@ -20,7 +20,8 @@ mod runtime_v4_expert;
 mod runtime_v4_expert_rest_action;
 
 pub(crate) use coop_native::{
-    NativeContext, project_coop_native_effect, project_coop_native_response,
+    NativeContext, project_coop_native_effect, project_coop_native_legal_catalog,
+    project_coop_native_response,
 };
 pub(crate) use runtime::project_runtime_gateway_body;
 pub(crate) use runtime_map::{RuntimeMapProjectionContext, project_runtime_map_gateway_body};

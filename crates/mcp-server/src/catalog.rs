@@ -42,6 +42,7 @@ pub const COOP_NATIVE_VOTE_TOOL: &str = coop_native::VOTE_TOOL;
 pub const COOP_NATIVE_REJOIN_TOOL: &str = coop_native::REJOIN_TOOL;
 pub const COOP_NATIVE_EFFECT_TOOL: &str = coop_native::EFFECT_TOOL;
 pub const COOP_NATIVE_RECOVER_TOOL: &str = coop_native::RECOVER_TOOL;
+pub const COOP_NATIVE_LEGAL_CATALOG_TOOL: &str = coop_native::LEGAL_CATALOG_TOOL;
 pub const EXPERT_STATE_TOOL: &str = runtime_v4_expert::EXPERT_STATE_TOOL;
 pub const EXPERT_ACTION_TOOL: &str = runtime_v4_expert::EXPERT_ACTION_TOOL;
 pub const EXPERT_RECONCILE_TOOL: &str = runtime_v4_expert::EXPERT_RECONCILE_TOOL;

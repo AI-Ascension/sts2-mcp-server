@@ -10,8 +10,9 @@ mod gateway;
 mod request;
 
 use crate::catalog::{
-    COOP_NATIVE_ACTION_TOOL, COOP_NATIVE_EFFECT_TOOL, COOP_NATIVE_OBSERVATION_TOOL,
-    COOP_NATIVE_RECOVER_TOOL, COOP_NATIVE_REJOIN_TOOL, COOP_NATIVE_VOTE_TOOL,
+    COOP_NATIVE_ACTION_TOOL, COOP_NATIVE_EFFECT_TOOL, COOP_NATIVE_LEGAL_CATALOG_TOOL,
+    COOP_NATIVE_OBSERVATION_TOOL, COOP_NATIVE_RECOVER_TOOL, COOP_NATIVE_REJOIN_TOOL,
+    COOP_NATIVE_VOTE_TOOL,
 };
 use crate::gateway::GatewayAdapter;
 use crate::json::JsonValue;
@@ -19,7 +20,10 @@ use crate::mapping::{has_only_arguments, invalid_params, safe_header_value};
 use crate::protocol::{METHOD_NOT_FOUND, RpcError, RpcRequest, RpcResponse};
 use crate::server::McpServer;
 
-use calls::{action_call, effect_call, observation_call, recover_call, rejoin_call, vote_call};
+use calls::{
+    action_call, effect_call, legal_catalog_call, observation_call, recover_call, rejoin_call,
+    vote_call,
+};
 use context::Context;
 
 const COMMON_ARGUMENTS: [&str; 4] = ["instance_id", "mcp_session_id", "lease_id", "lease_epoch"];
@@ -48,6 +52,7 @@ pub(super) fn tools_call<G: GatewayAdapter>(
             | COOP_NATIVE_REJOIN_TOOL
             | COOP_NATIVE_EFFECT_TOOL
             | COOP_NATIVE_RECOVER_TOOL
+            | COOP_NATIVE_LEGAL_CATALOG_TOOL
     ) {
         return RpcResponse::failure(
             Some(request.id),
@@ -88,6 +93,7 @@ pub(super) fn tools_call<G: GatewayAdapter>(
             "recovery",
         ],
         COOP_NATIVE_RECOVER_TOOL => &["operation_id", "recovery"],
+        COOP_NATIVE_LEGAL_CATALOG_TOOL => &["expected_host_generation"],
         COOP_NATIVE_EFFECT_TOOL => &[] as &[&str],
         _ => &[] as &[&str],
     };
@@ -101,6 +107,9 @@ pub(super) fn tools_call<G: GatewayAdapter>(
         COOP_NATIVE_VOTE_TOOL => vote_call(server, request.id, arguments, context),
         COOP_NATIVE_REJOIN_TOOL => rejoin_call(server, request.id, arguments, context),
         COOP_NATIVE_RECOVER_TOOL => recover_call(server, request.id, arguments, context),
+        COOP_NATIVE_LEGAL_CATALOG_TOOL => {
+            legal_catalog_call(server, request.id, arguments, context)
+        }
         COOP_NATIVE_EFFECT_TOOL => unreachable!(),
         _ => RpcResponse::failure(
             Some(request.id),

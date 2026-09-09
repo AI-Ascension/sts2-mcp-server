@@ -110,6 +110,19 @@ impl Context {
             },
         }
     }
+
+    pub(super) fn legal_catalog_request(
+        &self,
+        expected_generation: i64,
+        id: RequestId,
+    ) -> GatewayRequest {
+        let mut request = self.gateway_request(GatewayMethod::Get, "legal-catalog", None, id);
+        request.headers.insert(
+            String::from("x-sts2-host-generation"),
+            expected_generation.to_string(),
+        );
+        request
+    }
 }
 
 pub(super) struct EnvelopePayload {

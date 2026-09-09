@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 use crate::json::JsonValue;
 
@@ -34,6 +34,7 @@ const TOP_LEVEL_FIELDS: [&str; 18] = [
     "effect",
     "recovery",
 ];
+const MAX_LEGAL_CATALOG_BYTES: usize = 128 * 1024;
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub(crate) struct NativeContext {
     pub(crate) correlation: String,
@@ -81,6 +82,119 @@ pub(crate) fn project_coop_native_effect(
     context: &NativeContext,
 ) -> Result<(JsonValue, bool), &'static str> {
     project_coop_native_response(body, context, "effect_response", 200, None)
+}
+
+pub(crate) fn project_coop_native_legal_catalog(
+    body: &JsonValue,
+    context: &NativeContext,
+    expected_generation: i64,
+    status_code: u16,
+) -> Result<(JsonValue, bool), &'static str> {
+    if !(200..300).contains(&status_code) {
+        return Err("native legal catalog request was rejected");
+    }
+    if body.to_json().len() > MAX_LEGAL_CATALOG_BYTES {
+        return Err("native legal catalog exceeds the response limit");
+    }
+    let object = exact_object(
+        body,
+        &[
+            "instance_id",
+            "session_id",
+            "lease_id",
+            "lease_epoch",
+            "host_generation",
+            "actor_peer",
+            "legal_actions",
+            "legal_votes",
+        ],
+        "native legal catalog",
+    )?;
+    if object.get("instance_id").and_then(JsonValue::as_string) != Some(context.instance.as_str())
+        || object.get("session_id").and_then(JsonValue::as_string) != Some(context.session.as_str())
+        || object.get("lease_id").and_then(JsonValue::as_string) != Some(context.lease.as_str())
+        || object.get("lease_epoch") != Some(&JsonValue::Number(context.epoch))
+        || object.get("host_generation") != Some(&JsonValue::Number(expected_generation))
+    {
+        return Err("native legal catalog identity or generation mismatched");
+    }
+    let actor = object
+        .get("actor_peer")
+        .and_then(JsonValue::as_string)
+        .filter(|value| legal_peer_identity(value))
+        .ok_or("native legal catalog actor is invalid")?;
+    let actions = object
+        .get("legal_actions")
+        .and_then(JsonValue::as_array)
+        .ok_or("native legal action catalog is missing")?;
+    let votes = object
+        .get("legal_votes")
+        .and_then(JsonValue::as_array)
+        .ok_or("native legal vote catalog is missing")?;
+    if actions.len() > 256 || votes.len() > 256 {
+        return Err("native legal catalog exceeds its bound");
+    }
+    let mut ids = BTreeSet::new();
+    for action in actions {
+        let value = exact_object(
+            action,
+            &["kind", "action_id", "target_peer"],
+            "native legal action",
+        )?;
+        if !matches!(
+            value.get("kind").and_then(JsonValue::as_string),
+            Some("play_card" | "end_turn" | "select_card" | "choose_reward" | "confirm_selection")
+        ) || !value
+            .get("action_id")
+            .and_then(JsonValue::as_string)
+            .is_some_and(observation::safe_identity)
+            || !value.get("target_peer").is_some_and(|target| {
+                matches!(target, JsonValue::Null)
+                    || target.as_string().is_some_and(legal_peer_identity)
+            })
+            || !value
+                .get("action_id")
+                .and_then(JsonValue::as_string)
+                .is_some_and(|id| ids.insert(id.to_owned()))
+        {
+            return Err("native legal action catalog entry is invalid");
+        }
+    }
+    for vote in votes {
+        let value = exact_object(
+            vote,
+            &["proposal_id", "voter_peer", "choice"],
+            "native legal vote",
+        )?;
+        let proposal = value
+            .get("proposal_id")
+            .and_then(JsonValue::as_string)
+            .filter(|v| observation::safe_identity(v));
+        let voter = value.get("voter_peer").and_then(JsonValue::as_string);
+        let choice = value
+            .get("choice")
+            .and_then(JsonValue::as_string)
+            .filter(|v| observation::safe_identity(v));
+        let Some((proposal, voter, choice)) =
+            proposal.zip(voter).zip(choice).map(|((a, b), c)| (a, b, c))
+        else {
+            return Err("native legal vote catalog entry is invalid");
+        };
+        if voter != actor || !legal_peer_identity(voter) {
+            return Err("native legal vote voter is invalid");
+        }
+        let id = format!("vote:{proposal}:{choice}");
+        if !observation::safe_identity(&id) || !ids.insert(id) {
+            return Err("native legal catalog IDs are not unique");
+        }
+    }
+    Ok((body.clone(), false))
+}
+
+fn legal_peer_identity(value: &str) -> bool {
+    value
+        .strip_prefix("peer:")
+        .is_some_and(|suffix| suffix.len() >= 5 && observation::safe_identity(value))
 }
 
 fn validate_metadata(
