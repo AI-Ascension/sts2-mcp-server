@@ -8,9 +8,6 @@
 
 use crate::json::JsonValue;
 
-#[path = "protocol_artifact_runtime_v2_hash.rs"]
-mod hash;
-
 /// Version consumed by the Runtime-v2 MCP mapping.
 pub const RUNTIME_V2_PROTOCOL_VERSION: &str = "runtime-v2";
 /// SHA-256 of the canonical Runtime-v2 schema source bytes.
@@ -262,7 +259,7 @@ fn verify_checksums() -> Result<(), RuntimeV2ArtifactError> {
             .iter()
             .find(|file| file.path == path)
             .ok_or(RuntimeV2ArtifactError::ChecksumMismatch)?;
-        if hash::sha256_hex(file.bytes) != expected {
+        if crate::protocol_artifact_hash::sha256_hex(file.bytes) != expected {
             return Err(RuntimeV2ArtifactError::ChecksumMismatch);
         }
         verified.push(path);

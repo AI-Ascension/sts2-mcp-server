@@ -12,6 +12,8 @@ use crate::server::McpServer;
 
 const INVALID_REQUEST_ID: &str = "request id contains an unsafe or oversized header value";
 
+#[path = "mapping_coop_receipt_query.rs"]
+mod coop_receipt_query;
 #[path = "mapping_coop_synchronization.rs"]
 mod coop_synchronization;
 #[path = "mapping_helpers.rs"]
@@ -28,6 +30,8 @@ mod runtime_v2;
 mod runtime_v3_gameplay;
 #[path = "mapping_runtime_v4_expert.rs"]
 mod runtime_v4_expert;
+#[path = "mapping_runtime_v4_expert_rest_action.rs"]
+mod runtime_v4_expert_rest_action;
 
 pub(crate) use helpers::safe_segment;
 use helpers::{
@@ -39,6 +43,9 @@ pub(crate) fn tools_call<G: GatewayAdapter>(
     server: &mut McpServer<G>,
     request: RpcRequest,
 ) -> RpcResponse {
+    if server.catalog.is_coop_receipt_query() {
+        return coop_receipt_query::tools_call(server, request);
+    }
     if server.catalog.is_coop_synchronization() {
         return coop_synchronization::tools_call(server, request);
     }
@@ -47,6 +54,9 @@ pub(crate) fn tools_call<G: GatewayAdapter>(
     }
     if server.catalog.is_runtime_v4_expert() {
         return runtime_v4_expert::tools_call(server, request);
+    }
+    if server.catalog.is_runtime_v4_expert_rest_action() {
+        return runtime_v4_expert_rest_action::tools_call(server, request);
     }
     if server.catalog.is_runtime_map_v1() {
         return runtime_map::tools_call(server, request);

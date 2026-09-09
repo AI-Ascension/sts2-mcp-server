@@ -11,9 +11,10 @@ use http::ReadError;
 pub(crate) use profiles::profile_from_environment;
 
 use sts2_mcp_server::{
-    GatewayAdapter, GatewayError, GatewayRequest, GatewayResponse, JsonValue,
-    RUNTIME_MAP_V1_PROTOCOL_VERSION, RUNTIME_V2_PROTOCOL_VERSION,
+    COOP_RECEIPT_QUERY_PROTOCOL_VERSION, GatewayAdapter, GatewayError, GatewayRequest,
+    GatewayResponse, JsonValue, RUNTIME_MAP_V1_PROTOCOL_VERSION, RUNTIME_V2_PROTOCOL_VERSION,
     RUNTIME_V3_GAMEPLAY_PROTOCOL_VERSION, RUNTIME_V4_EXPERT_ACTION_PROTOCOL_VERSION,
+    RUNTIME_V4_EXPERT_REST_ACTION_PROTOCOL_VERSION,
 };
 
 const MAX_BODY_BYTES: usize = 16 * 1024;
@@ -111,11 +112,25 @@ impl RuntimeGatewayAdapter {
             object.get("protocol_version"),
             Some(JsonValue::String(value)) if value == RUNTIME_V4_EXPERT_ACTION_PROTOCOL_VERSION
         );
+        let is_runtime_v4_rest_action = matches!(
+            object.get("protocol_version"),
+            Some(JsonValue::String(value)) if value == RUNTIME_V4_EXPERT_REST_ACTION_PROTOCOL_VERSION
+        );
         let is_runtime_map = matches!(
             object.get("protocol_version"),
             Some(JsonValue::String(value)) if value == RUNTIME_MAP_V1_PROTOCOL_VERSION
         );
-        if is_runtime_v2 || is_runtime_v3 || is_runtime_v4_action || is_runtime_map {
+        let is_coop_receipt_query = matches!(
+            object.get("protocol_version"),
+            Some(JsonValue::String(value)) if value == COOP_RECEIPT_QUERY_PROTOCOL_VERSION
+        );
+        if is_runtime_v2
+            || is_runtime_v3
+            || is_runtime_v4_action
+            || is_runtime_v4_rest_action
+            || is_runtime_map
+            || is_coop_receipt_query
+        {
             if object.get("instance_id")
                 != Some(&JsonValue::string(self.config.instance_id.as_str()))
                 || object.get("session_id")
@@ -143,7 +158,12 @@ impl RuntimeGatewayAdapter {
                 JsonValue::Number(self.config.lease_epoch),
             );
         }
-        let encoded = JsonValue::Object(object).to_json();
+        let encoded = if is_coop_receipt_query {
+            sts2_mcp_server::canonical_coop_receipt_query(&JsonValue::Object(object))
+                .ok_or(GatewayError::Rejected)?
+        } else {
+            JsonValue::Object(object).to_json()
+        };
         if encoded.len() > MAX_BODY_BYTES {
             return Err(GatewayError::Rejected);
         }
