@@ -8,13 +8,19 @@ mod mapping;
 mod projection;
 mod protocol;
 mod protocol_artifact;
+mod protocol_artifact_coop_receipt_query;
+#[path = "protocol_artifact_runtime_v2_hash.rs"]
+mod protocol_artifact_hash;
 mod protocol_artifact_runtime_map;
 mod protocol_artifact_runtime_v2;
 mod protocol_artifact_runtime_v3_gameplay;
 mod protocol_artifact_runtime_v4_expert;
+mod protocol_artifact_runtime_v4_expert_rest_action;
+mod receipt_query_json;
 mod server;
 mod transport;
 
+pub use catalog::COOP_RECEIPT_QUERY_TOOL;
 pub use catalog::COOP_SYNCHRONIZATION_TOOL;
 pub use catalog::{
     CapabilityCatalog, DISPATCH_ACTION_TOOL, GET_STATE_TOOL, LEGAL_ACTIONS_TOOL, MAP_SNAPSHOT_TOOL,
@@ -22,6 +28,7 @@ pub use catalog::{
     ToolCatalog, ToolDescriptor, WAIT_FOR_TRANSITION_TOOL,
 };
 pub use catalog::{EXPERT_ACTION_TOOL, EXPERT_RECONCILE_TOOL, EXPERT_STATE_TOOL};
+pub use catalog::{EXPERT_REST_ACTION_TOOL, EXPERT_REST_RECONCILE_TOOL};
 pub use catalog_reobserve::catalog_reobserve_body;
 pub use gateway::{
     Correlation, GatewayAdapter, GatewayError, GatewayMethod, GatewayRequest, GatewayResponse,
@@ -36,6 +43,12 @@ pub use protocol_artifact::{
     POC_MAX_UNITS, POC_PROTOCOL_VERSION, POC_SCHEMA_DIGEST, POC_SCHEMA_SOURCE, RUNTIME_ACTION_ID,
     RUNTIME_ARTIFACT, RUNTIME_GENERATOR, RUNTIME_MAX_GENERATION, RUNTIME_PROTOCOL_VERSION,
     RUNTIME_SCHEMA_DIGEST, RUNTIME_SCHEMA_SOURCE, verify_poc_artifact,
+};
+pub use protocol_artifact_coop_receipt_query::{
+    COOP_RECEIPT_QUERY_ARTIFACT, COOP_RECEIPT_QUERY_GENERATOR, COOP_RECEIPT_QUERY_MAX_BODY_BYTES,
+    COOP_RECEIPT_QUERY_MAX_GENERATION, COOP_RECEIPT_QUERY_PROTOCOL_VERSION,
+    COOP_RECEIPT_QUERY_SCHEMA_DIGEST, COOP_RECEIPT_QUERY_SCHEMA_SOURCE,
+    CoopReceiptQueryArtifactError, verify_coop_receipt_query_artifact,
 };
 pub use protocol_artifact_runtime_map::{
     RUNTIME_MAP_V1_ARTIFACT, RUNTIME_MAP_V1_GENERATOR, RUNTIME_MAP_V1_MAX_BINDINGS,
@@ -63,5 +76,15 @@ pub use protocol_artifact_runtime_v4_expert::{
     RUNTIME_V4_EXPERT_GENERATOR, RUNTIME_V4_EXPERT_PROTOCOL_VERSION,
     RUNTIME_V4_EXPERT_SCHEMA_DIGEST, RUNTIME_V4_EXPERT_SCHEMA_SOURCE,
 };
+pub use protocol_artifact_runtime_v4_expert_rest_action::{
+    RUNTIME_V4_EXPERT_REST_ACTION_ARTIFACT, RUNTIME_V4_EXPERT_REST_ACTION_EFFECT_WITNESS_VERSION,
+    RUNTIME_V4_EXPERT_REST_ACTION_GENERATOR, RUNTIME_V4_EXPERT_REST_ACTION_MAX_GENERATION,
+    RUNTIME_V4_EXPERT_REST_ACTION_MAX_IDENTITY_BYTES,
+    RUNTIME_V4_EXPERT_REST_ACTION_MAX_SELECTOR_CHOICES, RUNTIME_V4_EXPERT_REST_ACTION_PROFILE,
+    RUNTIME_V4_EXPERT_REST_ACTION_PROTOCOL_VERSION, RUNTIME_V4_EXPERT_REST_ACTION_SCHEMA_DIGEST,
+    RUNTIME_V4_EXPERT_REST_ACTION_SCHEMA_SOURCE, RuntimeV4ExpertRestActionArtifactError,
+    verify_runtime_v4_expert_rest_action_artifact,
+};
+pub use receipt_query_json::canonical_coop_receipt_query;
 pub use server::{MCP_PROTOCOL_VERSION, McpServer, SERVER_NAME, SERVER_VERSION};
 pub use transport::{FrameCodec, FrameError, MAX_FRAME_BYTES};
