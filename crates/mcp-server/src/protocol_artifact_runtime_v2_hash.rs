@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pub(super) fn sha256_hex(bytes: &[u8]) -> String {
+pub(crate) fn sha256_hex(bytes: &[u8]) -> String {
     const K: [u32; 64] = [
         0x428a_2f98,
         0x7137_4491,

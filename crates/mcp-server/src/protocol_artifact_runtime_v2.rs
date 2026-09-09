@@ -8,6 +8,7 @@
 
 use crate::json::JsonValue;
 
+pub(crate) use crate::protocol_artifact_hash::sha256_hex;
 /// Version consumed by the Runtime-v2 MCP mapping.
 pub const RUNTIME_V2_PROTOCOL_VERSION: &str = "runtime-v2";
 /// SHA-256 of the canonical Runtime-v2 schema source bytes.

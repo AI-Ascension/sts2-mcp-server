@@ -159,6 +159,35 @@ fn runtime_v2_and_v3_body_reject_wrong_supplied_identity_before_forwarding() {
 }
 
 #[test]
+fn seeded_run_body_rejects_a_different_schema_digest_before_forwarding() {
+    let adapter = RuntimeGatewayAdapter::new(config(), http::LEGACY_MAX_RESPONSE_BYTES);
+    let body = JsonValue::object([
+        (
+            String::from("protocol_version"),
+            JsonValue::string(SEEDED_RUN_PROTOCOL_VERSION),
+        ),
+        (
+            String::from("schema_digest"),
+            JsonValue::string("0000000000000000000000000000000000000000000000000000000000000000"),
+        ),
+        (
+            String::from("instance_id"),
+            JsonValue::string("configured-instance"),
+        ),
+        (
+            String::from("session_id"),
+            JsonValue::string("configured-session"),
+        ),
+        (
+            String::from("lease_id"),
+            JsonValue::string("configured-lease"),
+        ),
+        (String::from("lease_epoch"), JsonValue::Number(7)),
+    ]);
+    assert_eq!(adapter.body(&request(body)), Err(GatewayError::Rejected));
+}
+
+#[test]
 fn runtime_v1_body_keeps_configured_identity_injection() {
     let adapter = RuntimeGatewayAdapter::new(config(), http::LEGACY_MAX_RESPONSE_BYTES);
     let body = JsonValue::object([

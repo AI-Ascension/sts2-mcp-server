@@ -25,6 +25,7 @@ pub(super) fn is_runtime_result(body: &JsonValue) -> bool {
                             | "recover_response"
                             | "snapshot_response"
                             | "receipt_query_response"
+                            | "start_response"
                     )
             )
     )
@@ -140,6 +141,20 @@ pub(super) fn response_kind(
                 }
                 (GatewayMethod::Get, route)
                     if version == "v2" && route.starts_with("operations/") =>
+                {
+                    Some("reconcile_response")
+                }
+                (GatewayMethod::Post, "seeded-run")
+                    if version == "v2" && request.body.is_some() =>
+                {
+                    Some("start_response")
+                }
+                (GatewayMethod::Get, route)
+                    if version == "v2"
+                        && route.starts_with("seeded-operations/")
+                        && safe_operation_id(
+                            route.strip_prefix("seeded-operations/").unwrap_or(""),
+                        ) =>
                 {
                     Some("reconcile_response")
                 }
