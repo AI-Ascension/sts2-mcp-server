@@ -38,7 +38,14 @@ impl<G: GatewayAdapter> McpServer<G> {
         {
             return Some(&selection.admission);
         }
-        self.rest_action_selection_admission_for_key(&key)
+        let generation = body
+            .as_object()
+            .and_then(|root| root.get("generation"))
+            .and_then(|value| match value {
+                JsonValue::Number(value) => Some(*value),
+                _ => None,
+            });
+        self.rest_action_selection_admission_for_key(&key, generation)
     }
 
     pub(crate) fn remember_rest_action_selection(
@@ -79,7 +86,10 @@ impl<G: GatewayAdapter> McpServer<G> {
 
         let admission = crate::projection::rest_action_selection_admission(body)
             .map(|(_, admission)| admission)
-            .or_else(|| self.rest_action_selection_admission_for_key(&key).cloned());
+            .or_else(|| {
+                self.rest_action_selection_admission_for_key(&key, Some(generation))
+                    .cloned()
+            });
         let Some(admission) = admission else {
             return false;
         };
@@ -106,7 +116,7 @@ impl<G: GatewayAdapter> McpServer<G> {
             return true;
         }
 
-        let selector_is_terminal = self.rest_action_selection_is_terminal(&key);
+        let selector_is_terminal = self.rest_action_selection_is_terminal(&key, generation);
         self.remember_rest_action_operation_selection(
             operation_id,
             RestActionOperationSelection {
@@ -128,6 +138,7 @@ impl<G: GatewayAdapter> McpServer<G> {
             {
                 context.generation = generation;
                 context.admission = admission;
+                context.terminal = false;
             }
             return true;
         }
@@ -165,29 +176,52 @@ impl<G: GatewayAdapter> McpServer<G> {
         true
     }
 
-    fn rest_action_selection_is_terminal(&self, key: &RestActionSelectionKey) -> bool {
-        self.rest_action_selections
-            .get(key)
-            .is_some_and(|context| context.terminal)
-            || self
-                .rest_action_operations
-                .values()
-                .filter_map(|context| context.selection.as_ref())
-                .any(|selection| selection.key == *key && selection.terminal)
+    fn rest_action_selection_is_terminal(
+        &self,
+        key: &RestActionSelectionKey,
+        generation: i64,
+    ) -> bool {
+        if let Some(context) = self.rest_action_selections.get(key) {
+            if context.generation >= generation {
+                return context.terminal;
+            }
+            // A newer active generation starts a fresh lifecycle once the
+            // previous terminal catalog has been superseded.
+            return false;
+        }
+        self.rest_action_selection_history(key)
+            .is_some_and(|selection| selection.terminal && selection.generation >= generation)
     }
 
     fn rest_action_selection_admission_for_key(
         &self,
         key: &RestActionSelectionKey,
+        generation: Option<i64>,
     ) -> Option<&RestActionSelectionAdmission> {
         let active = self.rest_action_selections.get(key);
         let history = self.rest_action_selection_history(key);
         match (active, history) {
             (Some(active), Some(history)) if history.generation > active.generation => {
-                Some(&history.admission)
+                if history.terminal && generation.is_some_and(|value| value > history.generation) {
+                    None
+                } else {
+                    Some(&history.admission)
+                }
             }
-            (Some(active), _) => Some(&active.admission),
-            (_, Some(history)) => Some(&history.admission),
+            (Some(active), _) => {
+                if active.terminal && generation.is_some_and(|value| value > active.generation) {
+                    None
+                } else {
+                    Some(&active.admission)
+                }
+            }
+            (_, Some(history)) => {
+                if history.terminal && generation.is_some_and(|value| value > history.generation) {
+                    None
+                } else {
+                    Some(&history.admission)
+                }
+            }
             (None, None) => None,
         }
     }
