@@ -10,68 +10,16 @@ use crate::protocol_artifact_runtime_v4_expert_rest_action::{
     RUNTIME_V4_EXPERT_REST_ACTION_PROTOCOL_VERSION, RUNTIME_V4_EXPERT_REST_ACTION_SCHEMA_DIGEST,
     RUNTIME_V4_EXPERT_REST_ACTION_SCHEMA_SOURCE,
 };
-use crate::server::{McpServer, RestActionOperationContext};
+use crate::server::{McpServer, REST_ACTION_SELECTOR_CAPACITY_ERROR, RestActionOperationContext};
 
 use super::super::{
     gateway_error_result, has_only_arguments, headers, invalid_params, tool_result,
 };
 use super::ACTION_ARGUMENTS;
 
-#[derive(Clone, Debug)]
-pub(super) struct RestResponseBinding {
-    pub(super) correlation_id: String,
-    pub(super) instance_id: String,
-    pub(super) session_id: String,
-    pub(super) lease_id: String,
-    pub(super) lease_epoch: i64,
-    pub(super) generation: Option<i64>,
-    pub(super) operation_id: String,
-    pub(super) action: Option<JsonValue>,
-}
-
-impl RestResponseBinding {
-    fn matches(&self, body: &JsonValue) -> bool {
-        let Some(root) = body.as_object() else {
-            return false;
-        };
-        for (field, expected) in [
-            ("correlation_id", self.correlation_id.as_str()),
-            ("instance_id", self.instance_id.as_str()),
-            ("session_id", self.session_id.as_str()),
-            ("lease_id", self.lease_id.as_str()),
-            ("operation_id", self.operation_id.as_str()),
-        ] {
-            if root.get(field).and_then(JsonValue::as_string) != Some(expected) {
-                return false;
-            }
-        }
-        if root.get("lease_epoch") != Some(&JsonValue::Number(self.lease_epoch)) {
-            return false;
-        }
-        if let Some(expected_action) = self.action.as_ref()
-            && root.get("action") != Some(expected_action)
-        {
-            return false;
-        }
-        if let Some(expected_generation) = self.generation {
-            if root.get("generation") != Some(&JsonValue::Number(expected_generation))
-                && root.get("status").and_then(JsonValue::as_string) != Some("settled")
-            {
-                return false;
-            }
-            if root.get("status").and_then(JsonValue::as_string) == Some("settled") {
-                let before = root
-                    .get("transition")
-                    .and_then(JsonValue::as_object)
-                    .and_then(|transition| transition.get("before_generation"));
-                if before != Some(&JsonValue::Number(expected_generation)) {
-                    return false;
-                }
-            }
-        }
-        true
-    }
-}
+#[path = "mapping_runtime_v4_expert_rest_action_binding.rs"]
+mod binding;
+pub(super) use binding::RestResponseBinding;
 
 pub(super) fn expert_rest_action_call<G: GatewayAdapter>(
     server: &mut McpServer<G>,
@@ -211,21 +159,31 @@ pub(super) fn expert_rest_action_call<G: GatewayAdapter>(
         lease_id: lease_id.to_owned(),
         lease_epoch,
         generation: Some(generation),
+        state_id: Some(state_id.to_owned()),
         operation_id: operation_id.to_owned(),
         action: Some(action.clone()),
     };
-    if !server.remember_rest_action_operation(
-        operation_id,
-        RestActionOperationContext {
-            mcp_session_id: mcp_session_id.to_owned(),
-            instance_id: instance_id.to_owned(),
-            session_id: session_id.clone(),
-            lease_id: lease_id.to_owned(),
-            lease_epoch,
-            generation,
-            action: action.clone(),
-        },
-    ) {
+    let operation_context = RestActionOperationContext {
+        mcp_session_id: mcp_session_id.to_owned(),
+        instance_id: instance_id.to_owned(),
+        session_id: session_id.clone(),
+        lease_id: lease_id.to_owned(),
+        lease_epoch,
+        generation,
+        state_id: state_id.to_owned(),
+        action: action.clone(),
+    };
+    if !server.rest_action_operation_is_compatible(operation_id, &operation_context) {
+        return invalid_params(
+            id,
+            "operation_id is already bound to a different Runtime-v4 REST action",
+        );
+    }
+    if !server.reserve_rest_action_selector_capacity(operation_id, action) {
+        return tool_result(id, REST_ACTION_SELECTOR_CAPACITY_ERROR, true);
+    }
+    if !server.remember_rest_action_operation(operation_id, operation_context) {
+        server.release_rest_action_selector_reservation(operation_id);
         return invalid_params(
             id,
             "operation_id is already bound to a different Runtime-v4 REST action",
@@ -273,6 +231,12 @@ pub(super) fn expert_rest_action_response<G: GatewayAdapter>(
     if !valid_status || projection.is_err() || !binding_matches {
         return super::expert_error_result(id, response.status, &response.body);
     }
+    if matches!(
+        status.and_then(JsonValue::as_string),
+        Some("settled" | "rejected" | "cancelled")
+    ) {
+        server.release_rest_action_selector_reservation(&binding.operation_id);
+    }
     if !server.remember_rest_action_selection(
         &binding.instance_id,
         &binding.session_id,
@@ -280,11 +244,7 @@ pub(super) fn expert_rest_action_response<G: GatewayAdapter>(
         binding.lease_epoch,
         &response.body,
     ) {
-        return tool_result(
-            id,
-            "Runtime-v4 REST selector admission capacity is exhausted",
-            true,
-        );
+        return tool_result(id, REST_ACTION_SELECTOR_CAPACITY_ERROR, true);
     }
     let is_error = matches!(
         status.and_then(JsonValue::as_string),

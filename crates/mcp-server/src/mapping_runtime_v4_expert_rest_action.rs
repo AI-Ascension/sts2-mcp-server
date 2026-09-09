@@ -180,9 +180,14 @@ fn expert_rest_reconcile_call<G: GatewayAdapter>(
         session_id,
         lease_id: lease_id.to_owned(),
         lease_epoch,
-        generation: original_binding.as_ref().map(|(generation, _)| *generation),
+        generation: original_binding
+            .as_ref()
+            .map(|(generation, _, _)| *generation),
+        state_id: original_binding
+            .as_ref()
+            .map(|(_, state_id, _)| state_id.clone()),
         operation_id: operation_id.to_owned(),
-        action: original_binding.map(|(_, action)| action),
+        action: original_binding.map(|(_, _, action)| action),
     };
     match server.gateway.forward(request) {
         Ok(response) => dispatch::expert_rest_action_response(server, id, response, binding),

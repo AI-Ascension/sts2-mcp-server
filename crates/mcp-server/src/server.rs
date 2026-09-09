@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 use crate::catalog::ToolCatalog;
 use crate::gateway::GatewayAdapter;
@@ -15,6 +15,14 @@ use crate::transport::{FrameCodec, FrameError};
 mod runtime_v4_expert_rest_action;
 pub(crate) use runtime_v4_expert_rest_action::RestActionOperationContext;
 
+#[path = "server_runtime_v4_expert_rest_action_capacity.rs"]
+mod runtime_v4_expert_rest_action_capacity;
+pub(crate) use runtime_v4_expert_rest_action_capacity::REST_ACTION_SELECTOR_CAPACITY_ERROR;
+
+#[cfg(test)]
+#[path = "server_tests.rs"]
+mod tests;
+
 pub const SERVER_NAME: &str = "sts2-mcp-server";
 pub const SERVER_VERSION: &str = "0.0.0";
 pub const MCP_PROTOCOL_VERSION: &str = "2025-06-18";
@@ -26,6 +34,7 @@ pub struct McpServer<G> {
     pub(crate) mcp_session_id: Option<String>,
     pub(crate) rest_action_selections: BTreeMap<RestActionSelectionKey, RestActionSelectionContext>,
     pub(crate) rest_action_operations: BTreeMap<String, RestActionOperationContext>,
+    pub(crate) rest_action_selector_reservations: BTreeSet<String>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -45,6 +54,7 @@ impl<G: GatewayAdapter> McpServer<G> {
             mcp_session_id: None,
             rest_action_selections: BTreeMap::new(),
             rest_action_operations: BTreeMap::new(),
+            rest_action_selector_reservations: BTreeSet::new(),
         }
     }
 
@@ -56,6 +66,7 @@ impl<G: GatewayAdapter> McpServer<G> {
             mcp_session_id: None,
             rest_action_selections: BTreeMap::new(),
             rest_action_operations: BTreeMap::new(),
+            rest_action_selector_reservations: BTreeSet::new(),
         }
     }
 
@@ -78,6 +89,7 @@ impl<G: GatewayAdapter> McpServer<G> {
             mcp_session_id: Some(mcp_session_id.into()),
             rest_action_selections: BTreeMap::new(),
             rest_action_operations: BTreeMap::new(),
+            rest_action_selector_reservations: BTreeSet::new(),
         }
     }
 
@@ -304,16 +316,4 @@ fn frame_error(error: FrameError) -> RpcError {
 fn unsupported_method(method: &str) -> String {
     let method: String = method.chars().take(64).collect();
     format!("capability or method is not supported: {method}")
-}
-
-#[cfg(test)]
-mod tests {
-    use crate::mapping::safe_segment;
-
-    #[test]
-    fn accepts_only_path_safe_instance_segments() {
-        assert!(safe_segment("instance-1_alpha"));
-        assert!(!safe_segment("../instance"));
-        assert!(!safe_segment("instance/child"));
-    }
 }

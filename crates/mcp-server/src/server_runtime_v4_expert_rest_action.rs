@@ -13,6 +13,7 @@ pub(crate) struct RestActionOperationContext {
     pub(crate) lease_id: String,
     pub(crate) lease_epoch: i64,
     pub(crate) generation: i64,
+    pub(crate) state_id: String,
     pub(crate) action: JsonValue,
 }
 
@@ -32,6 +33,17 @@ impl<G: GatewayAdapter> McpServer<G> {
         }
     }
 
+    pub(crate) fn rest_action_operation_is_compatible(
+        &self,
+        operation_id: &str,
+        context: &RestActionOperationContext,
+    ) -> bool {
+        match self.rest_action_operations.get(operation_id) {
+            Some(existing) => existing == context,
+            None => true,
+        }
+    }
+
     pub(crate) fn rest_action_operation_binding(
         &self,
         operation_id: &str,
@@ -40,7 +52,7 @@ impl<G: GatewayAdapter> McpServer<G> {
         session_id: &str,
         lease_id: &str,
         lease_epoch: i64,
-    ) -> Result<Option<(i64, JsonValue)>, ()> {
+    ) -> Result<Option<(i64, String, JsonValue)>, ()> {
         let Some(context) = self.rest_action_operations.get(operation_id) else {
             return Ok(None);
         };
@@ -52,6 +64,10 @@ impl<G: GatewayAdapter> McpServer<G> {
         {
             return Err(());
         }
-        Ok(Some((context.generation, context.action.clone())))
+        Ok(Some((
+            context.generation,
+            context.state_id.clone(),
+            context.action.clone(),
+        )))
     }
 }

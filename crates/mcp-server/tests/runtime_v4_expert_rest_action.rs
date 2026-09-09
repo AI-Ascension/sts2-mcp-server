@@ -135,7 +135,7 @@ fn dispatch_and_reconcile_preserve_typed_rest_identity_and_fences() {
     let dispatch = call(
         "sts2.expert_rest_action",
         &format!(
-            "\"instance_id\":\"instance-1\",\"mcp_session_id\":\"mcp-session-1\",\"lease_id\":\"lease-1\",\"lease_epoch\":4,\"generation\":7,\"state_id\":\"live-7\",\"operation_id\":\"operation-1\",\"action\":{action}"
+            "\"instance_id\":\"instance-1\",\"mcp_session_id\":\"mcp-session-1\",\"lease_id\":\"lease-1\",\"lease_epoch\":4,\"generation\":7,\"state_id\":\"live:7\",\"operation_id\":\"operation-1\",\"action\":{action}"
         ),
     );
     assert!(server.handle_frame(&dispatch).contains("\"isError\":false"));
@@ -187,7 +187,7 @@ fn dispatch_and_reconcile_preserve_typed_rest_identity_and_fences() {
         );
         assert_eq!(body.get("kind"), Some(&JsonValue::string("action_request")));
         assert_eq!(body.get("generation"), Some(&JsonValue::Number(7)));
-        assert_eq!(body.get("state_id"), Some(&JsonValue::string("live-7")));
+        assert_eq!(body.get("state_id"), Some(&JsonValue::string("live:7")));
     }
 }
 
@@ -256,7 +256,7 @@ fn selector_completion_requires_the_retained_admission_catalog() {
         let request = call(
             "sts2.expert_rest_action",
             &format!(
-                "\"instance_id\":\"instance-1\",\"mcp_session_id\":\"mcp-session-1\",\"lease_id\":\"lease-1\",\"lease_epoch\":4,\"generation\":{generation},\"state_id\":\"live-{generation}\",\"operation_id\":\"operation-{generation}\",\"action\":{action}"
+                "\"instance_id\":\"instance-1\",\"mcp_session_id\":\"mcp-session-1\",\"lease_id\":\"lease-1\",\"lease_epoch\":4,\"generation\":{generation},\"state_id\":\"live:{generation}\",\"operation_id\":\"operation-{generation}\",\"action\":{action}"
             ),
         );
         assert!(
@@ -289,7 +289,7 @@ fn mend_completion_uses_prior_player_catalog_after_the_surface_closes() {
     );
     let requested = call(
         "sts2.expert_rest_action",
-        r#""instance_id":"instance-1","mcp_session_id":"mcp-session-1","lease_id":"lease-1","lease_epoch":4,"generation":19,"state_id":"live-19","operation_id":"operation-mend-parent","action":{"action_id":"rest-option:19:mend","action":{"kind":"rest_option","rest_option_id":"mend"}}"#,
+        r#""instance_id":"instance-1","mcp_session_id":"mcp-session-1","lease_id":"lease-1","lease_epoch":4,"generation":19,"state_id":"live:19","operation_id":"operation-mend-parent","action":{"action_id":"rest-option:19:mend","action":{"kind":"rest_option","rest_option_id":"mend"}}"#,
     );
     assert!(
         server
@@ -298,7 +298,7 @@ fn mend_completion_uses_prior_player_catalog_after_the_surface_closes() {
     );
     let completed = call(
         "sts2.expert_rest_action",
-        r#""instance_id":"instance-1","mcp_session_id":"mcp-session-1","lease_id":"lease-1","lease_epoch":4,"generation":21,"state_id":"live-21","operation_id":"operation-mend-target","action":{"action_id":"confirm-selection:21:mend","action":{"kind":"confirm_selection","selection_id":"selection:20:mend","rest_option_id":"mend"}}"#,
+        r#""instance_id":"instance-1","mcp_session_id":"mcp-session-1","lease_id":"lease-1","lease_epoch":4,"generation":21,"state_id":"live:21","operation_id":"operation-mend-target","action":{"action_id":"confirm-selection:21:mend","action":{"kind":"confirm_selection","selection_id":"selection:20:mend","rest_option_id":"mend"}}"#,
     );
     assert!(
         server
@@ -324,7 +324,7 @@ fn fabricated_mend_player_is_rejected_without_prior_admission() {
     );
     let request = call(
         "sts2.expert_rest_action",
-        r#""instance_id":"instance-1","mcp_session_id":"mcp-session-1","lease_id":"lease-1","lease_epoch":4,"generation":21,"state_id":"live-21","operation_id":"operation-1","action":{"action_id":"confirm-selection:21:mend","action":{"kind":"confirm_selection","selection_id":"selection:20:mend","rest_option_id":"mend"}}"#,
+        r#""instance_id":"instance-1","mcp_session_id":"mcp-session-1","lease_id":"lease-1","lease_epoch":4,"generation":21,"state_id":"live:21","operation_id":"operation-1","action":{"action_id":"confirm-selection:21:mend","action":{"kind":"confirm_selection","selection_id":"selection:20:mend","rest_option_id":"mend"}}"#,
     );
     let output = server.handle_frame(&request);
     assert!(output.contains("\"isError\":true"), "{output}");

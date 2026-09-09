@@ -61,6 +61,18 @@ fn response_fixture_with_binding_forgery() -> JsonValue {
     value
 }
 
+fn response_fixture_with_state_forgery() -> JsonValue {
+    let mut value = response_fixture("unknown");
+    let JsonValue::Object(object) = &mut value else {
+        return JsonValue::Null;
+    };
+    object.insert(
+        "state_id".to_owned(),
+        JsonValue::string("foreign-state-only"),
+    );
+    value
+}
+
 fn call(tool: &str, arguments: &str) -> String {
     format!(
         "{{\"jsonrpc\":\"2.0\",\"id\":\"request-1\",\"method\":\"tools/call\",\"params\":{{\"name\":\"{tool}\",\"arguments\":{{{arguments}}}}}}}"
@@ -85,7 +97,7 @@ fn unknown_and_cancelled_statuses_preserve_typed_receipts() {
         );
         let request = call(
             "sts2.expert_rest_action",
-            r#""instance_id":"instance-1","mcp_session_id":"mcp-session-1","lease_id":"lease-1","lease_epoch":4,"generation":7,"state_id":"live-7","operation_id":"operation-1","action":{"action_id":"rest-option:7:heal","action":{"kind":"rest_option","rest_option_id":"heal"}}"#,
+            r#""instance_id":"instance-1","mcp_session_id":"mcp-session-1","lease_id":"lease-1","lease_epoch":4,"generation":7,"state_id":"live:7","operation_id":"operation-1","action":{"action_id":"rest-option:7:heal","action":{"kind":"rest_option","rest_option_id":"heal"}}"#,
         );
         let output = server.handle_frame(&request);
         assert!(
@@ -155,7 +167,7 @@ fn reconcile_rejects_a_same_operation_forged_action_and_generation() {
     let dispatch = call(
         "sts2.expert_rest_action",
         &format!(
-            "\"instance_id\":\"instance-1\",\"mcp_session_id\":\"mcp-session-1\",\"lease_id\":\"lease-1\",\"lease_epoch\":4,\"generation\":7,\"state_id\":\"live-7\",\"operation_id\":\"operation-1\",\"action\":{action}"
+            "\"instance_id\":\"instance-1\",\"mcp_session_id\":\"mcp-session-1\",\"lease_id\":\"lease-1\",\"lease_epoch\":4,\"generation\":7,\"state_id\":\"live:7\",\"operation_id\":\"operation-1\",\"action\":{action}"
         ),
     );
     let dispatch_output = server.handle_frame(&dispatch);
@@ -197,13 +209,92 @@ fn dispatch_rejects_rebinding_an_operation_after_transport_failure() {
     );
     let first = call(
         "sts2.expert_rest_action",
-        r#""instance_id":"instance-1","mcp_session_id":"mcp-session-1","lease_id":"lease-1","lease_epoch":4,"generation":7,"state_id":"live-7","operation_id":"operation-1","action":{"action_id":"rest-option:7:heal","action":{"kind":"rest_option","rest_option_id":"heal"}}"#,
+        r#""instance_id":"instance-1","mcp_session_id":"mcp-session-1","lease_id":"lease-1","lease_epoch":4,"generation":7,"state_id":"live:7","operation_id":"operation-1","action":{"action_id":"rest-option:7:heal","action":{"kind":"rest_option","rest_option_id":"heal"}}"#,
     );
     assert!(server.handle_frame(&first).contains("-32003"));
     let second = call(
         "sts2.expert_rest_action",
-        r#""instance_id":"instance-1","mcp_session_id":"mcp-session-1","lease_id":"lease-1","lease_epoch":4,"generation":8,"state_id":"live-8","operation_id":"operation-1","action":{"action_id":"rest-option:8:heal","action":{"kind":"rest_option","rest_option_id":"heal"}}"#,
+        r#""instance_id":"instance-1","mcp_session_id":"mcp-session-1","lease_id":"lease-1","lease_epoch":4,"generation":8,"state_id":"live:8","operation_id":"operation-1","action":{"action_id":"rest-option:8:heal","action":{"kind":"rest_option","rest_option_id":"heal"}}"#,
     );
     assert!(server.handle_frame(&second).contains("-32602"));
     assert_eq!(server.gateway().requests.len(), 1);
+}
+
+#[test]
+fn dispatch_rejects_rebinding_an_operation_to_a_different_state() {
+    let gateway = RecordingGateway {
+        requests: Vec::new(),
+        responses: VecDeque::new(),
+    };
+    let mut server = McpServer::with_catalog_and_sessions(
+        gateway,
+        ToolCatalog::runtime_v4_expert_rest_action(),
+        "session-1",
+        "mcp-session-1",
+    );
+    let first = call(
+        "sts2.expert_rest_action",
+        r#""instance_id":"instance-1","mcp_session_id":"mcp-session-1","lease_id":"lease-1","lease_epoch":4,"generation":7,"state_id":"live:7","operation_id":"operation-1","action":{"action_id":"rest-option:7:heal","action":{"kind":"rest_option","rest_option_id":"heal"}}"#,
+    );
+    assert!(server.handle_frame(&first).contains("-32003"));
+    let second = call(
+        "sts2.expert_rest_action",
+        r#""instance_id":"instance-1","mcp_session_id":"mcp-session-1","lease_id":"lease-1","lease_epoch":4,"generation":7,"state_id":"foreign-state-only","operation_id":"operation-1","action":{"action_id":"rest-option:7:heal","action":{"kind":"rest_option","rest_option_id":"heal"}}"#,
+    );
+    assert!(server.handle_frame(&second).contains("-32602"));
+    assert_eq!(server.gateway().requests.len(), 1);
+}
+
+#[test]
+fn reconcile_rejects_a_same_operation_forged_state_id() {
+    let gateway = RecordingGateway {
+        requests: Vec::new(),
+        responses: VecDeque::from([
+            GatewayResponse {
+                status: 502,
+                body: response_fixture("unknown"),
+            },
+            GatewayResponse {
+                status: 502,
+                body: response_fixture_with_state_forgery(),
+            },
+        ]),
+    };
+    let mut server = McpServer::with_catalog_and_sessions(
+        gateway,
+        ToolCatalog::runtime_v4_expert_rest_action(),
+        "session-1",
+        "mcp-session-1",
+    );
+    let action = r#"{"action_id":"rest-option:7:heal","action":{"kind":"rest_option","rest_option_id":"heal"}}"#;
+    let dispatch = call(
+        "sts2.expert_rest_action",
+        &format!(
+            "\"instance_id\":\"instance-1\",\"mcp_session_id\":\"mcp-session-1\",\"lease_id\":\"lease-1\",\"lease_epoch\":4,\"generation\":7,\"state_id\":\"live:7\",\"operation_id\":\"operation-1\",\"action\":{action}"
+        ),
+    );
+    let dispatch_output = server.handle_frame(&dispatch);
+    assert!(
+        dispatch_output.contains("\"isError\":true"),
+        "{dispatch_output}"
+    );
+    assert!(
+        dispatch_output.contains("\\\"status\\\":\\\"unknown\\\""),
+        "{dispatch_output}"
+    );
+
+    let reconcile = call(
+        "sts2.expert_rest_reconcile",
+        "\"instance_id\":\"instance-1\",\"mcp_session_id\":\"mcp-session-1\",\"lease_id\":\"lease-1\",\"lease_epoch\":4,\"operation_id\":\"operation-1\"",
+    );
+    let reconcile_output = server.handle_frame(&reconcile);
+    assert!(
+        reconcile_output.contains("\"isError\":true"),
+        "{reconcile_output}"
+    );
+    assert!(
+        !reconcile_output.contains("\\\"status\\\":\\\"unknown\\\""),
+        "{reconcile_output}"
+    );
+    assert_eq!(server.gateway().requests.len(), 2);
 }
