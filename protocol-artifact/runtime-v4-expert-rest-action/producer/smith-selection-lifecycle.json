@@ -8,9 +8,15 @@
     "source": "schemas/runtime-v4-expert-rest-action-v1.schema.json",
     "generator": "hand-authored"
   },
+  "producer": {
+    "kind": "managed_source_only",
+    "implementation": "experiments/managed-rust-interop/game-loader/RuntimeV4ExpertRestActionSupport.cs",
+    "host": "synthetic SmithHost/MendHost",
+    "capture": "RuntimeV4ExpertRestActionSupport.Handle action admission and operation reconciliation"
+  },
   "consumer_context": "stateful operation store retains selector admission catalog across response observations",
   "fixture_id": "producer/smith-selection-lifecycle-v1",
-  "lifecycle": "rest_option -> selection_requested -> selection_progressed -> selection_completed",
+  "lifecycle": "rest_option -\u003E selection_requested -\u003E selection_progressed -\u003E selection_completed",
   "messages": [
     {
       "step": "option-request",
@@ -23,14 +29,14 @@
           "generator": "hand-authored"
         },
         "profile": "expert-rest-action",
-        "correlation_id": "corr:rest:2",
+        "correlation_id": "corr:rest:producer:smith",
         "instance_id": "instance:1",
         "session_id": "session:1",
         "lease_id": "lease:1",
         "lease_epoch": 4,
         "generation": 9,
         "state_id": "live:9",
-        "operation_id": "rest-op:9:smith",
+        "operation_id": "rest-op:producer:smith:parent",
         "kind": "action_request",
         "action": {
           "action_id": "rest-option:9:smith",
@@ -54,14 +60,14 @@
           "generator": "hand-authored"
         },
         "profile": "expert-rest-action",
-        "correlation_id": "corr:rest:2",
+        "correlation_id": "corr:rest:producer:smith",
         "instance_id": "instance:1",
         "session_id": "session:1",
         "lease_id": "lease:1",
         "lease_epoch": 4,
         "generation": 10,
         "state_id": "live:10",
-        "operation_id": "rest-op:9:smith",
+        "operation_id": "rest-op:producer:smith:parent",
         "kind": "action_response",
         "action": {
           "action_id": "rest-option:9:smith",
@@ -95,41 +101,15 @@
             "energy": 0,
             "gold": 99,
             "hand": [],
-            "deck": [
-              {
-                "card_id": "card:1",
-                "name": "Strike",
-                "cost": 1,
-                "upgraded": false,
-                "type": "attack",
-                "rarity": "basic",
-                "target": "any_enemy",
-                "description": "Deal damage."
-              },
-              {
-                "card_id": "card:2",
-                "name": "Bash",
-                "cost": 2,
-                "upgraded": false,
-                "type": "attack",
-                "rarity": "basic",
-                "target": "any_enemy",
-                "description": "Deal damage and apply Vulnerable."
-              }
-            ],
+            "deck": [],
             "discard": [],
             "exhaust": [],
             "powers": [],
             "statuses": [],
-            "relics": [
-              {
-                "relic_id": "relic:burning-blood",
-                "name": "Burning Blood"
-              }
-            ],
+            "relics": [],
             "potions": [],
-            "potion_slots": 0,
-            "max_potion_slots": 3
+            "potion_slots": null,
+            "max_potion_slots": null
           },
           "state": {
             "state": "selection",
@@ -153,39 +133,24 @@
               "action_id": "select_card:10:card:1",
               "action": {
                 "kind": "select_card",
-                "selection_id": null,
+                "selection_id": "selection:10",
                 "card_id": "card:1"
-              }
-            },
-            {
-              "action_id": "select_card:10:card:2",
-              "action": {
-                "kind": "select_card",
-                "selection_id": null,
-                "card_id": "card:2"
-              }
-            },
-            {
-              "action_id": "confirm_selection:10",
-              "action": {
-                "kind": "confirm_selection",
-                "selection_id": null
               }
             },
             {
               "action_id": "cancel_selection:10",
               "action": {
                 "kind": "cancel_selection",
-                "selection_id": null
+                "selection_id": "selection:10"
               }
             }
           ]
         },
         "transition": {
-          "kind": "rest_option_selection_requested",
           "before_generation": 9,
           "after_generation": 10,
           "rest_option_id": "smith",
+          "kind": "rest_option_selection_requested",
           "selector": {
             "selection_id": "selection:10:smith",
             "selection_kind": "card",
@@ -238,14 +203,14 @@
           "generator": "hand-authored"
         },
         "profile": "expert-rest-action",
-        "correlation_id": "corr:rest:3",
+        "correlation_id": "corr:rest:producer:smith",
         "instance_id": "instance:1",
         "session_id": "session:1",
         "lease_id": "lease:1",
         "lease_epoch": 4,
         "generation": 10,
         "state_id": "live:10",
-        "operation_id": "rest-select:10:smith:card:1",
+        "operation_id": "rest-op:producer:smith:first",
         "kind": "action_request",
         "action": {
           "action_id": "select_card:10:smith:card:1",
@@ -271,14 +236,14 @@
           "generator": "hand-authored"
         },
         "profile": "expert-rest-action",
-        "correlation_id": "corr:rest:3",
+        "correlation_id": "corr:rest:producer:smith",
         "instance_id": "instance:1",
         "session_id": "session:1",
         "lease_id": "lease:1",
         "lease_epoch": 4,
         "generation": 11,
         "state_id": "live:11",
-        "operation_id": "rest-select:10:smith:card:1",
+        "operation_id": "rest-op:producer:smith:first",
         "kind": "action_response",
         "action": {
           "action_id": "select_card:10:smith:card:1",
@@ -314,41 +279,15 @@
             "energy": 0,
             "gold": 99,
             "hand": [],
-            "deck": [
-              {
-                "card_id": "card:1",
-                "name": "Strike",
-                "cost": 1,
-                "upgraded": false,
-                "type": "attack",
-                "rarity": "basic",
-                "target": "any_enemy",
-                "description": "Deal damage."
-              },
-              {
-                "card_id": "card:2",
-                "name": "Bash",
-                "cost": 2,
-                "upgraded": false,
-                "type": "attack",
-                "rarity": "basic",
-                "target": "any_enemy",
-                "description": "Deal damage and apply Vulnerable."
-              }
-            ],
+            "deck": [],
             "discard": [],
             "exhaust": [],
             "powers": [],
             "statuses": [],
-            "relics": [
-              {
-                "relic_id": "relic:burning-blood",
-                "name": "Burning Blood"
-              }
-            ],
+            "relics": [],
             "potions": [],
-            "potion_slots": 0,
-            "max_potion_slots": 3
+            "potion_slots": null,
+            "max_potion_slots": null
           },
           "state": {
             "state": "selection",
@@ -369,34 +308,27 @@
           },
           "legal_actions": [
             {
-              "action_id": "select_card:11:card:2",
+              "action_id": "select_card:11:card:1",
               "action": {
                 "kind": "select_card",
-                "selection_id": null,
-                "card_id": "card:2"
-              }
-            },
-            {
-              "action_id": "confirm_selection:11",
-              "action": {
-                "kind": "confirm_selection",
-                "selection_id": null
+                "selection_id": "selection:11",
+                "card_id": "card:1"
               }
             },
             {
               "action_id": "cancel_selection:11",
               "action": {
                 "kind": "cancel_selection",
-                "selection_id": null
+                "selection_id": "selection:11"
               }
             }
           ]
         },
         "transition": {
-          "kind": "rest_option_selection_progressed",
           "before_generation": 10,
           "after_generation": 11,
           "rest_option_id": "smith",
+          "kind": "rest_option_selection_progressed",
           "selection_id": "selection:10:smith",
           "selection_kind": "card",
           "required_count": 2,
@@ -449,14 +381,14 @@
           "generator": "hand-authored"
         },
         "profile": "expert-rest-action",
-        "correlation_id": "corr:rest:4",
+        "correlation_id": "corr:rest:producer:smith",
         "instance_id": "instance:1",
         "session_id": "session:1",
         "lease_id": "lease:1",
         "lease_epoch": 4,
         "generation": 11,
         "state_id": "live:11",
-        "operation_id": "rest-select:11:smith:card:2",
+        "operation_id": "rest-op:producer:smith:second",
         "kind": "action_request",
         "action": {
           "action_id": "select_card:11:smith:card:2",
@@ -482,14 +414,14 @@
           "generator": "hand-authored"
         },
         "profile": "expert-rest-action",
-        "correlation_id": "corr:rest:4",
+        "correlation_id": "corr:rest:producer:smith",
         "instance_id": "instance:1",
         "session_id": "session:1",
         "lease_id": "lease:1",
         "lease_epoch": 4,
         "generation": 12,
         "state_id": "live:12",
-        "operation_id": "rest-select:11:smith:card:2",
+        "operation_id": "rest-op:producer:smith:second",
         "kind": "action_response",
         "action": {
           "action_id": "select_card:11:smith:card:2",
@@ -525,41 +457,15 @@
             "energy": 0,
             "gold": 99,
             "hand": [],
-            "deck": [
-              {
-                "card_id": "card:1",
-                "name": "Strike",
-                "cost": 1,
-                "upgraded": false,
-                "type": "attack",
-                "rarity": "basic",
-                "target": "any_enemy",
-                "description": "Deal damage."
-              },
-              {
-                "card_id": "card:2",
-                "name": "Bash",
-                "cost": 2,
-                "upgraded": false,
-                "type": "attack",
-                "rarity": "basic",
-                "target": "any_enemy",
-                "description": "Deal damage and apply Vulnerable."
-              }
-            ],
+            "deck": [],
             "discard": [],
             "exhaust": [],
             "powers": [],
             "statuses": [],
-            "relics": [
-              {
-                "relic_id": "relic:burning-blood",
-                "name": "Burning Blood"
-              }
-            ],
+            "relics": [],
             "potions": [],
-            "potion_slots": 0,
-            "max_potion_slots": 3
+            "potion_slots": null,
+            "max_potion_slots": null
           },
           "state": {
             "state": "selection",
@@ -580,26 +486,27 @@
           },
           "legal_actions": [
             {
-              "action_id": "confirm_selection:12",
+              "action_id": "select_card:12:card:1",
               "action": {
-                "kind": "confirm_selection",
-                "selection_id": null
+                "kind": "select_card",
+                "selection_id": "selection:12",
+                "card_id": "card:1"
               }
             },
             {
               "action_id": "cancel_selection:12",
               "action": {
                 "kind": "cancel_selection",
-                "selection_id": null
+                "selection_id": "selection:12"
               }
             }
           ]
         },
         "transition": {
-          "kind": "rest_option_selection_progressed",
           "before_generation": 11,
           "after_generation": 12,
           "rest_option_id": "smith",
+          "kind": "rest_option_selection_progressed",
           "selection_id": "selection:10:smith",
           "selection_kind": "card",
           "required_count": 2,
@@ -653,14 +560,14 @@
           "generator": "hand-authored"
         },
         "profile": "expert-rest-action",
-        "correlation_id": "corr:rest:5",
+        "correlation_id": "corr:rest:producer:smith",
         "instance_id": "instance:1",
         "session_id": "session:1",
         "lease_id": "lease:1",
         "lease_epoch": 4,
         "generation": 12,
         "state_id": "live:12",
-        "operation_id": "rest-select:12:smith:confirm",
+        "operation_id": "rest-op:producer:smith:confirm",
         "kind": "action_request",
         "action": {
           "action_id": "confirm_selection:12:smith",
@@ -685,14 +592,14 @@
           "generator": "hand-authored"
         },
         "profile": "expert-rest-action",
-        "correlation_id": "corr:rest:6",
+        "correlation_id": "corr:rest:producer:smith",
         "instance_id": "instance:1",
         "session_id": "session:1",
         "lease_id": "lease:1",
         "lease_epoch": 4,
         "generation": 13,
         "state_id": "live:13",
-        "operation_id": "rest-select:12:smith:confirm",
+        "operation_id": "rest-op:producer:smith:confirm",
         "kind": "action_response",
         "action": {
           "action_id": "confirm_selection:12:smith",
@@ -727,67 +634,27 @@
             "energy": 0,
             "gold": 99,
             "hand": [],
-            "deck": [
-              {
-                "card_id": "card:1",
-                "name": "Strike+",
-                "cost": 1,
-                "upgraded": true,
-                "type": "attack",
-                "rarity": "basic",
-                "target": "any_enemy",
-                "description": "Deal damage."
-              },
-              {
-                "card_id": "card:2",
-                "name": "Bash+",
-                "cost": 2,
-                "upgraded": true,
-                "type": "attack",
-                "rarity": "basic",
-                "target": "any_enemy",
-                "description": "Deal damage and apply Vulnerable."
-              }
-            ],
+            "deck": [],
             "discard": [],
             "exhaust": [],
             "powers": [],
             "statuses": [],
-            "relics": [
-              {
-                "relic_id": "relic:burning-blood",
-                "name": "Burning Blood"
-              }
-            ],
+            "relics": [],
             "potions": [],
-            "potion_slots": 0,
-            "max_potion_slots": 3
+            "potion_slots": null,
+            "max_potion_slots": null
           },
           "state": {
             "state": "rest",
-            "choices": [
-              {
-                "choice_id": "rest:proceed",
-                "label": "Proceed",
-                "kind": "rest",
-                "domain": null
-              }
-            ]
+            "choices": []
           },
-          "legal_actions": [
-            {
-              "action_id": "proceed:13",
-              "action": {
-                "kind": "proceed"
-              }
-            }
-          ]
+          "legal_actions": []
         },
         "transition": {
-          "kind": "rest_option_selection_completed",
           "before_generation": 12,
           "after_generation": 13,
           "rest_option_id": "smith",
+          "kind": "rest_option_selection_completed",
           "selection_id": "selection:10:smith",
           "selection_kind": "card",
           "required_count": 2,
@@ -800,7 +667,7 @@
           "effect_witness": {
             "version": "rest-effect-witness-v1",
             "kind": "smith_applied",
-            "operation_id": "rest-select:12:smith:confirm",
+            "operation_id": "rest-op:producer:smith:confirm",
             "rest_option_id": "smith",
             "generation": 13,
             "evidence": {
@@ -817,7 +684,7 @@
         "effect_witness": {
           "version": "rest-effect-witness-v1",
           "kind": "smith_applied",
-          "operation_id": "rest-select:12:smith:confirm",
+          "operation_id": "rest-op:producer:smith:confirm",
           "rest_option_id": "smith",
           "generation": 13,
           "evidence": {

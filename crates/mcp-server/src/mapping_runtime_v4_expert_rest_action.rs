@@ -134,16 +134,33 @@ fn expert_rest_reconcile_call<G: GatewayAdapter>(
     else {
         return invalid_params(id, "lease_epoch exceeds the protocol bound");
     };
+    let session_id = server
+        .gateway_session_id()
+        .unwrap_or(mcp_session_id)
+        .to_owned();
+    let original_binding = match server.rest_action_operation_binding(
+        operation_id,
+        mcp_session_id,
+        instance_id,
+        &session_id,
+        lease_id,
+        lease_epoch,
+    ) {
+        Ok(binding) => binding,
+        Err(()) => {
+            return invalid_params(
+                id,
+                "operation_id is bound to a different Runtime-v4 REST identity",
+            );
+        }
+    };
     let mut request_headers = headers(mcp_session_id, correlation_id);
     request_headers.extend([
         (
             String::from("x-sts2-instance-id"),
             String::from(instance_id),
         ),
-        (
-            String::from("x-sts2-session-id"),
-            String::from(server.gateway_session_id().unwrap_or(mcp_session_id)),
-        ),
+        (String::from("x-sts2-session-id"), session_id.clone()),
         (String::from("x-sts2-lease-id"), String::from(lease_id)),
         (String::from("x-sts2-lease-epoch"), lease_epoch.to_string()),
     ]);
@@ -160,15 +177,12 @@ fn expert_rest_reconcile_call<G: GatewayAdapter>(
     let binding = dispatch::RestResponseBinding {
         correlation_id: correlation_id.to_owned(),
         instance_id: instance_id.to_owned(),
-        session_id: server
-            .gateway_session_id()
-            .unwrap_or(mcp_session_id)
-            .to_owned(),
+        session_id,
         lease_id: lease_id.to_owned(),
         lease_epoch,
-        generation: None,
+        generation: original_binding.as_ref().map(|(generation, _)| *generation),
         operation_id: operation_id.to_owned(),
-        action: None,
+        action: original_binding.map(|(_, action)| action),
     };
     match server.gateway.forward(request) {
         Ok(response) => dispatch::expert_rest_action_response(server, id, response, binding),
@@ -240,7 +254,31 @@ fn expert_state_call<G: GatewayAdapter>(
             }
             tool_result(id, text, false)
         }
-        Ok(response) => dispatch::expert_error_result(id, response.status, &response.body),
+        Ok(response) => expert_error_result(id, response.status, &response.body),
         Err(error) => gateway_error_result(id, error),
     }
+}
+
+pub(super) fn expert_error_result(id: RequestId, status: u16, body: &JsonValue) -> RpcResponse {
+    let Some(object) = body.as_object() else {
+        return tool_result(
+            id,
+            format!("gateway returned Runtime-v4 REST-action status {status}"),
+            true,
+        );
+    };
+    if object.len() != 1
+        || !matches!(object.get("error_code"), Some(JsonValue::String(value))
+            if !value.is_empty()
+                && value.len() <= 128
+                && value.bytes().all(|byte| byte.is_ascii_alphanumeric()
+                    || matches!(byte, b'-' | b'_' | b'.' | b':' | b'/')))
+    {
+        return tool_result(
+            id,
+            format!("gateway returned Runtime-v4 REST-action status {status}"),
+            true,
+        );
+    }
+    tool_result(id, body.to_json(), true)
 }

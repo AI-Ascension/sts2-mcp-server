@@ -8,9 +8,15 @@
     "source": "schemas/runtime-v4-expert-rest-action-v1.schema.json",
     "generator": "hand-authored"
   },
+  "producer": {
+    "kind": "managed_source_only",
+    "implementation": "experiments/managed-rust-interop/game-loader/RuntimeV4ExpertRestActionSupport.cs",
+    "host": "synthetic SmithHost/MendHost",
+    "capture": "RuntimeV4ExpertRestActionSupport.Handle action admission and operation reconciliation"
+  },
   "consumer_context": "stateful operation store retains selector admission catalog across response observations",
   "fixture_id": "producer/mend-selection-lifecycle-v1",
-  "lifecycle": "rest_option -> selection_requested -> selection_completed",
+  "lifecycle": "rest_option -\u003E selection_requested -\u003E selection_completed",
   "messages": [
     {
       "step": "option-request",
@@ -28,12 +34,12 @@
         "session_id": "session:1",
         "lease_id": "lease:1",
         "lease_epoch": 4,
-        "generation": 19,
-        "state_id": "live:19",
-        "operation_id": "rest-op:19:mend",
+        "generation": 9,
+        "state_id": "live:9",
+        "operation_id": "rest-op:producer:mend:parent",
         "kind": "action_request",
         "action": {
-          "action_id": "rest-option:19:mend",
+          "action_id": "rest-option:9:mend",
           "action": {
             "kind": "rest_option",
             "rest_option_id": "mend"
@@ -54,17 +60,17 @@
           "generator": "hand-authored"
         },
         "profile": "expert-rest-action",
-        "correlation_id": "corr:rest:5",
+        "correlation_id": "corr:rest:producer:mend",
         "instance_id": "instance:1",
         "session_id": "session:1",
         "lease_id": "lease:1",
         "lease_epoch": 4,
-        "generation": 20,
-        "state_id": "live:20",
-        "operation_id": "rest-op:19:mend",
+        "generation": 21,
+        "state_id": "live:21",
+        "operation_id": "rest-op:producer:mend:parent",
         "kind": "action_response",
         "action": {
-          "action_id": "rest-option:19:mend",
+          "action_id": "rest-option:9:mend",
           "action": {
             "kind": "rest_option",
             "rest_option_id": "mend"
@@ -80,8 +86,8 @@
             "generator": "hand-authored"
           },
           "profile": "expert-state",
-          "state_id": "live:20",
-          "generation": 20,
+          "state_id": "live:21",
+          "generation": 21,
           "visible_seed": "synthetic-visible-seed",
           "run": {
             "character_id": "ironclad",
@@ -89,7 +95,7 @@
             "location": "rest:1"
           },
           "player": {
-            "hp": 40,
+            "hp": 64,
             "max_hp": 80,
             "block": null,
             "energy": 0,
@@ -100,15 +106,10 @@
             "exhaust": [],
             "powers": [],
             "statuses": [],
-            "relics": [
-              {
-                "relic_id": "relic:burning-blood",
-                "name": "Burning Blood"
-              }
-            ],
+            "relics": [],
             "potions": [],
-            "potion_slots": 0,
-            "max_potion_slots": 3
+            "potion_slots": null,
+            "max_potion_slots": null
           },
           "state": {
             "state": "selection",
@@ -123,19 +124,27 @@
           },
           "legal_actions": [
             {
-              "action_id": "cancel_selection:20",
+              "action_id": "select_card:21:card:1",
+              "action": {
+                "kind": "select_card",
+                "selection_id": "selection:21",
+                "card_id": "card:1"
+              }
+            },
+            {
+              "action_id": "cancel_selection:21",
               "action": {
                 "kind": "cancel_selection",
-                "selection_id": null
+                "selection_id": "selection:21"
               }
             }
           ]
         },
         "transition": {
-          "kind": "rest_option_selection_requested",
-          "before_generation": 19,
-          "after_generation": 20,
+          "before_generation": 9,
+          "after_generation": 21,
           "rest_option_id": "mend",
+          "kind": "rest_option_selection_requested",
           "selector": {
             "selection_id": "selection:20:mend",
             "selection_kind": "player",
@@ -144,7 +153,7 @@
             "remaining_count": 1,
             "legal_actions": [
               {
-                "action_id": "select_player:20:mend:player:local",
+                "action_id": "select_player:21:mend:player:local",
                 "action": {
                   "kind": "select_player",
                   "selection_id": "selection:20:mend",
@@ -153,7 +162,7 @@
                 }
               },
               {
-                "action_id": "cancel_selection:20:mend",
+                "action_id": "cancel_selection:21:mend",
                 "action": {
                   "kind": "cancel_selection",
                   "selection_id": "selection:20:mend",
@@ -179,17 +188,17 @@
           "generator": "hand-authored"
         },
         "profile": "expert-rest-action",
-        "correlation_id": "corr:rest:producer:mend-select",
+        "correlation_id": "corr:rest:producer:mend",
         "instance_id": "instance:1",
         "session_id": "session:1",
         "lease_id": "lease:1",
         "lease_epoch": 4,
-        "generation": 20,
-        "state_id": "live:20",
-        "operation_id": "rest-select:20:mend:player:local",
+        "generation": 21,
+        "state_id": "live:21",
+        "operation_id": "rest-op:producer:mend:target",
         "kind": "action_request",
         "action": {
-          "action_id": "select_player:20:mend:player:local",
+          "action_id": "select_player:21:mend:player:local",
           "action": {
             "kind": "select_player",
             "selection_id": "selection:20:mend",
@@ -212,17 +221,17 @@
           "generator": "hand-authored"
         },
         "profile": "expert-rest-action",
-        "correlation_id": "corr:rest:producer:mend-select",
+        "correlation_id": "corr:rest:producer:mend",
         "instance_id": "instance:1",
         "session_id": "session:1",
         "lease_id": "lease:1",
         "lease_epoch": 4,
-        "generation": 21,
-        "state_id": "live:21",
-        "operation_id": "rest-select:20:mend:player:local",
+        "generation": 22,
+        "state_id": "live:22",
+        "operation_id": "rest-op:producer:mend:target",
         "kind": "action_response",
         "action": {
-          "action_id": "select_player:20:mend:player:local",
+          "action_id": "select_player:21:mend:player:local",
           "action": {
             "kind": "select_player",
             "selection_id": "selection:20:mend",
@@ -240,8 +249,8 @@
             "generator": "hand-authored"
           },
           "profile": "expert-state",
-          "state_id": "live:21",
-          "generation": 21,
+          "state_id": "live:22",
+          "generation": 22,
           "visible_seed": "synthetic-visible-seed",
           "run": {
             "character_id": "ironclad",
@@ -249,7 +258,7 @@
             "location": "rest:1"
           },
           "player": {
-            "hp": 50,
+            "hp": 74,
             "max_hp": 80,
             "block": null,
             "energy": 0,
@@ -260,41 +269,22 @@
             "exhaust": [],
             "powers": [],
             "statuses": [],
-            "relics": [
-              {
-                "relic_id": "relic:burning-blood",
-                "name": "Burning Blood"
-              }
-            ],
+            "relics": [],
             "potions": [],
-            "potion_slots": 0,
-            "max_potion_slots": 3
+            "potion_slots": null,
+            "max_potion_slots": null
           },
           "state": {
             "state": "rest",
-            "choices": [
-              {
-                "choice_id": "rest:proceed",
-                "label": "Proceed",
-                "kind": "rest",
-                "domain": null
-              }
-            ]
+            "choices": []
           },
-          "legal_actions": [
-            {
-              "action_id": "proceed:21",
-              "action": {
-                "kind": "proceed"
-              }
-            }
-          ]
+          "legal_actions": []
         },
         "transition": {
-          "kind": "rest_option_selection_completed",
-          "before_generation": 20,
-          "after_generation": 21,
+          "before_generation": 21,
+          "after_generation": 22,
           "rest_option_id": "mend",
+          "kind": "rest_option_selection_completed",
           "selection_id": "selection:20:mend",
           "selection_kind": "player",
           "required_count": 1,
@@ -306,33 +296,33 @@
           "effect_witness": {
             "version": "rest-effect-witness-v1",
             "kind": "mend_applied",
-            "operation_id": "rest-select:20:mend:player:local",
+            "operation_id": "rest-op:producer:mend:target",
             "rest_option_id": "mend",
-            "generation": 21,
-            "target_player_id": "player:local",
+            "generation": 22,
             "evidence": {
               "kind": "hp_change",
-              "hp_before": 40,
-              "hp_after": 50,
+              "hp_before": 64,
+              "hp_after": 74,
               "max_hp_before": 80,
               "max_hp_after": 80
-            }
+            },
+            "target_player_id": "player:local"
           }
         },
         "effect_witness": {
           "version": "rest-effect-witness-v1",
           "kind": "mend_applied",
-          "operation_id": "rest-select:20:mend:player:local",
+          "operation_id": "rest-op:producer:mend:target",
           "rest_option_id": "mend",
-          "generation": 21,
-          "target_player_id": "player:local",
+          "generation": 22,
           "evidence": {
             "kind": "hp_change",
-            "hp_before": 40,
-            "hp_after": 50,
+            "hp_before": 64,
+            "hp_after": 74,
             "max_hp_before": 80,
             "max_hp_after": 80
-          }
+          },
+          "target_player_id": "player:local"
         },
         "error_code": null
       }

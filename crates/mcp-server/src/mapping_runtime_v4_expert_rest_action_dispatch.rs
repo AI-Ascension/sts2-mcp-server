@@ -10,7 +10,7 @@ use crate::protocol_artifact_runtime_v4_expert_rest_action::{
     RUNTIME_V4_EXPERT_REST_ACTION_PROTOCOL_VERSION, RUNTIME_V4_EXPERT_REST_ACTION_SCHEMA_DIGEST,
     RUNTIME_V4_EXPERT_REST_ACTION_SCHEMA_SOURCE,
 };
-use crate::server::McpServer;
+use crate::server::{McpServer, RestActionOperationContext};
 
 use super::super::{
     gateway_error_result, has_only_arguments, headers, invalid_params, tool_result,
@@ -214,6 +214,23 @@ pub(super) fn expert_rest_action_call<G: GatewayAdapter>(
         operation_id: operation_id.to_owned(),
         action: Some(action.clone()),
     };
+    if !server.remember_rest_action_operation(
+        operation_id,
+        RestActionOperationContext {
+            mcp_session_id: mcp_session_id.to_owned(),
+            instance_id: instance_id.to_owned(),
+            session_id: session_id.clone(),
+            lease_id: lease_id.to_owned(),
+            lease_epoch,
+            generation,
+            action: action.clone(),
+        },
+    ) {
+        return invalid_params(
+            id,
+            "operation_id is already bound to a different Runtime-v4 REST action",
+        );
+    }
     match server.gateway.forward(request) {
         Ok(response) => expert_rest_action_response(server, id, response, binding),
         Err(error) => gateway_error_result(id, error),
@@ -254,7 +271,7 @@ pub(super) fn expert_rest_action_response<G: GatewayAdapter>(
         );
     let binding_matches = binding.matches(&response.body);
     if !valid_status || projection.is_err() || !binding_matches {
-        return expert_error_result(id, response.status, &response.body);
+        return super::expert_error_result(id, response.status, &response.body);
     }
     if !server.remember_rest_action_selection(
         &binding.instance_id,
@@ -274,28 +291,4 @@ pub(super) fn expert_rest_action_response<G: GatewayAdapter>(
         Some("rejected" | "unknown" | "cancelled")
     );
     tool_result(id, response.body.to_json(), is_error)
-}
-
-pub(super) fn expert_error_result(id: RequestId, status: u16, body: &JsonValue) -> RpcResponse {
-    let Some(object) = body.as_object() else {
-        return tool_result(
-            id,
-            format!("gateway returned Runtime-v4 REST-action status {status}"),
-            true,
-        );
-    };
-    if object.len() != 1
-        || !matches!(object.get("error_code"), Some(JsonValue::String(value))
-            if !value.is_empty()
-                && value.len() <= 128
-                && value.bytes().all(|byte| byte.is_ascii_alphanumeric()
-                    || matches!(byte, b'-' | b'_' | b'.' | b':' | b'/')))
-    {
-        return tool_result(
-            id,
-            format!("gateway returned Runtime-v4 REST-action status {status}"),
-            true,
-        );
-    }
-    tool_result(id, body.to_json(), true)
 }

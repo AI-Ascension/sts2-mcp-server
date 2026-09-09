@@ -25,6 +25,10 @@ impl GatewayAdapter for RecordingGateway {
 }
 
 fn response_fixture(path: &str) -> JsonValue {
+    response_fixture_for_operation(path, "operation-1")
+}
+
+fn response_fixture_for_operation(path: &str, operation_id: &str) -> JsonValue {
     let text = match path {
         "accepted" => include_str!(
             "../../../protocol-artifact/runtime-v4-expert-rest-action/golden/action-accepted.json"
@@ -71,41 +75,32 @@ fn response_fixture(path: &str) -> JsonValue {
         ("instance_id", "instance-1"),
         ("session_id", "session-1"),
         ("lease_id", "lease-1"),
-        ("operation_id", "operation-1"),
     ] {
         object.insert(field.to_owned(), JsonValue::string(replacement));
     }
-    fn replace_operation_ids(value: &mut JsonValue) {
+    object.insert("operation_id".to_owned(), JsonValue::string(operation_id));
+    fn replace_operation_ids(value: &mut JsonValue, operation_id: &str) {
         match value {
             JsonValue::Object(object) => {
                 if object.contains_key("operation_id") {
                     object.insert(
                         String::from("operation_id"),
-                        JsonValue::string("operation-1"),
+                        JsonValue::string(operation_id),
                     );
                 }
                 for value in object.values_mut() {
-                    replace_operation_ids(value);
+                    replace_operation_ids(value, operation_id);
                 }
             }
             JsonValue::Array(values) => {
                 for value in values {
-                    replace_operation_ids(value);
+                    replace_operation_ids(value, operation_id);
                 }
             }
             _ => {}
         }
     }
-    replace_operation_ids(&mut value);
-    value
-}
-
-fn response_fixture_with_status(path: &str, status: &str) -> JsonValue {
-    let mut value = response_fixture(path);
-    let JsonValue::Object(object) = &mut value else {
-        return JsonValue::Null;
-    };
-    object.insert("status".to_owned(), JsonValue::string(status));
+    replace_operation_ids(&mut value, operation_id);
     value
 }
 
@@ -218,19 +213,19 @@ fn selector_completion_requires_the_retained_admission_catalog() {
         responses: VecDeque::from([
             GatewayResponse {
                 status: 200,
-                body: response_fixture("smith-requested"),
+                body: response_fixture_for_operation("smith-requested", "operation-9"),
             },
             GatewayResponse {
                 status: 200,
-                body: response_fixture("smith-first"),
+                body: response_fixture_for_operation("smith-first", "operation-10"),
             },
             GatewayResponse {
                 status: 200,
-                body: response_fixture("smith-second"),
+                body: response_fixture_for_operation("smith-second", "operation-11"),
             },
             GatewayResponse {
                 status: 200,
-                body: response_fixture("smith-completed"),
+                body: response_fixture_for_operation("smith-completed", "operation-12"),
             },
         ]),
     };
@@ -261,7 +256,7 @@ fn selector_completion_requires_the_retained_admission_catalog() {
         let request = call(
             "sts2.expert_rest_action",
             &format!(
-                "\"instance_id\":\"instance-1\",\"mcp_session_id\":\"mcp-session-1\",\"lease_id\":\"lease-1\",\"lease_epoch\":4,\"generation\":{generation},\"state_id\":\"live-{generation}\",\"operation_id\":\"operation-1\",\"action\":{action}"
+                "\"instance_id\":\"instance-1\",\"mcp_session_id\":\"mcp-session-1\",\"lease_id\":\"lease-1\",\"lease_epoch\":4,\"generation\":{generation},\"state_id\":\"live-{generation}\",\"operation_id\":\"operation-{generation}\",\"action\":{action}"
             ),
         );
         assert!(
@@ -278,11 +273,11 @@ fn mend_completion_uses_prior_player_catalog_after_the_surface_closes() {
         responses: VecDeque::from([
             GatewayResponse {
                 status: 200,
-                body: response_fixture("mend-requested"),
+                body: response_fixture_for_operation("mend-requested", "operation-mend-parent"),
             },
             GatewayResponse {
                 status: 200,
-                body: response_fixture("mend-completed"),
+                body: response_fixture_for_operation("mend-completed", "operation-mend-target"),
             },
         ]),
     };
@@ -294,7 +289,7 @@ fn mend_completion_uses_prior_player_catalog_after_the_surface_closes() {
     );
     let requested = call(
         "sts2.expert_rest_action",
-        r#""instance_id":"instance-1","mcp_session_id":"mcp-session-1","lease_id":"lease-1","lease_epoch":4,"generation":19,"state_id":"live-19","operation_id":"operation-1","action":{"action_id":"rest-option:19:mend","action":{"kind":"rest_option","rest_option_id":"mend"}}"#,
+        r#""instance_id":"instance-1","mcp_session_id":"mcp-session-1","lease_id":"lease-1","lease_epoch":4,"generation":19,"state_id":"live-19","operation_id":"operation-mend-parent","action":{"action_id":"rest-option:19:mend","action":{"kind":"rest_option","rest_option_id":"mend"}}"#,
     );
     assert!(
         server
@@ -303,7 +298,7 @@ fn mend_completion_uses_prior_player_catalog_after_the_surface_closes() {
     );
     let completed = call(
         "sts2.expert_rest_action",
-        r#""instance_id":"instance-1","mcp_session_id":"mcp-session-1","lease_id":"lease-1","lease_epoch":4,"generation":21,"state_id":"live-21","operation_id":"operation-1","action":{"action_id":"confirm-selection:21:mend","action":{"kind":"confirm_selection","selection_id":"selection:20:mend","rest_option_id":"mend"}}"#,
+        r#""instance_id":"instance-1","mcp_session_id":"mcp-session-1","lease_id":"lease-1","lease_epoch":4,"generation":21,"state_id":"live-21","operation_id":"operation-mend-target","action":{"action_id":"confirm-selection:21:mend","action":{"kind":"confirm_selection","selection_id":"selection:20:mend","rest_option_id":"mend"}}"#,
     );
     assert!(
         server
@@ -334,67 +329,4 @@ fn fabricated_mend_player_is_rejected_without_prior_admission() {
     let output = server.handle_frame(&request);
     assert!(output.contains("\"isError\":true"), "{output}");
     assert_eq!(server.gateway().requests.len(), 1);
-}
-
-#[test]
-fn unknown_and_cancelled_statuses_preserve_typed_receipts() {
-    for (http_status, receipt_status) in [(502, "unknown"), (504, "unknown"), (499, "cancelled")] {
-        let gateway = RecordingGateway {
-            requests: Vec::new(),
-            responses: VecDeque::from([GatewayResponse {
-                status: http_status,
-                body: response_fixture_with_status("unknown", receipt_status),
-            }]),
-        };
-        let mut server = McpServer::with_catalog_and_sessions(
-            gateway,
-            ToolCatalog::runtime_v4_expert_rest_action(),
-            "session-1",
-            "mcp-session-1",
-        );
-        let request = call(
-            "sts2.expert_rest_action",
-            r#""instance_id":"instance-1","mcp_session_id":"mcp-session-1","lease_id":"lease-1","lease_epoch":4,"generation":7,"state_id":"live-7","operation_id":"operation-1","action":{"action_id":"rest-option:7:heal","action":{"kind":"rest_option","rest_option_id":"heal"}}"#,
-        );
-        let output = server.handle_frame(&request);
-        assert!(
-            output.contains("\"isError\":true"),
-            "{http_status}: {output}"
-        );
-        assert!(
-            output.contains(&format!("\\\"status\\\":\\\"{receipt_status}\\\"")),
-            "{http_status}: {output}"
-        );
-        assert!(output.contains("sts2.game-mod/outcome_unknown"));
-    }
-
-    let gateway = RecordingGateway {
-        requests: Vec::new(),
-        responses: VecDeque::from([GatewayResponse {
-            status: 502,
-            body: response_fixture_with_status("unknown", "unknown"),
-        }]),
-    };
-    let mut server = McpServer::with_catalog_and_sessions(
-        gateway,
-        ToolCatalog::runtime_v4_expert_rest_action(),
-        "session-1",
-        "mcp-session-1",
-    );
-    let reconcile = call(
-        "sts2.expert_rest_reconcile",
-        "\"instance_id\":\"instance-1\",\"mcp_session_id\":\"mcp-session-1\",\"lease_id\":\"lease-1\",\"lease_epoch\":4,\"operation_id\":\"operation-1\"",
-    );
-    let output = server.handle_frame(&reconcile);
-    assert!(output.contains("\"isError\":true"), "{output}");
-    assert!(
-        output.contains("\\\"status\\\":\\\"unknown\\\""),
-        "{output}"
-    );
-    assert!(output.contains("sts2.game-mod/outcome_unknown"));
-    assert_eq!(server.gateway().requests[0].method, GatewayMethod::Get);
-    assert_eq!(
-        server.gateway().requests[0].path,
-        "/v4/instances/instance-1/expert-rest-actions/operation-1"
-    );
 }

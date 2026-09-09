@@ -11,6 +11,10 @@ use crate::protocol::{
 };
 use crate::transport::{FrameCodec, FrameError};
 
+#[path = "server_runtime_v4_expert_rest_action.rs"]
+mod runtime_v4_expert_rest_action;
+pub(crate) use runtime_v4_expert_rest_action::RestActionOperationContext;
+
 pub const SERVER_NAME: &str = "sts2-mcp-server";
 pub const SERVER_VERSION: &str = "0.0.0";
 pub const MCP_PROTOCOL_VERSION: &str = "2025-06-18";
@@ -21,6 +25,7 @@ pub struct McpServer<G> {
     pub(crate) gateway_session_id: Option<String>,
     pub(crate) mcp_session_id: Option<String>,
     pub(crate) rest_action_selections: BTreeMap<RestActionSelectionKey, RestActionSelectionContext>,
+    pub(crate) rest_action_operations: BTreeMap<String, RestActionOperationContext>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -39,6 +44,7 @@ impl<G: GatewayAdapter> McpServer<G> {
             gateway_session_id: None,
             mcp_session_id: None,
             rest_action_selections: BTreeMap::new(),
+            rest_action_operations: BTreeMap::new(),
         }
     }
 
@@ -49,6 +55,7 @@ impl<G: GatewayAdapter> McpServer<G> {
             gateway_session_id: None,
             mcp_session_id: None,
             rest_action_selections: BTreeMap::new(),
+            rest_action_operations: BTreeMap::new(),
         }
     }
 
@@ -70,6 +77,7 @@ impl<G: GatewayAdapter> McpServer<G> {
             gateway_session_id: Some(gateway_session_id.into()),
             mcp_session_id: Some(mcp_session_id.into()),
             rest_action_selections: BTreeMap::new(),
+            rest_action_operations: BTreeMap::new(),
         }
     }
 
