@@ -41,10 +41,6 @@ fn response(
         _ => return Err(String::from("unknown fixture")),
     };
     let mut wire = fixture_wire
-        .replace(
-            "afe9bf3674f3e69b0f2454ec3fb1d6265a8e83ebccd996b6b0437208531d72b5",
-            COOP_NATIVE_SCHEMA_DIGEST,
-        )
         .replace("corr:native:observation", correlation)
         .replace("corr:native:local-action-settled", correlation)
         .replace("corr:native:rejoin:recovered", correlation)
@@ -240,7 +236,7 @@ fn rejects_foreign_identity_unknown_fields_and_digest_drift_before_or_at_boundar
 
     let bad = gateway_response.body.to_json().replace(
         COOP_NATIVE_SCHEMA_DIGEST,
-        "afe9bf3674f3e69b0f2454ec3fb1d6265a8e83ebccd996b6b0437208531d72b5",
+        "0000000000000000000000000000000000000000000000000000000000000000",
     );
     let mut server = server(GatewayResponse {
         status: 200,

@@ -3,23 +3,83 @@
   "protocol_version": "coop-native-v1",
   "status": "candidate",
   "schema_digest": "3e555563023804383534d92118c3863aa2aee3d0d24b932f484d8fd97e452ca8",
-  "producer_declared_schema_digest": "afe9bf3674f3e69b0f2454ec3fb1d6265a8e83ebccd996b6b0437208531d72b5",
+  "producer_declared_schema_digest": "3e555563023804383534d92118c3863aa2aee3d0d24b932f484d8fd97e452ca8",
   "cases": [
-    {"name":"observation-response","fixture":"golden/observation-response.json","schema_valid":true},
-    {"name":"local-action-settled-request","fixture":"golden/local-action-settled-request.json","schema_valid":true},
-    {"name":"local-action-settled-response","fixture":"golden/local-action-settled-response.json","schema_valid":true},
-    {"name":"local-action-rejected-request","fixture":"golden/local-action-rejected-request.json","schema_valid":true},
-    {"name":"local-action-rejected-response","fixture":"golden/local-action-rejected-response.json","schema_valid":true},
-    {"name":"local-action-unknown-request","fixture":"golden/local-action-unknown-request.json","schema_valid":true},
-    {"name":"local-action-unknown-response","fixture":"golden/local-action-unknown-response.json","schema_valid":true},
-    {"name":"local-action-recovered-request","fixture":"golden/local-action-recovered-request.json","schema_valid":true},
-    {"name":"local-action-recovered-response","fixture":"golden/local-action-recovered-response.json","schema_valid":true},
-    {"name":"shared-vote-settled-request","fixture":"golden/shared-vote-settled-request.json","schema_valid":true},
-    {"name":"shared-vote-settled-response","fixture":"golden/shared-vote-settled-response.json","schema_valid":true},
-    {"name":"rejoin-pending-request","fixture":"golden/rejoin-pending-request.json","schema_valid":true},
-    {"name":"rejoin-pending-response","fixture":"golden/rejoin-pending-response.json","schema_valid":true},
-    {"name":"rejoin-recovered-request","fixture":"golden/rejoin-recovered-request.json","schema_valid":true},
-    {"name":"rejoin-recovered-response","fixture":"golden/rejoin-recovered-response.json","schema_valid":true}
+    {
+      "name": "observation-response",
+      "fixture": "golden/observation-response.json",
+      "schema_valid": true
+    },
+    {
+      "name": "local-action-settled-request",
+      "fixture": "golden/local-action-settled-request.json",
+      "schema_valid": true
+    },
+    {
+      "name": "local-action-settled-response",
+      "fixture": "golden/local-action-settled-response.json",
+      "schema_valid": true
+    },
+    {
+      "name": "local-action-rejected-request",
+      "fixture": "golden/local-action-rejected-request.json",
+      "schema_valid": true
+    },
+    {
+      "name": "local-action-rejected-response",
+      "fixture": "golden/local-action-rejected-response.json",
+      "schema_valid": true
+    },
+    {
+      "name": "local-action-unknown-request",
+      "fixture": "golden/local-action-unknown-request.json",
+      "schema_valid": true
+    },
+    {
+      "name": "local-action-unknown-response",
+      "fixture": "golden/local-action-unknown-response.json",
+      "schema_valid": true
+    },
+    {
+      "name": "local-action-recovered-request",
+      "fixture": "golden/local-action-recovered-request.json",
+      "schema_valid": true
+    },
+    {
+      "name": "local-action-recovered-response",
+      "fixture": "golden/local-action-recovered-response.json",
+      "schema_valid": true
+    },
+    {
+      "name": "shared-vote-settled-request",
+      "fixture": "golden/shared-vote-settled-request.json",
+      "schema_valid": true
+    },
+    {
+      "name": "shared-vote-settled-response",
+      "fixture": "golden/shared-vote-settled-response.json",
+      "schema_valid": true
+    },
+    {
+      "name": "rejoin-pending-request",
+      "fixture": "golden/rejoin-pending-request.json",
+      "schema_valid": true
+    },
+    {
+      "name": "rejoin-pending-response",
+      "fixture": "golden/rejoin-pending-response.json",
+      "schema_valid": true
+    },
+    {
+      "name": "rejoin-recovered-request",
+      "fixture": "golden/rejoin-recovered-request.json",
+      "schema_valid": true
+    },
+    {
+      "name": "rejoin-recovered-response",
+      "fixture": "golden/rejoin-recovered-response.json",
+      "schema_valid": true
+    }
   ],
   "negative_mutations": [
     "duplicate object member",

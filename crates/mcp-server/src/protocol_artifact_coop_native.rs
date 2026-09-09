@@ -17,7 +17,7 @@ pub const COOP_NATIVE_GENERATOR: &str = "hand-authored";
 pub const COOP_NATIVE_SCHEMA_DIGEST: &str =
     "3e555563023804383534d92118c3863aa2aee3d0d24b932f484d8fd97e452ca8";
 pub const COOP_NATIVE_PRODUCER_SCHEMA_DIGEST: &str =
-    "afe9bf3674f3e69b0f2454ec3fb1d6265a8e83ebccd996b6b0437208531d72b5";
+    "3e555563023804383534d92118c3863aa2aee3d0d24b932f484d8fd97e452ca8";
 pub const COOP_NATIVE_MAX_GENERATION: i64 = 9_007_199_254_740_991;
 pub const COOP_NATIVE_MAX_BODY_BYTES: usize = 16 * 1024;
 
@@ -180,7 +180,7 @@ pub fn verify_coop_native_artifact() -> Result<(), CoopNativeArtifactError> {
         || field(&manifest, "consumers") != Some(&empty_consumers)
         || field(&manifest, "producer_declared_schema_digest")
             != Some(&JsonValue::string(COOP_NATIVE_PRODUCER_SCHEMA_DIGEST))
-        || field(&manifest, "producer_digest_matches_candidate") != Some(&JsonValue::Bool(false))
+        || field(&manifest, "producer_digest_matches_candidate") != Some(&JsonValue::Bool(true))
         || field(&manifest, "checksums") != Some(&JsonValue::string("SHA256SUMS"))
     {
         return Err(CoopNativeArtifactError::ManifestMismatch);
@@ -276,7 +276,7 @@ mod tests {
     #[test]
     fn copied_candidate_and_checksum_inventory_are_frozen() {
         assert_eq!(verify_coop_native_artifact(), Ok(()));
-        assert_ne!(
+        assert_eq!(
             COOP_NATIVE_SCHEMA_DIGEST,
             COOP_NATIVE_PRODUCER_SCHEMA_DIGEST
         );
