@@ -112,6 +112,76 @@ fn rejects_unknown_reconcile_response_on_rejoin_route() -> Result<(), String> {
 }
 
 #[test]
+fn accepts_canonical_pending_rejoin_same_generation_receipt() -> Result<(), String> {
+    let body = include_str!(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../protocol-artifact/coop-native-v1/golden/rejoin-pending-response.json"
+    ))
+    .replace("corr:native:rejoin", "corr-rejoin-pending")
+    .replace("instance:native-test", "instance-1")
+    .replace("session:native-test", "session-1")
+    .replace("lease:native-test", "lease-1")
+    .replace("\"lease_epoch\":7", "\"lease_epoch\":1")
+    .replace("op:native:rejoin", "op-rejoin-pending");
+    let mut server = server(GatewayResponse {
+        status: 200,
+        body: parse_json(&body)?,
+    });
+    let arguments = format!(
+        r#"{{{} ,"operation_id":"op-rejoin-pending","actor_peer":"peer:client1","expected_host_generation":1,"recovery":{{"kind":"rejoin","rejoin_epoch":3}}}}"#,
+        common()
+    );
+    let output = server.handle_frame(&frame(
+        "corr-rejoin-pending",
+        COOP_NATIVE_REJOIN_TOOL,
+        &arguments,
+    ));
+    assert!(output.contains(r#""isError":true"#), "{output}");
+    assert!(output.contains("rejoin_recovery_pending"), "{output}");
+    Ok(())
+}
+
+#[test]
+fn rejects_unknown_recovery_receipt_with_after_generation() -> Result<(), String> {
+    let body = include_str!(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../protocol-artifact/coop-native-v1/golden/rejoin-pending-response.json"
+    ))
+    .replace("corr:native:rejoin", "corr-rejoin-after")
+    .replace("instance:native-test", "instance-1")
+    .replace("session:native-test", "session-1")
+    .replace("lease:native-test", "lease-1")
+    .replace("\"lease_epoch\":7", "\"lease_epoch\":1")
+    .replace("op:native:rejoin", "op-rejoin-after");
+    let mut value = parse_json(&body)?;
+    let JsonValue::Object(root) = &mut value else {
+        return Err(String::from("recovery response is not an object"));
+    };
+    let JsonValue::Object(receipt) = root
+        .get_mut("receipt")
+        .ok_or_else(|| String::from("recovery receipt is missing"))?
+    else {
+        return Err(String::from("recovery receipt is not an object"));
+    };
+    receipt.insert(String::from("status"), JsonValue::string("unknown"));
+    let mut server = server(GatewayResponse {
+        status: 200,
+        body: value,
+    });
+    let arguments = format!(
+        r#"{{{} ,"operation_id":"op-rejoin-after","actor_peer":"peer:client1","expected_host_generation":1,"recovery":{{"kind":"rejoin","rejoin_epoch":3}}}}"#,
+        common()
+    );
+    let output = server.handle_frame(&frame(
+        "corr-rejoin-after",
+        COOP_NATIVE_REJOIN_TOOL,
+        &arguments,
+    ));
+    assert!(output.contains(r#""isError":true"#), "{output}");
+    Ok(())
+}
+
+#[test]
 fn rejects_rejoin_kind_on_reconcile_route_for_unknown_outcome() -> Result<(), String> {
     let body = include_str!(concat!(
         env!("CARGO_MANIFEST_DIR"),
