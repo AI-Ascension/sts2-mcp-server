@@ -9,6 +9,7 @@ use crate::protocol_artifact_runtime_v2::{RUNTIME_V2_ACTION_ID, RUNTIME_V2_MAX_G
 
 const OPERATION_ID_PATTERN: &str = "^[A-Za-z0-9_.:/-]{1,128}$";
 const ROUTE_OPERATION_ID_PATTERN: &str = "^[A-Za-z0-9_.:-]{1,128}$";
+const WORKFLOW_BOOT_EPOCH_PATTERN: &str = "^[A-Za-z0-9_.:/-]{1,128}$";
 
 pub(super) fn build() -> super::ToolCatalog {
     let state_schema = state_schema();
@@ -136,6 +137,10 @@ fn context_properties(include_operation: bool, include_action: bool) -> JsonValu
         (
             String::from("generation"),
             bounded_counter(RUNTIME_V2_MAX_GENERATION),
+        ),
+        (
+            String::from("workflow_boot_epoch"),
+            bounded_string(WORKFLOW_BOOT_EPOCH_PATTERN),
         ),
     ];
     if include_operation {

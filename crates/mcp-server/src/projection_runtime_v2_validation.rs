@@ -22,6 +22,7 @@ pub(crate) struct RuntimeV2Context {
     pub(crate) lease_epoch: i64,
     pub(crate) generation: i64,
     pub(crate) operation_id: String,
+    pub(crate) workflow_boot_epoch: Option<String>,
 }
 
 pub(crate) fn validate_runtime_v2_gateway_body(
