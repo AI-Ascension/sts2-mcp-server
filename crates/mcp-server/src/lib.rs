@@ -16,6 +16,7 @@ mod protocol_artifact_runtime_v2;
 mod protocol_artifact_runtime_v3_gameplay;
 mod protocol_artifact_runtime_v4_expert;
 mod protocol_artifact_runtime_v4_expert_rest_action;
+mod protocol_artifact_seeded_run;
 mod receipt_query_json;
 mod server;
 mod transport;
@@ -29,6 +30,7 @@ pub use catalog::{
 };
 pub use catalog::{EXPERT_ACTION_TOOL, EXPERT_RECONCILE_TOOL, EXPERT_STATE_TOOL};
 pub use catalog::{EXPERT_REST_ACTION_TOOL, EXPERT_REST_RECONCILE_TOOL};
+pub use catalog::{RECONCILE_SEEDED_RUN_TOOL, START_SEEDED_RUN_TOOL};
 pub use catalog_reobserve::catalog_reobserve_body;
 pub use gateway::{
     Correlation, GatewayAdapter, GatewayError, GatewayMethod, GatewayRequest, GatewayResponse,
@@ -84,6 +86,12 @@ pub use protocol_artifact_runtime_v4_expert_rest_action::{
     RUNTIME_V4_EXPERT_REST_ACTION_PROTOCOL_VERSION, RUNTIME_V4_EXPERT_REST_ACTION_SCHEMA_DIGEST,
     RUNTIME_V4_EXPERT_REST_ACTION_SCHEMA_SOURCE, RuntimeV4ExpertRestActionArtifactError,
     verify_runtime_v4_expert_rest_action_artifact,
+};
+pub use protocol_artifact_seeded_run::{
+    SEEDED_RUN_ARTIFACT, SEEDED_RUN_EFFECT_KIND, SEEDED_RUN_GENERATOR, SEEDED_RUN_MAX_GENERATION,
+    SEEDED_RUN_MAX_IDENTITY_BYTES, SEEDED_RUN_MAX_SEED_BYTES, SEEDED_RUN_PROTOCOL_VERSION,
+    SEEDED_RUN_SCHEMA_DIGEST, SEEDED_RUN_SCHEMA_SOURCE, SeededRunArtifactError,
+    verify_seeded_run_artifact,
 };
 pub use receipt_query_json::canonical_coop_receipt_query;
 pub use server::{MCP_PROTOCOL_VERSION, McpServer, SERVER_NAME, SERVER_VERSION};

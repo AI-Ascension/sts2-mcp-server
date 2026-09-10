@@ -70,8 +70,12 @@ pub(crate) fn profile_for_name(profile: Option<&str>) -> Result<RuntimeProfile, 
             },
             max_response_bytes: 16 * 1024,
         }),
+        "seeded-run-v1" => Ok(RuntimeProfile {
+            catalog: ToolCatalog::seeded_run_v1(),
+            max_response_bytes: LEGACY_MAX_RESPONSE_BYTES,
+        }),
         value => Err(format!(
-            "STS2_RUNTIME_PROFILE must be runtime-v1, runtime-v2, runtime-v3-gameplay, runtime-v4-expert, runtime-v4-expert-rest-action, runtime-map-v1, coop-synchronization-v1, or coop-receipt-query-v1, got {value}"
+            "STS2_RUNTIME_PROFILE must be runtime-v1, runtime-v2, runtime-v3-gameplay, runtime-v4-expert, runtime-v4-expert-rest-action, runtime-map-v1, coop-synchronization-v1, coop-receipt-query-v1, or seeded-run-v1, got {value}"
         )),
     }
 }

@@ -8,7 +8,7 @@ use sts2_mcp_server::{
     COOP_RECEIPT_QUERY_PROTOCOL_VERSION, GatewayError, GatewayMethod, GatewayRequest,
     GatewayResponse, JsonValue, RUNTIME_V3_GAMEPLAY_PROTOCOL_VERSION,
     RUNTIME_V4_EXPERT_ACTION_PROTOCOL_VERSION, RUNTIME_V4_EXPERT_REST_ACTION_PROTOCOL_VERSION,
-    parse_json,
+    SEEDED_RUN_PROTOCOL_VERSION, parse_json,
 };
 
 use super::binding::is_runtime_result;
@@ -103,7 +103,8 @@ pub(super) fn classify(response: GatewayResponse) -> Result<GatewayResponse, Gat
                     if object.get("protocol_version") == Some(&JsonValue::string(RUNTIME_V3_GAMEPLAY_PROTOCOL_VERSION))
                         || object.get("protocol_version") == Some(&JsonValue::string(RUNTIME_V4_EXPERT_ACTION_PROTOCOL_VERSION))
                         || object.get("protocol_version") == Some(&JsonValue::string(RUNTIME_V4_EXPERT_REST_ACTION_PROTOCOL_VERSION))
-                        || object.get("protocol_version") == Some(&JsonValue::string(COOP_RECEIPT_QUERY_PROTOCOL_VERSION))) =>
+                        || object.get("protocol_version") == Some(&JsonValue::string(COOP_RECEIPT_QUERY_PROTOCOL_VERSION))
+                        || object.get("protocol_version") == Some(&JsonValue::string(SEEDED_RUN_PROTOCOL_VERSION))) =>
         {
             // The semantic projection validates the full envelope before surfacing it.
             // A received host uncertainty receipt is not a transport disconnect.

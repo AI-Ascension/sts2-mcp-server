@@ -32,6 +32,8 @@ mod runtime_v3_gameplay;
 mod runtime_v4_expert;
 #[path = "mapping_runtime_v4_expert_rest_action.rs"]
 mod runtime_v4_expert_rest_action;
+#[path = "mapping_seeded_run.rs"]
+mod seeded_run;
 
 pub(crate) use helpers::safe_segment;
 use helpers::{
@@ -48,6 +50,9 @@ pub(crate) fn tools_call<G: GatewayAdapter>(
     }
     if server.catalog.is_coop_synchronization() {
         return coop_synchronization::tools_call(server, request);
+    }
+    if server.catalog.is_seeded_run() {
+        return seeded_run::tools_call(server, request);
     }
     if server.catalog.is_runtime_v3_gameplay() {
         return runtime_v3_gameplay::tools_call(server, request);

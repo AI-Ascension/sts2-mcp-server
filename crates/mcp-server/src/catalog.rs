@@ -19,6 +19,8 @@ mod runtime_v3_gameplay;
 mod runtime_v4_expert;
 #[path = "catalog_runtime_v4_expert_rest_action.rs"]
 mod runtime_v4_expert_rest_action;
+#[path = "catalog_seeded_run.rs"]
+mod seeded_run;
 
 pub const GET_STATE_TOOL: &str = "get_state";
 pub const SUBMIT_ACTION_TOOL: &str = "submit_action";
@@ -38,6 +40,8 @@ pub const EXPERT_RECONCILE_TOOL: &str = runtime_v4_expert::EXPERT_RECONCILE_TOOL
 pub const EXPERT_REST_ACTION_TOOL: &str = runtime_v4_expert_rest_action::EXPERT_REST_ACTION_TOOL;
 pub const EXPERT_REST_RECONCILE_TOOL: &str =
     runtime_v4_expert_rest_action::EXPERT_REST_RECONCILE_TOOL;
+pub const START_SEEDED_RUN_TOOL: &str = seeded_run::START_SEEDED_RUN_TOOL;
+pub const RECONCILE_SEEDED_RUN_TOOL: &str = seeded_run::RECONCILE_SEEDED_RUN_TOOL;
 pub(crate) const MAX_IDENTIFIER_BYTES: usize = 128;
 const INSTANCE_ID_PATTERN: &str = "^[A-Za-z0-9_-]{1,128}$";
 const SESSION_ID_PATTERN: &str = "^[A-Za-z0-9_.:/-]{1,128}$";
@@ -124,6 +128,16 @@ impl ToolCatalog {
         coop_receipt_query::build()
     }
 
+    #[must_use]
+    pub fn seeded_run_v1() -> Self {
+        seeded_run::build()
+    }
+
+    #[must_use]
+    pub fn seeded_run() -> Self {
+        Self::seeded_run_v1()
+    }
+
     /// Largest MCP frame this profile accepts. The poc, runtime-v1, and runtime-v2
     /// profiles keep their historical 16 KiB limit; only the Runtime-v3 semantic
     /// profile accepts frames up to [`MAX_FRAME_BYTES`].
@@ -133,6 +147,7 @@ impl ToolCatalog {
             || self.is_runtime_v4_expert()
             || self.is_runtime_v4_expert_rest_action()
             || self.is_runtime_map_v1()
+            || self.is_seeded_run()
         {
             MAX_FRAME_BYTES
         } else {
@@ -170,6 +185,10 @@ impl ToolCatalog {
 
     pub(crate) fn is_coop_receipt_query(&self) -> bool {
         self.revision == coop_receipt_query::REVISION
+    }
+
+    pub(crate) fn is_seeded_run(&self) -> bool {
+        self.revision == seeded_run::REVISION
     }
 
     pub(crate) fn descriptor(&self, name: &str) -> Option<&ToolDescriptor> {

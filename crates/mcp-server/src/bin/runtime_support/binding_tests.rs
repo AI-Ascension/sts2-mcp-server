@@ -261,6 +261,12 @@ fn response_is_bound_to_configured_identity_request_and_route() {
     request.path = String::from("/v1/instances/instance/action");
     request.method = GatewayMethod::Post;
     assert_eq!(response_kind(&config(), &request), Some("action_response"));
+
+    request.path = String::from("/v2/instances/instance/seeded-run");
+    request.body = None;
+    assert_eq!(response_kind(&config(), &request), None);
+    request.body = Some(JsonValue::object([]));
+    assert_eq!(response_kind(&config(), &request), Some("start_response"));
 }
 
 #[test]
