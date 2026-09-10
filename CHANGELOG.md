@@ -5,6 +5,15 @@ exists.
 
 ## Unreleased
 
+- 2026-09-10: Add the additive `seeded-run-v1-mcp` profile with exactly `start_seeded_run` and
+  `reconcile_seeded_run`, fixed gateway start/reconciliation routes, bounded standard context and
+  identity validation, canonical seed and `run_started` witness projection, and same-operation
+  unknown recovery. The copied artifact is schema digest
+  `5c659f344be78f84e8d783986925d462714f933cac95d18943358992f7d3e2b8`, aligned with protocol main
+  `d3ab5fca7d9d74bb31eeb3e5b343d8024ee44404`; current MCP main is
+  `b5a9262f1c76da76ea6f84fca0f1ee821ff67001`. Source/component and artifact checks do not establish
+  native host settlement, profile/save isolation, gameplay, deployment, or release compatibility.
+
 - 2026-09-09: Add the additive `runtime-v4-expert-rest-action-mcp` profile with
   `sts2.expert_state`, `sts2.expert_rest_action`, and `sts2.expert_rest_reconcile`. The fixed gateway
   paths are `GET /v4/instances/{id}/expert-state`, `POST /v4/instances/{id}/expert-rest-action`, and

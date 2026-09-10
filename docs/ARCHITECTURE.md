@@ -156,6 +156,22 @@ episode stop to the harness. The gateway authorizes recovery with the `control` 
 whether it happens; the adapter constructs no lifecycle route of its own, holds no lease or episode
 state, and reports a scope denial as a typed error rather than an uncertain operation.
 
+## Seeded-run profile
+
+The additive `seeded-run-v1-mcp` profile is selected only with
+`STS2_RUNTIME_PROFILE=seeded-run-v1`. It advertises exactly `start_seeded_run` and
+`reconcile_seeded_run`, maps them to `POST /v2/instances/{id}/seeded-run` and bodyless
+`GET /v2/instances/{id}/seeded-operations/{operation_id}`, and forwards only the fixed gateway
+paths. The start mapping validates the standard Ironclad ascension-0 context, ordered acts, profile
+baseline, save policy, compatibility identities, and selected-context digest before forwarding.
+
+The reconciliation mapping is read-only and retains the original operation identity after timeout or
+disconnect. A projected `settled` result requires canonical seed readback, a fresh host observation,
+and the `run_started` effect witness; an accepted response is admission only. The copied artifact is
+schema digest `5c659f344be78f84e8d783986925d462714f933cac95d18943358992f7d3e2b8`, aligned with
+protocol main `d3ab5fca7d9d74bb31eeb3e5b343d8024ee44404`. These source/component and artifact checks
+do not establish native host settlement, profile/save isolation, gameplay, or release compatibility.
+
 Byte limits are profile-scoped. The poc, runtime-v1, and runtime-v2 profiles keep their historical
 16 KiB MCP frame, 64 KiB gateway response body, and 16 KiB projected content limits; only the
 Runtime-v3 profile accepts 256 KiB frames, 128 KiB bodies, and 128 KiB projected content. The catalog
@@ -180,7 +196,7 @@ projection of the complete visible graph. Gateway owns lease and gateway identit
 game-mod owns host observation and map meaning.
 
 The selected profile uses 256 KiB frame, gateway-body, and projected-content limits. Its projection
-consumes the corrected protocol artifact at merged main commit `b3d3034f32e68d70c9e681f906ee37d74db153c4` and
+consumes the corrected protocol artifact at current protocol main commit `d3ab5fca7d9d74bb31eeb3e5b343d8024ee44404` and
 digest `ceab0d2dfc471d1ec36d12edaf4654b8c7fdced06548bf47265e11c63f98115b`. It preserves
 overlapping coordinates and disconnected visible components, checks visited position/history
 relationships, and keeps graph, host-action, and opaque action-option identities separate. Legacy

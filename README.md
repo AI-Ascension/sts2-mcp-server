@@ -7,7 +7,7 @@
 
 > **AI-Ascension · tier 3: thin MCP adapter** — Thin MCP tool adapter that maps approved calls to the authenticated gateway API without bypassing it.
 >
-> **Status:** deterministic tests, the bounded `runtime-v1` host trace, the runtime-v3 gameplay adapter path, and the read-only `coop-synchronization-v1` executable profile are `confirmed` for the recorded STS2 v0.107.1 evidence · native multiplayer and broader compatibility `unverified`.
+> **Status:** deterministic tests, the bounded `runtime-v1` host trace, the runtime-v3 gameplay adapter path, the read-only `coop-synchronization-v1` executable profile, and the additive `seeded-run-v1` source/component profile are `confirmed` for the recorded STS2 v0.107.1 evidence · native multiplayer, live seeded-run settlement, and broader compatibility `unverified`.
 > **Proof:** [45-second browser replay](https://ai-ascension.github.io/proof.html) · [Evidence ledger](https://ai-ascension.github.io/evidence.html) · [This repository on the map](https://ai-ascension.github.io/repositories.html#sts2-mcp-server)
 > **Seam tests:** [crates/mcp-server/tests/seam.rs](crates/mcp-server/tests/seam.rs) — one tool call maps to one gateway request; malformed frames are rejected before the gateway.
 > **Owner:** `sts2-mcp-server` owns the external MCP process boundary: framing, server identity and capabilities, tool schemas, bounded validation, and the versioned mapping to the gateway API.
@@ -20,7 +20,9 @@ the two-tool `poc-v1` mapping, the separate `runtime-v1` process profile, the de
 `runtime-v2` gameplay-operation mapping, and the six-tool runtime-v3 gameplay mapping. Dated
 Windows/Linux campaign and replay records confirm the MCP path for the named v0.107.1 fixtures.
 The separate `coop-synchronization-v1` profile is read-only coordinator reporting; it is not native
-multiplayer gameplay.
+multiplayer gameplay. The additive `seeded-run-v1` profile maps one bounded start and one read-only
+reconciliation tool through the leased gateway; its source/component checks do not establish a live
+native seeded run, profile/save isolation, or release compatibility.
 
 ## Owner and consumers
 
@@ -67,7 +69,7 @@ directory run:
 
 ```bash
 cargo metadata --locked --no-deps --format-version 1
-for profile in poc-v1 runtime-v1 runtime-v2 runtime-v3-gameplay runtime-v4-expert runtime-v4-expert-action runtime-v4-expert-rest-action runtime-map-v1 coop-synchronization-v1 coop-receipt-query-v1; do
+for profile in poc-v1 runtime-v1 runtime-v2 runtime-v3-gameplay runtime-v4-expert runtime-v4-expert-action runtime-v4-expert-rest-action runtime-map-v1 coop-synchronization-v1 coop-receipt-query-v1 seeded-run-v1; do
   (cd "protocol-artifact/$profile" && sha256sum -c SHA256SUMS)
 done
 cargo test --locked --package sts2-mcp-server --test artifact
@@ -108,6 +110,21 @@ gateway/mod path for STS2 v0.107.1 on Windows x86-64. The separate runtime-v3 ma
 used in the recorded Windows/Linux campaign and replay runs; model-played Victory, native
 multiplayer, and broader compatibility remain `unverified`.
 
+The additive `seeded-run-v1` profile is selected with `STS2_RUNTIME_PROFILE=seeded-run-v1`. It
+exposes exactly `start_seeded_run` and `reconcile_seeded_run`, mapping to the fixed gateway paths
+`POST /v2/instances/{id}/seeded-run` and bodyless
+`GET /v2/instances/{id}/seeded-operations/{operation_id}`. Start accepts only the bounded standard
+Ironclad, ascension-0, no-modifier context with ordered acts, profile baseline, save policy, and
+compatibility identities; reconciliation uses the original operation identity and never resubmits a
+seed mutation.
+
+The copied `sts2-protocol/seeded-run-v1` artifact is schema digest
+`5c659f344be78f84e8d783986925d462714f933cac95d18943358992f7d3e2b8`, aligned with protocol main
+`d3ab5fca7d9d74bb31eeb3e5b343d8024ee44404`. Source/component tests cover catalog, fixed mapping,
+identity/context validation, canonical seed and `run_started` witness projection, unknown outcomes,
+and artifact checksums. They do not prove native host settlement, profile/save isolation, gameplay,
+deployment, or release support.
+
 The additive `runtime-v4-expert` profile is selected with `STS2_RUNTIME_PROFILE=runtime-v4-expert`.
 Historical source/component evidence (2026-09-07) at MCP source head
 `901c9edd94833fca6bfe322e0c515f91c8b2b281`,
@@ -123,7 +140,7 @@ Independent source/component checks passed; native host legality, settled effect
 execution, deployment, and release remain `unverified`.
 
 Current default-main source/component update (2026-09-10): MCP main
-[`3b6d71fe9642d27717ca6cfa07b5342b914c044c`](https://github.com/AI-Ascension/sts2-mcp-server/commit/3b6d71fe9642d27717ca6cfa07b5342b914c044c)
+[`b5a9262f1c76da76ea6f84fca0f1ee821ff67001`](https://github.com/AI-Ascension/sts2-mcp-server/commit/b5a9262f1c76da76ea6f84fca0f1ee821ff67001)
 contains the Runtime-v4 expert state/action mapping and merged REST expert-action selector recovery.
 The copied admitted expert artifacts retain the digests above; the separate REST-action artifact
 remains a candidate at digest
@@ -162,9 +179,9 @@ validation, native map visibility, navigation, gameplay, release, and publicatio
 unverified.
 
 Current default-main map source/component update (2026-09-10): MCP main
-[`3b6d71fe9642d27717ca6cfa07b5342b914c044c`](https://github.com/AI-Ascension/sts2-mcp-server/commit/3b6d71fe9642d27717ca6cfa07b5342b914c044c)
+[`b5a9262f1c76da76ea6f84fca0f1ee821ff67001`](https://github.com/AI-Ascension/sts2-mcp-server/commit/b5a9262f1c76da76ea6f84fca0f1ee821ff67001)
 retains the additive `runtime-map-v1` profile and copied-artifact consumer, aligned with current
-protocol main `f2dac90529f584a6511c1760adce9da28f7f910a` at schema digest
+protocol main `d3ab5fca7d9d74bb31eeb3e5b343d8024ee44404` at schema digest
 `ceab0d2dfc471d1ec36d12edaf4654b8c7fdced06548bf47265e11c63f98115b`. This is source/component
 and artifact-copy evidence; host extraction, map freshness, visualizer validation, native map
 visibility, navigation, gameplay, deployment, release, and publication remain unverified.

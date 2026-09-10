@@ -17,7 +17,7 @@ Run from this target root:
 
 ```bash
 cargo metadata --locked --offline --no-deps --format-version 1
-for profile in poc-v1 runtime-v1 runtime-v2 runtime-v3-gameplay runtime-v4-expert runtime-v4-expert-action runtime-v4-expert-rest-action runtime-map-v1 coop-synchronization-v1 coop-receipt-query-v1; do
+for profile in poc-v1 runtime-v1 runtime-v2 runtime-v3-gameplay runtime-v4-expert runtime-v4-expert-action runtime-v4-expert-rest-action runtime-map-v1 coop-synchronization-v1 coop-receipt-query-v1 seeded-run-v1; do
   (cd "protocol-artifact/$profile" && sha256sum --check SHA256SUMS)
 done
 cargo test --locked --offline --package sts2-mcp-server --test artifact
@@ -178,6 +178,19 @@ position/history references, duplicate bindings or action-option IDs, and over-l
 Profile frame/body/projected-content limits are 256 KiB; existing profiles retain their historical
 limits. These checks are source/component and artifact-integrity evidence, not host map freshness,
 visualizer, provider, or gameplay evidence.
+
+## Seeded-run profile checks
+
+`seeded_run_mapping.rs` verifies the exact two-tool `seeded-run-v1-mcp` catalog, fixed start and
+bodyless reconciliation routes, bounded standard context, separate MCP/gateway authority, selected
+context digest, and canonical seed/run-start witness projection. It also checks timeout uncertainty,
+same-operation reconciliation, and rejection of unsupported fields, operation IDs, and artifact
+metadata before forwarding. The copied artifact manifest, schema, conformance case, goldens, and every
+`SHA256SUMS` entry are verified through `verify_seeded_run_artifact` and the profile loop above.
+
+These are source/component and artifact-integrity checks. They do not start a native run, establish
+host seed readback, prove profile/save isolation or gameplay, or provide deployment and release
+evidence.
 
 ## Runtime-v4 expert REST-action checks
 

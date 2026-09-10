@@ -56,8 +56,9 @@ host to a supported compatibility row.
 | --- | --- | --- | --- |
 | `runtime-v1-mcp` | Fixed single-instance runtime adapter | Mapping/artifact tests, component TCP lane, and authorized exact-host trace | Bounded adapter path confirmed for STS2 v0.107.1 Windows x86-64; gameplay and broader compatibility unverified |
 | `runtime-v2-mcp` | `GET /v2/instances/{id}/state`, `POST /v2/instances/{id}/action`, `GET /v2/instances/{id}/operations/{operation_id}` | Copied-artifact checksum, deterministic mapping/projection tests, profile and identity unit tests | Source/fake seam confirmed; live gateway, host settlement, gameplay mutation, and end-to-end compatibility unverified |
-| `runtime-v4-expert-mcp` | `GET /v4/instances/{id}/expert-state`, `POST /v4/instances/{id}/expert-action`, `GET /v4/instances/{id}/expert-actions/{operation_id}` | Current default-main source/component review at MCP `3b6d71fe9642d27717ca6cfa07b5342b914c044c`; the exact v4 artifacts remain checksum-bound | Request binding and bounded projection confirmed at the current source head; native host legality, settled effects, provider execution, cross-consumer integration, deployment, and release unverified |
+| `runtime-v4-expert-mcp` | `GET /v4/instances/{id}/expert-state`, `POST /v4/instances/{id}/expert-action`, `GET /v4/instances/{id}/expert-actions/{operation_id}` | Current default-main source/component review at MCP `b5a9262f1c76da76ea6f84fca0f1ee821ff67001`; the exact v4 artifacts remain checksum-bound | Request binding and bounded projection confirmed at the current source head; native host legality, settled effects, provider execution, cross-consumer integration, deployment, and release unverified |
 | `runtime-v4-expert-rest-action-mcp` | `GET /v4/instances/{id}/expert-state`, `POST /v4/instances/{id}/expert-rest-action`, `GET /v4/instances/{id}/expert-rest-actions/{operation_id}` | Candidate artifact/checksum tests, REST-action mapping/error/capacity tests, and Smith/Mend producer fixtures | Source/component and synthetic contract behavior confirmed; native host legality, provider execution, cross-consumer integration, deployment, and release unverified |
+| `seeded-run-v1-mcp` | `POST /v2/instances/{id}/seeded-run`, `GET /v2/instances/{id}/seeded-operations/{operation_id}` | Seeded catalog, fixed-route mapping, context/identity validation, source-only settlement projection, and copied-artifact checks at MCP `b5a9262f1c76da76ea6f84fca0f1ee821ff67001` | Source/component behavior confirmed; native seed settlement, profile/save isolation, gameplay, provider execution, deployment, and release unverified |
 | `coop-receipt-query-v1-mcp` | `POST /v1/instances/{id}/coop/receipt-query` | Proposed-artifact checksum/schema tests, canonical-wire mapping tests, and read-only projection checks | Additive proposed-unadmitted profile; no admitted consumers or native producer/host/provider/deployment/release compatibility |
 
 ### Historical Runtime-v4 request-binding update — 2026-09-07
@@ -82,7 +83,7 @@ and release remain unverified.
 ### Current default-main Runtime-v4 update — 2026-09-10
 
 MCP main at
-[`3b6d71fe9642d27717ca6cfa07b5342b914c044c`](https://github.com/AI-Ascension/sts2-mcp-server/commit/3b6d71fe9642d27717ca6cfa07b5342b914c044c)
+[`b5a9262f1c76da76ea6f84fca0f1ee821ff67001`](https://github.com/AI-Ascension/sts2-mcp-server/commit/b5a9262f1c76da76ea6f84fca0f1ee821ff67001)
 contains the Runtime-v4 expert state/action mapping and the merged REST expert-action selector
 recovery. Source, copied-artifact, envelope, mapping, and bounded selector checks at this head are
 source/component evidence. The admitted expert artifacts retain schema digests
@@ -275,6 +276,16 @@ ordered bytes and a 16 KiB request/response bound are enforced. It does not obse
 queue, or mutate, and its manifest contains no admitted consumers. Canonical-wire, validation, and
 checksum tests are artifact/component evidence; native producers, hosts, providers, deployment, and
 release compatibility are unverified.
+
+### Seeded-run compatibility
+
+The `seeded-run-v1-mcp` profile consumes the copied `sts2-protocol/seeded-run-v1` artifact at schema
+digest `5c659f344be78f84e8d783986925d462714f933cac95d18943358992f7d3e2b8`, aligned with protocol
+main `d3ab5fca7d9d74bb31eeb3e5b343d8024ee44404`. Its two tools use fixed start and bodyless
+reconciliation routes, validate the selected standard context and identity fence, and preserve the
+same operation ID for unknown recovery. A settled projection requires canonical seed readback, a
+fresh observation, and the `run_started` witness. These source/component and artifact checks do not
+establish native host settlement, profile/save isolation, gameplay, deployment, or release support.
 ### Recovery vocabulary ownership
 
 `sts2.recover` accepts exactly four recovery kinds: `reobserve`, `reconcile`, `release_lease`, and
@@ -291,7 +302,7 @@ envelope, and the absence of any other request.
 
 | Surface | Producer pin | Current evidence | Result |
 | --- | --- | --- | --- |
-| `runtime-map-v1-mcp` catalog and mapping | current protocol main commit `f2dac90529f584a6511c1760adce9da28f7f910a`, schema digest `ceab0d2dfc471d1ec36d12edaf4654b8c7fdced06548bf47265e11c63f98115b` | artifact checksum/schema tests, catalog and mapping tests, and the current MCP main source/component head `3b6d71fe` | Confirmed source/component behavior and copied-artifact integrity; host and visualizer compatibility unverified |
+| `runtime-map-v1-mcp` catalog and mapping | current protocol main commit `d3ab5fca7d9d74bb31eeb3e5b343d8024ee44404`, schema digest `ceab0d2dfc471d1ec36d12edaf4654b8c7fdced06548bf47265e11c63f98115b` | artifact checksum/schema tests, catalog and mapping tests, and the current MCP main source/component head `b5a9262f` | Confirmed source/component behavior and copied-artifact integrity; host and visualizer compatibility unverified |
 | `sts2.map_snapshot` | bodyless `GET /v1/instances/{id}/map-snapshot` | explicit MCP/gateway session and authority context, complete graph projection, stale/foreign/unknown-field rejection | Additive profile behavior confirmed in doubles and loopback adapter; live map freshness unverified |
 
 `STS2_RUNTIME_PROFILE=runtime-map-v1` selects seven tools and 256 KiB frame, gateway-body, and
