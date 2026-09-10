@@ -1,23 +1,31 @@
 {
   "artifact": "sts2-protocol/coop-native-v1",
   "protocol_version": "coop-native-v1",
-  "status": "candidate",
-  "admission": "unadmitted",
+  "status": "accepted_component",
+  "admission": "component",
+  "live_status": "unverified",
+  "live_gate": "pending_native_two_peer_settlement",
   "schema": "schema.json",
-  "schema_digest": "3e555563023804383534d92118c3863aa2aee3d0d24b932f484d8fd97e452ca8",
+  "schema_digest": "2f3bc99e53080fa11b39592b64fb0ab964a16f568719a2622d0b2caf766ab629",
   "provenance": {
     "source": "schemas/coop-native-v1.schema.json",
     "generator": "hand-authored",
     "license": "MIT"
   },
-  "consumers": [],
-  "producer_declared_schema_digest": "3e555563023804383534d92118c3863aa2aee3d0d24b932f484d8fd97e452ca8",
+  "consumers": [
+    "sts2-gateway",
+    "sts2-mcp-server",
+    "sts2-harness"
+  ],
+  "producer_declared_schema_digest": "2f3bc99e53080fa11b39592b64fb0ab964a16f568719a2622d0b2caf766ab629",
   "producer_digest_matches_candidate": true,
   "producer_capture": "producer-capture.json",
-  "producer_source_commit": "8fa255e9ead3ad7077c26a5980c2f28710fae11f",
-  "producer_source_tree": "25821adf9160e1bfa89ea578022b63f9e83c8699",
+  "producer_source_commit": "ab702dbbc79bc5854bd0840b44a729834ae50e68",
+  "producer_source_tree": "e3f0aa9d30fe25585fbb3c1fe8e3c1fcdfa43223",
   "goldens": [
     "golden/observation-response.json",
+    "golden/legal-catalog-request.json",
+    "golden/legal-catalog-response.json",
     "golden/local-action-settled-request.json",
     "golden/local-action-settled-response.json",
     "golden/local-action-rejected-request.json",
@@ -33,6 +41,8 @@
     "golden/rejoin-recovered-request.json",
     "golden/rejoin-recovered-response.json"
   ],
+  "consumer_conformance": "consumer-conformance.json",
+  "consumer_conformance_status": "component_serialized_conformance",
   "conformance": "conformance.json",
   "checksums": "SHA256SUMS"
 }

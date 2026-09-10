@@ -14,7 +14,7 @@ use crate::protocol_artifact_coop_native::{
 };
 use shapes::{effect_response, observation_response, recovery_response};
 
-const TOP_LEVEL_FIELDS: [&str; 18] = [
+const TOP_LEVEL_FIELDS: [&str; 20] = [
     "protocol_version",
     "schema_digest",
     "provenance",
@@ -33,6 +33,8 @@ const TOP_LEVEL_FIELDS: [&str; 18] = [
     "observation",
     "effect",
     "recovery",
+    "catalog",
+    "receipt",
 ];
 const MAX_LEGAL_CATALOG_BYTES: usize = 128 * 1024;
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -87,6 +89,7 @@ pub(crate) fn project_coop_native_effect(
 pub(crate) fn project_coop_native_legal_catalog(
     body: &JsonValue,
     context: &NativeContext,
+    actor_peer: &str,
     expected_generation: i64,
     status_code: u16,
 ) -> Result<(JsonValue, bool), &'static str> {
@@ -96,25 +99,60 @@ pub(crate) fn project_coop_native_legal_catalog(
     if body.to_json().len() > MAX_LEGAL_CATALOG_BYTES {
         return Err("native legal catalog exceeds the response limit");
     }
+    let object = exact_object(body, &TOP_LEVEL_FIELDS, "native legal catalog response")?;
+    validate_metadata(object, context, "legal_catalog_response")?;
+    for field in [
+        "operation_id",
+        "action",
+        "vote",
+        "status",
+        "effect",
+        "recovery",
+        "receipt",
+    ] {
+        if object.get(field) != Some(&JsonValue::Null) {
+            return Err("native legal catalog has an unexpected response member");
+        }
+    }
+    observation::validate_observation(
+        object
+            .get("observation")
+            .ok_or("native legal catalog observation is missing")?,
+    )?;
+    if object.get("actor_peer").and_then(JsonValue::as_string) != Some(actor_peer)
+        || !legal_peer_identity(actor_peer)
+        || object.get("expected_host_generation") != Some(&JsonValue::Number(expected_generation))
+    {
+        return Err("native legal catalog identity or generation mismatched");
+    }
+    let observation_generation = observation::generation(
+        object
+            .get("observation")
+            .and_then(JsonValue::as_object)
+            .and_then(|value| value.get("host_generation")),
+    )?;
+    if observation_generation != expected_generation {
+        return Err("native legal catalog observation generation mismatched");
+    }
+    let catalog = object
+        .get("catalog")
+        .ok_or("native legal catalog is missing")?;
+    validate_catalog(catalog, actor_peer, expected_generation)?;
+    Ok((body.clone(), false))
+}
+
+fn validate_catalog(
+    value: &JsonValue,
+    actor: &str,
+    expected_generation: i64,
+) -> Result<(), &'static str> {
     let object = exact_object(
-        body,
-        &[
-            "instance_id",
-            "session_id",
-            "lease_id",
-            "lease_epoch",
-            "host_generation",
-            "actor_peer",
-            "legal_actions",
-            "legal_votes",
-        ],
+        value,
+        &["host_generation", "actor_peer", "actions", "votes"],
         "native legal catalog",
     )?;
-    if object.get("instance_id").and_then(JsonValue::as_string) != Some(context.instance.as_str())
-        || object.get("session_id").and_then(JsonValue::as_string) != Some(context.session.as_str())
-        || object.get("lease_id").and_then(JsonValue::as_string) != Some(context.lease.as_str())
-        || object.get("lease_epoch") != Some(&JsonValue::Number(context.epoch))
-        || object.get("host_generation") != Some(&JsonValue::Number(expected_generation))
+    if object.get("host_generation") != Some(&JsonValue::Number(expected_generation))
+        || object.get("actor_peer").and_then(JsonValue::as_string) != Some(actor)
     {
         return Err("native legal catalog identity or generation mismatched");
     }
@@ -124,11 +162,11 @@ pub(crate) fn project_coop_native_legal_catalog(
         .filter(|value| legal_peer_identity(value))
         .ok_or("native legal catalog actor is invalid")?;
     let actions = object
-        .get("legal_actions")
+        .get("actions")
         .and_then(JsonValue::as_array)
         .ok_or("native legal action catalog is missing")?;
     let votes = object
-        .get("legal_votes")
+        .get("votes")
         .and_then(JsonValue::as_array)
         .ok_or("native legal vote catalog is missing")?;
     if actions.len() > 256 || votes.len() > 256 {
@@ -188,7 +226,7 @@ pub(crate) fn project_coop_native_legal_catalog(
             return Err("native legal catalog IDs are not unique");
         }
     }
-    Ok((body.clone(), false))
+    Ok(())
 }
 
 fn legal_peer_identity(value: &str) -> bool {

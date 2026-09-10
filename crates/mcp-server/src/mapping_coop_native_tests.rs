@@ -38,12 +38,17 @@ fn response(
             env!("CARGO_MANIFEST_DIR"),
             "/../../protocol-artifact/coop-native-v1/golden/rejoin-recovered-response.json"
         )),
+        "catalog" => include_str!(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../protocol-artifact/coop-native-v1/golden/legal-catalog-response.json"
+        )),
         _ => return Err(String::from("unknown fixture")),
     };
     let mut wire = fixture_wire
         .replace("corr:native:observation", correlation)
         .replace("corr:native:local-action-settled", correlation)
         .replace("corr:native:rejoin:recovered", correlation)
+        .replace("corr:native:legal-catalog", correlation)
         .replace("instance:native-test", "instance-1")
         .replace("session:native-test", "session-1")
         .replace("lease:native-test", "lease-1")
@@ -85,7 +90,7 @@ fn common() -> &'static str {
 }
 
 #[test]
-fn catalog_has_seven_native_tools_and_candidate_frame_bound() -> Result<(), String> {
+fn catalog_has_seven_native_tools_and_component_frame_bound() -> Result<(), String> {
     let catalog = ToolCatalog::coop_native();
     let names = [
         COOP_NATIVE_OBSERVATION_TOOL,
@@ -117,14 +122,15 @@ fn catalog_has_seven_native_tools_and_candidate_frame_bound() -> Result<(), Stri
 
 #[test]
 fn maps_legal_catalog_to_generation_bound_read_route() -> Result<(), String> {
-    let response = parse_json(
-        r#"{"instance_id":"instance-1","session_id":"session-1","lease_id":"lease-1","lease_epoch":1,"host_generation":1,"actor_peer":"peer:host1","legal_actions":[{"kind":"end_turn","action_id":"turn:1","target_peer":null}],"legal_votes":[{"proposal_id":"event:1","voter_peer":"peer:host1","choice":"accept"}]}"#,
-    )?;
+    let response = response("catalog", "corr-catalog", None)?.body;
     let mut server = server(GatewayResponse {
         status: 200,
         body: response,
     });
-    let arguments = format!(r#"{{{},"expected_host_generation":1}}"#, common());
+    let arguments = format!(
+        r#"{{{},"actor_peer":"peer:host1","expected_host_generation":1}}"#,
+        common()
+    );
     let output = server.handle_frame(&frame(
         "corr-catalog",
         COOP_NATIVE_LEGAL_CATALOG_TOOL,
@@ -136,12 +142,35 @@ fn maps_legal_catalog_to_generation_bound_read_route() -> Result<(), String> {
         .requests
         .first()
         .ok_or_else(|| String::from("legal catalog did not reach gateway"))?;
-    assert_eq!(request.method, GatewayMethod::Get);
+    assert_eq!(request.method, GatewayMethod::Post);
     assert_eq!(
         request.path,
         "/v1/instances/instance-1/coop/native/legal-catalog"
     );
-    assert_eq!(request.body, None);
+    let body = request
+        .body
+        .as_ref()
+        .ok_or_else(|| String::from("legal catalog body is missing"))?;
+    assert_eq!(
+        body.as_object()
+            .and_then(|object| object.get("kind"))
+            .and_then(JsonValue::as_string),
+        Some("legal_catalog_request")
+    );
+    assert_eq!(
+        body.as_object()
+            .and_then(|object| object.get("actor_peer"))
+            .and_then(JsonValue::as_string),
+        Some("peer:host1")
+    );
+    assert_eq!(
+        body.as_object().and_then(|object| object.get("catalog")),
+        Some(&JsonValue::Null)
+    );
+    assert_eq!(
+        body.as_object().and_then(|object| object.get("receipt")),
+        Some(&JsonValue::Null)
+    );
     assert_eq!(
         request
             .headers
@@ -297,5 +326,29 @@ fn rejects_a_response_for_a_different_operation_identity() -> Result<(), String>
     let output = server.handle_frame(&frame("corr-action", COOP_NATIVE_ACTION_TOOL, &arguments));
     assert!(output.contains(r#""isError":true"#));
     assert_eq!(server.gateway().requests.len(), 1);
+    Ok(())
+}
+
+#[test]
+fn rejects_native_responses_without_the_merged_receipt_member() -> Result<(), String> {
+    let valid = response("effect", "corr-effect", Some("op-effect"))?.body;
+    let wire = valid.to_json();
+    let receipt_start = wire
+        .find(",\"receipt\":")
+        .ok_or_else(|| String::from("receipt member is missing from the fixture"))?;
+    let schema_start = wire
+        .find(",\"schema_digest\":")
+        .ok_or_else(|| String::from("schema digest member is missing from the fixture"))?;
+    let malformed = format!("{}{}", &wire[..receipt_start], &wire[schema_start..]);
+    let mut server = server(GatewayResponse {
+        status: 200,
+        body: parse_json(&malformed)?,
+    });
+    let arguments = format!(
+        r#"{{{} ,"operation_id":"op-effect","actor_peer":"peer:host1","expected_host_generation":1,"action":{{"kind":"end_turn","action_id":"turn:1","target_peer":null}}}}"#,
+        common()
+    );
+    let output = server.handle_frame(&frame("corr-effect", COOP_NATIVE_ACTION_TOOL, &arguments));
+    assert!(output.contains(r#""isError":true"#), "{output}");
     Ok(())
 }

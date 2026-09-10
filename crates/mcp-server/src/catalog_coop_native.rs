@@ -166,9 +166,13 @@ fn legal_catalog_schema() -> JsonValue {
             "mcp_session_id",
             "lease_id",
             "lease_epoch",
+            "actor_peer",
             "expected_host_generation",
         ],
-        &[(String::from("expected_host_generation"), generation())],
+        &[
+            (String::from("actor_peer"), peer_identity()),
+            (String::from("expected_host_generation"), generation()),
+        ],
     )
 }
 

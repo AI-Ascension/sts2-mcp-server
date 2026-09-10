@@ -34,8 +34,19 @@ pub(super) fn legal_catalog_call<G: GatewayAdapter>(
         Ok(value) => value,
         Err(message) => return invalid_params(id, message),
     };
-    let request = context.legal_catalog_request(expected_generation, id.clone());
-    forward_legal_catalog(server, id, request, &context, expected_generation)
+    let actor_peer = match peer(arguments, "actor_peer") {
+        Ok(value) => value,
+        Err(message) => return invalid_params(id, message),
+    };
+    let request = context.legal_catalog_request(actor_peer, expected_generation, id.clone());
+    forward_legal_catalog(
+        server,
+        id,
+        request,
+        &context,
+        actor_peer,
+        expected_generation,
+    )
 }
 
 pub(super) fn action_call<G: GatewayAdapter>(

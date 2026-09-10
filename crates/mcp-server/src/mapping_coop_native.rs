@@ -93,7 +93,7 @@ pub(super) fn tools_call<G: GatewayAdapter>(
             "recovery",
         ],
         COOP_NATIVE_RECOVER_TOOL => &["operation_id", "recovery"],
-        COOP_NATIVE_LEGAL_CATALOG_TOOL => &["expected_host_generation"],
+        COOP_NATIVE_LEGAL_CATALOG_TOOL => &["actor_peer", "expected_host_generation"],
         COOP_NATIVE_EFFECT_TOOL => &[] as &[&str],
         _ => &[] as &[&str],
     };

@@ -36,12 +36,14 @@ pub(super) fn forward_legal_catalog<G: GatewayAdapter>(
     id: RequestId,
     request: GatewayRequest,
     context: &Context,
+    actor_peer: &str,
     expected_generation: i64,
 ) -> RpcResponse {
     match server.gateway.forward(request) {
         Ok(response) => match project_coop_native_legal_catalog(
             &response.body,
             &context.projection_context(),
+            actor_peer,
             expected_generation,
             response.status,
         ) {

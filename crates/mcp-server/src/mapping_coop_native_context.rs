@@ -113,10 +113,24 @@ impl Context {
 
     pub(super) fn legal_catalog_request(
         &self,
+        actor_peer: &str,
         expected_generation: i64,
         id: RequestId,
     ) -> GatewayRequest {
-        let mut request = self.gateway_request(GatewayMethod::Get, "legal-catalog", None, id);
+        let body = envelope(
+            self,
+            "legal_catalog_request",
+            None,
+            Some(actor_peer),
+            Some(expected_generation),
+            EnvelopePayload {
+                action: None,
+                vote: None,
+                recovery: None,
+            },
+        );
+        let mut request =
+            self.gateway_request(GatewayMethod::Post, "legal-catalog", Some(body), id);
         request.headers.insert(
             String::from("x-sts2-host-generation"),
             expected_generation.to_string(),
@@ -213,5 +227,7 @@ pub(super) fn envelope(
             String::from("recovery"),
             payload.recovery.unwrap_or(JsonValue::Null),
         ),
+        (String::from("catalog"), JsonValue::Null),
+        (String::from("receipt"), JsonValue::Null),
     ])
 }

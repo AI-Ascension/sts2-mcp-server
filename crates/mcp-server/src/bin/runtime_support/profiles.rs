@@ -77,7 +77,7 @@ pub(crate) fn profile_for_name(profile: Option<&str>) -> Result<RuntimeProfile, 
         }),
         "coop-native-v1" => {
             verify_coop_native_artifact()
-                .map_err(|error| format!("native co-op candidate artifact is invalid: {error}"))?;
+                .map_err(|error| format!("native co-op component artifact is invalid: {error}"))?;
             Ok(RuntimeProfile {
                 catalog: ToolCatalog::coop_native(),
                 max_response_bytes: RUNTIME_V3_MAX_RESPONSE_BYTES,
@@ -91,13 +91,14 @@ pub(crate) fn profile_for_name(profile: Option<&str>) -> Result<RuntimeProfile, 
 
 #[cfg(test)]
 mod tests {
+    use super::super::http::RUNTIME_V3_MAX_RESPONSE_BYTES;
     use super::profile_for_name;
 
     #[test]
-    fn native_component_verifies_and_selects_its_catalog() {
-        let result = profile_for_name(Some("coop-native-v1"));
-        let profile = result.expect("accepted component profile should select");
+    fn native_component_verifies_and_selects_its_catalog() -> Result<(), String> {
+        let profile = profile_for_name(Some("coop-native-v1"))?;
         assert_eq!(profile.catalog.revision, "coop-native-v1-mcp");
         assert_eq!(profile.max_response_bytes, RUNTIME_V3_MAX_RESPONSE_BYTES);
+        Ok(())
     }
 }

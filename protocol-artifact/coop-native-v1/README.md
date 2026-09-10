@@ -1,31 +1,28 @@
-# `coop-native-v1` candidate
+# `coop-native-v1` component contract
 
-This directory is an unadmitted, source-derived candidate. Its fixtures are projections of the
-managed producer capture at `root/coop-native-producer-capture-20260909-evidence-r4`; the capture
-wrapper records the complete producer request and response, while each golden here records one
-envelope. The vectors cover observation, local action settlement/rejection/uncertainty, same
-operation reconciliation, shared event voting, and rejoin/recovery.
+This directory records the accepted source and serialization component contract for native
+co-op actuation. It contains the exact schema, producer projections, seventeen strict golden
+envelopes, and boundary conformance metadata. The contract covers observation, a host-backed
+legal catalog, local actions, shared votes, peer rejoin, effects, receipts, and same-operation
+recovery.
 
-The corrected producer declares the exact candidate schema digest
-`3e555563023804383534d92118c3863aa2aee3d0d24b932f484d8fd97e452ca8` at source commit
-`8fa255e9ead3ad7077c26a5980c2f28710fae11f` (tree
-`25821adf9160e1bfa89ea578022b63f9e83c8699`). The r4 capture is freshly recaptured from that
-source revision and records the matching declaration; this establishes source serialization parity
-while the candidate remains unadmitted pending independent consumer and live native evidence.
+The managed producer at source commit
+`ab702dbbc79bc5854bd0840b44a729834ae50e68` (tree
+`e3f0aa9d30fe25585fbb3c1fe8e3c1fcdfa43223`) declares the exact schema digest
+`2f3bc99e53080fa11b39592b64fb0ab964a16f568719a2622d0b2caf766ab629`. The producer capture is
+source-only: `CapturePort` is synthetic and does not load STS2, connect native peers, or prove a
+live host outcome. The goldens are compact projections of the checked-in capture wrapper members,
+including explicit nullable envelope fields and receipt evidence.
 
-`producer-capture.json` records the source commit/tree, the eight source capture wrapper hashes,
-and the one-to-one projection of their request/response members to the fifteen checked-in
-goldens. Each golden is byte-identical to `jq -c` of its listed `/capture/request` or
-`/capture/response` member (including the terminating newline). The source-derived vocabulary
-keeps all five managed action parser kinds, the four installed native pending-operation effect
-kinds plus the two synthetic capture aliases, and the producer's disabled/enabled_unread/enabled/
-divergent/matched checksum statuses. A remote peer's checkpoint is nullable until its native
-checksum is readable. Recovery requests and settled/rejected recovery responses
-carry a `reconcile` value; an unknown response may retain the producer's `rejoin` recovery marker
-while a rejoin is pending. Rejoin requests are the only mutation-shaped rejoin messages.
+The component contract registers `sts2-gateway`, `sts2-mcp-server`, and `sts2-harness` as
+boundary consumers. Each consumer must copy the exact artifact, preserve the closed JSON shape,
+and keep host authority, gateway routing, MCP framing, and harness coordination in its owning
+repository. Unknown members, duplicate keys, unsupported kinds, stale generations, and
+unfenced identities remain errors; an `unknown` outcome is retained for same-operation recovery
+and never retried as a new mutation.
 
-No consumer is admitted. The candidate does not move host authority, peer admission, gateway
-leases, MCP framing, harness coordination, transport, or provider behavior into this repository.
-Admission requires the exact producer digest to match, at least two named consumers, and
-independent cross-boundary conformance evidence. These fixtures do not establish a native STS2
-session or live settlement.
+Component acceptance does not establish live native support. The separate runtime gate still
+requires a disposable two-peer native STS2 session with distinct peer identities, a settled
+model action and supported shared votes, matching native checksums, disconnect/rejoin recovery,
+and peer convergence. Until that evidence exists, `live_status` remains `unverified` and this
+artifact must not be described as a live multiplayer release.

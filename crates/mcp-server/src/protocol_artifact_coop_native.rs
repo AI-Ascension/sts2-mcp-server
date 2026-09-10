@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: MIT
 
-//! Owner-local copy of the source-derived native co-op protocol candidate.
+//! Owner-local copy of the source-derived native co-op component contract.
 //!
-//! The candidate is deliberately copied as bytes rather than represented by a
+//! The contract is deliberately copied as bytes rather than represented by a
 //! Rust protocol implementation.  This adapter can therefore prove that it is
-//! mapping the reviewed artifact, while the admission gate remains explicit
-//! until the producer is rebuilt and named consumers provide evidence.
+//! mapping the reviewed artifact while keeping live multiplayer evidence as a
+//! separate runtime gate.
 
 use crate::json::{self, JsonValue};
 
@@ -15,9 +15,9 @@ pub const COOP_NATIVE_ARTIFACT: &str = "sts2-protocol/coop-native-v1";
 pub const COOP_NATIVE_SCHEMA_SOURCE: &str = "schemas/coop-native-v1.schema.json";
 pub const COOP_NATIVE_GENERATOR: &str = "hand-authored";
 pub const COOP_NATIVE_SCHEMA_DIGEST: &str =
-    "3e555563023804383534d92118c3863aa2aee3d0d24b932f484d8fd97e452ca8";
+    "2f3bc99e53080fa11b39592b64fb0ab964a16f568719a2622d0b2caf766ab629";
 pub const COOP_NATIVE_PRODUCER_SCHEMA_DIGEST: &str =
-    "3e555563023804383534d92118c3863aa2aee3d0d24b932f484d8fd97e452ca8";
+    "2f3bc99e53080fa11b39592b64fb0ab964a16f568719a2622d0b2caf766ab629";
 pub const COOP_NATIVE_MAX_GENERATION: i64 = 9_007_199_254_740_991;
 pub const COOP_NATIVE_MAX_BODY_BYTES: usize = 16 * 1024;
 
@@ -47,6 +47,24 @@ const ARTIFACT_FILES: &[ArtifactFile] = &[
     ArtifactFile {
         path: "conformance.json",
         bytes: include_bytes!("../../../protocol-artifact/coop-native-v1/conformance.json"),
+    },
+    ArtifactFile {
+        path: "consumer-conformance.json",
+        bytes: include_bytes!(
+            "../../../protocol-artifact/coop-native-v1/consumer-conformance.json"
+        ),
+    },
+    ArtifactFile {
+        path: "golden/legal-catalog-request.json",
+        bytes: include_bytes!(
+            "../../../protocol-artifact/coop-native-v1/golden/legal-catalog-request.json"
+        ),
+    },
+    ArtifactFile {
+        path: "golden/legal-catalog-response.json",
+        bytes: include_bytes!(
+            "../../../protocol-artifact/coop-native-v1/golden/legal-catalog-response.json"
+        ),
     },
     ArtifactFile {
         path: "golden/local-action-recovered-request.json",
@@ -152,9 +170,8 @@ const ARTIFACT_FILES: &[ArtifactFile] = &[
     },
 ];
 
-/// Validate the copied candidate, including every path listed by its checksum
-/// inventory.  This succeeds only for the exact unadmitted candidate; it does
-/// not make the candidate an admitted runtime profile.
+/// Validate the copied component contract, including every path listed by its
+/// checksum inventory.  This does not establish live native multiplayer.
 pub fn verify_coop_native_artifact() -> Result<(), CoopNativeArtifactError> {
     let manifest = parse(MANIFEST)?;
     let expected_provenance = JsonValue::object([
@@ -168,20 +185,32 @@ pub fn verify_coop_native_artifact() -> Result<(), CoopNativeArtifactError> {
         ),
         (String::from("license"), JsonValue::string("MIT")),
     ]);
-    let empty_consumers = JsonValue::Array(Vec::new());
+    let consumers = JsonValue::Array(
+        ["sts2-gateway", "sts2-mcp-server", "sts2-harness"]
+            .into_iter()
+            .map(JsonValue::string)
+            .collect(),
+    );
     if field(&manifest, "artifact") != Some(&JsonValue::string(COOP_NATIVE_ARTIFACT))
         || field(&manifest, "protocol_version")
             != Some(&JsonValue::string(COOP_NATIVE_PROTOCOL_VERSION))
-        || field(&manifest, "status") != Some(&JsonValue::string("candidate"))
-        || field(&manifest, "admission") != Some(&JsonValue::string("unadmitted"))
+        || field(&manifest, "status") != Some(&JsonValue::string("accepted_component"))
+        || field(&manifest, "admission") != Some(&JsonValue::string("component"))
+        || field(&manifest, "live_status") != Some(&JsonValue::string("unverified"))
+        || field(&manifest, "live_gate")
+            != Some(&JsonValue::string("pending_native_two_peer_settlement"))
         || field(&manifest, "schema") != Some(&JsonValue::string("schema.json"))
         || field(&manifest, "schema_digest") != Some(&JsonValue::string(COOP_NATIVE_SCHEMA_DIGEST))
         || field(&manifest, "provenance") != Some(&expected_provenance)
-        || field(&manifest, "consumers") != Some(&empty_consumers)
+        || field(&manifest, "consumers") != Some(&consumers)
         || field(&manifest, "producer_declared_schema_digest")
             != Some(&JsonValue::string(COOP_NATIVE_PRODUCER_SCHEMA_DIGEST))
         || field(&manifest, "producer_digest_matches_candidate") != Some(&JsonValue::Bool(true))
         || field(&manifest, "checksums") != Some(&JsonValue::string("SHA256SUMS"))
+        || field(&manifest, "consumer_conformance")
+            != Some(&JsonValue::string("consumer-conformance.json"))
+        || field(&manifest, "consumer_conformance_status")
+            != Some(&JsonValue::string("component_serialized_conformance"))
     {
         return Err(CoopNativeArtifactError::ManifestMismatch);
     }
@@ -215,7 +244,7 @@ pub enum CoopNativeArtifactError {
 
 impl std::fmt::Display for CoopNativeArtifactError {
     fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        formatter.write_str("copied native co-op candidate artifact is invalid")
+        formatter.write_str("copied native co-op component artifact is invalid")
     }
 }
 
@@ -274,7 +303,7 @@ mod tests {
     };
 
     #[test]
-    fn copied_candidate_and_checksum_inventory_are_frozen() {
+    fn copied_component_and_checksum_inventory_are_frozen() {
         assert_eq!(verify_coop_native_artifact(), Ok(()));
         assert_eq!(
             COOP_NATIVE_SCHEMA_DIGEST,

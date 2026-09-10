@@ -58,6 +58,8 @@ pub(super) fn effect_envelope_schema() -> JsonValue {
         "observation",
         "effect",
         "recovery",
+        "catalog",
+        "receipt",
     ];
     let properties = vec![
         (
@@ -129,6 +131,11 @@ pub(super) fn effect_envelope_schema() -> JsonValue {
             String::from("recovery"),
             JsonValue::object([(String::from("type"), JsonValue::string("null"))]),
         ),
+        (
+            String::from("catalog"),
+            JsonValue::object([(String::from("type"), JsonValue::string("null"))]),
+        ),
+        (String::from("receipt"), receipt_schema()),
     ];
     JsonValue::object([
         (String::from("type"), JsonValue::string("object")),
@@ -138,5 +145,71 @@ pub(super) fn effect_envelope_schema() -> JsonValue {
             JsonValue::Array(required.into_iter().map(JsonValue::string).collect()),
         ),
         (String::from("properties"), JsonValue::object(properties)),
+    ])
+}
+
+fn receipt_schema() -> JsonValue {
+    JsonValue::object([
+        (String::from("type"), JsonValue::string("object")),
+        (String::from("additionalProperties"), JsonValue::Bool(false)),
+        (
+            String::from("required"),
+            JsonValue::Array(
+                [
+                    "operation_id",
+                    "status",
+                    "before_host_generation",
+                    "after_host_generation",
+                    "authority_id",
+                    "authority_epoch",
+                    "checkpoint_id",
+                    "state_digest",
+                    "native_checksum",
+                    "error_code",
+                ]
+                .into_iter()
+                .map(JsonValue::string)
+                .collect(),
+            ),
+        ),
+        (
+            String::from("properties"),
+            JsonValue::object([
+                (
+                    String::from("operation_id"),
+                    identity("^[A-Za-z0-9_.:/-]{1,512}$"),
+                ),
+                (
+                    String::from("status"),
+                    identity("^(accepted|settled|rejected|unknown)$"),
+                ),
+                (String::from("before_host_generation"), generation()),
+                (
+                    String::from("after_host_generation"),
+                    nullable(generation()),
+                ),
+                (
+                    String::from("authority_id"),
+                    identity("^[A-Za-z0-9_.:/-]{1,512}$"),
+                ),
+                (
+                    String::from("authority_epoch"),
+                    identity("^[A-Za-z0-9_.:/-]{1,512}$"),
+                ),
+                (
+                    String::from("checkpoint_id"),
+                    identity("^[A-Za-z0-9_.:/-]{1,512}$"),
+                ),
+                (String::from("state_digest"), identity("^[0-9a-f]{64}$")),
+                (
+                    String::from("native_checksum"),
+                    nullable(identity("^[0-9a-f]{64}$")),
+                ),
+                (
+                    String::from("error_code"),
+                    nullable(identity("^[A-Za-z0-9_.:/-]{1,512}$")),
+                ),
+            ]),
+        ),
     ])
 }
