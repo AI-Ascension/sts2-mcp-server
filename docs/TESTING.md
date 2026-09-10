@@ -17,7 +17,7 @@ Run from this target root:
 
 ```bash
 cargo metadata --locked --offline --no-deps --format-version 1
-for profile in poc-v1 runtime-v1 runtime-v2 runtime-v3-gameplay runtime-v4-expert runtime-v4-expert-action runtime-v4-expert-rest-action runtime-map-v1 coop-synchronization-v1 coop-receipt-query-v1 seeded-run-v1; do
+for profile in poc-v1 runtime-v1 runtime-v2 runtime-v3-gameplay runtime-v4-expert runtime-v4-expert-action runtime-v4-expert-rest-action runtime-map-v1 coop-synchronization-v1 coop-receipt-query-v1 seeded-run-v1 coop-native-v1; do
   (cd "protocol-artifact/$profile" && sha256sum --check SHA256SUMS)
 done
 cargo test --locked --offline --package sts2-mcp-server --test artifact
@@ -159,6 +159,22 @@ STS2_COOP_GATEWAY_BINARY=/path/to/reviewed/sts2-gateway-runtime \
 
 Use separate Cargo target directories for the two worktrees. This test supplies disposable
 coordinator reports; it proves executable coordination transport, not native multiplayer.
+
+## Native co-op component checks
+
+The `mapping_coop_native` tests verify the exact seven-tool `coop-native-v1-mcp` catalog, fixed
+observation/catalog/action/vote/rejoin/recover routes, response-only effect projection, configured
+MCP and gateway identity, copied-artifact metadata, and bounded native envelopes. The projection
+tests reject unknown members, operation and route identity drift, HTTP status mismatches, duplicate
+catalog IDs, foreign voters, and receipt/effect/observation generation, digest, authority, or
+checkpoint inconsistencies. `runtime_support::binding` tests verify that the executable admits only
+the six exact native v1 paths, requires the native protocol/schema identity on body-bearing calls,
+and preserves explicit gateway authority.
+
+These checks are source/component and synthetic gateway-boundary evidence. They do not start a game,
+invoke a model or provider, prove native host legality or settlement, or establish deployment,
+release, or Workshop compatibility. The host-backed acceptance campaign must exercise at least two
+native instances and preserve the same operation identity through disconnect/rejoin recovery.
 
 ## Runtime-map profile checks
 

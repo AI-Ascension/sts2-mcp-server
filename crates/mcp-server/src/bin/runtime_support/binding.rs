@@ -2,8 +2,8 @@
 
 use super::{RuntimeConfig, safe_header_value};
 use sts2_mcp_server::{
-    COOP_RECEIPT_QUERY_PROTOCOL_VERSION, GatewayError, GatewayMethod, GatewayRequest, JsonValue,
-    RUNTIME_V4_EXPERT_REST_ACTION_PROTOCOL_VERSION,
+    COOP_NATIVE_PROTOCOL_VERSION, COOP_RECEIPT_QUERY_PROTOCOL_VERSION, GatewayError, GatewayMethod,
+    GatewayRequest, JsonValue, RUNTIME_V4_EXPERT_REST_ACTION_PROTOCOL_VERSION,
 };
 
 pub(super) fn is_runtime_result(body: &JsonValue) -> bool {
@@ -51,7 +51,12 @@ pub(super) fn admit(config: &RuntimeConfig, request: &GatewayRequest) -> Result<
     {
         return Err(GatewayError::Rejected);
     }
-    if version != "v3" && version != "v4" && response_kind(config, request).is_none() {
+    let native_route = version == "v1" && is_native_route(config, request);
+    if version != "v3"
+        && version != "v4"
+        && response_kind(config, request).is_none()
+        && !native_route
+    {
         return Err(GatewayError::Rejected);
     }
     if version == "v4" {
@@ -195,6 +200,36 @@ pub(super) fn response_kind(
         };
     }
     None
+}
+
+fn is_native_route(config: &RuntimeConfig, request: &GatewayRequest) -> bool {
+    let prefix = format!("/v1/instances/{}/coop/native/", config.instance_id);
+    let Some(route) = request.path.strip_prefix(&prefix) else {
+        return false;
+    };
+    match (request.method, route, request.body.is_some()) {
+        (GatewayMethod::Get, "observation", false) => true,
+        (GatewayMethod::Post, "legal-catalog" | "action" | "vote" | "rejoin" | "recover", true) => {
+            request
+                .body
+                .as_ref()
+                .and_then(|body| match body {
+                    JsonValue::Object(object)
+                        if object.get("protocol_version")
+                            == Some(&JsonValue::string(COOP_NATIVE_PROTOCOL_VERSION))
+                            && object.get("schema_digest")
+                                == Some(&JsonValue::string(
+                                    sts2_mcp_server::COOP_NATIVE_SCHEMA_DIGEST,
+                                )) =>
+                    {
+                        Some(())
+                    }
+                    _ => None,
+                })
+                .is_some()
+        }
+        _ => false,
+    }
 }
 
 fn safe_operation_id(value: &str) -> bool {

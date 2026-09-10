@@ -4,6 +4,8 @@ use crate::catalog::MAX_IDENTIFIER_BYTES;
 use crate::json::JsonValue;
 use crate::protocol_artifact::{POC_MAX_GENERATION, POC_MAX_SETTLED_EFFECTS, POC_MAX_UNITS};
 
+#[path = "projection_coop_native.rs"]
+mod coop_native;
 #[path = "projection_runtime.rs"]
 mod runtime;
 #[path = "projection_runtime_map.rs"]
@@ -17,6 +19,10 @@ mod runtime_v4_expert;
 #[path = "projection_runtime_v4_expert_rest_action.rs"]
 mod runtime_v4_expert_rest_action;
 
+pub(crate) use coop_native::{
+    NativeContext, project_coop_native_effect, project_coop_native_legal_catalog,
+    project_coop_native_response,
+};
 pub(crate) use runtime::project_runtime_gateway_body;
 pub(crate) use runtime_map::{RuntimeMapProjectionContext, project_runtime_map_gateway_body};
 pub(crate) use runtime_v2::{

@@ -8,6 +8,7 @@ mod mapping;
 mod projection;
 mod protocol;
 mod protocol_artifact;
+mod protocol_artifact_coop_native;
 mod protocol_artifact_coop_receipt_query;
 #[path = "protocol_artifact_runtime_v2_hash.rs"]
 mod protocol_artifact_hash;
@@ -23,6 +24,10 @@ mod transport;
 
 pub use catalog::COOP_RECEIPT_QUERY_TOOL;
 pub use catalog::COOP_SYNCHRONIZATION_TOOL;
+pub use catalog::{
+    COOP_NATIVE_ACTION_TOOL, COOP_NATIVE_EFFECT_TOOL, COOP_NATIVE_OBSERVATION_TOOL,
+    COOP_NATIVE_RECOVER_TOOL, COOP_NATIVE_REJOIN_TOOL, COOP_NATIVE_VOTE_TOOL,
+};
 pub use catalog::{
     CapabilityCatalog, DISPATCH_ACTION_TOOL, GET_STATE_TOOL, LEGAL_ACTIONS_TOOL, MAP_SNAPSHOT_TOOL,
     OBSERVE_TOOL, RECONCILE_ACTION_TOOL, RECOVER_TOOL, REOBSERVE_TOOL, SUBMIT_ACTION_TOOL,
@@ -45,6 +50,12 @@ pub use protocol_artifact::{
     POC_MAX_UNITS, POC_PROTOCOL_VERSION, POC_SCHEMA_DIGEST, POC_SCHEMA_SOURCE, RUNTIME_ACTION_ID,
     RUNTIME_ARTIFACT, RUNTIME_GENERATOR, RUNTIME_MAX_GENERATION, RUNTIME_PROTOCOL_VERSION,
     RUNTIME_SCHEMA_DIGEST, RUNTIME_SCHEMA_SOURCE, verify_poc_artifact,
+};
+pub use protocol_artifact_coop_native::{
+    COOP_NATIVE_ARTIFACT, COOP_NATIVE_GENERATOR, COOP_NATIVE_MAX_BODY_BYTES,
+    COOP_NATIVE_MAX_GENERATION, COOP_NATIVE_PRODUCER_SCHEMA_DIGEST, COOP_NATIVE_PROFILE,
+    COOP_NATIVE_PROTOCOL_VERSION, COOP_NATIVE_SCHEMA_DIGEST, COOP_NATIVE_SCHEMA_SOURCE,
+    CoopNativeArtifactError, verify_coop_native_artifact,
 };
 pub use protocol_artifact_coop_receipt_query::{
     COOP_RECEIPT_QUERY_ARTIFACT, COOP_RECEIPT_QUERY_GENERATOR, COOP_RECEIPT_QUERY_MAX_BODY_BYTES,

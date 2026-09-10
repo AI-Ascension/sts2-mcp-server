@@ -60,6 +60,7 @@ host to a supported compatibility row.
 | `runtime-v4-expert-rest-action-mcp` | `GET /v4/instances/{id}/expert-state`, `POST /v4/instances/{id}/expert-rest-action`, `GET /v4/instances/{id}/expert-rest-actions/{operation_id}` | Candidate artifact/checksum tests, REST-action mapping/error/capacity tests, and Smith/Mend producer fixtures | Source/component and synthetic contract behavior confirmed; native host legality, provider execution, cross-consumer integration, deployment, and release unverified |
 | `seeded-run-v1-mcp` | `POST /v2/instances/{id}/seeded-run`, `GET /v2/instances/{id}/seeded-operations/{operation_id}` | Seeded catalog, fixed-route mapping, context/identity validation, source-only settlement projection, and copied-artifact checks at MCP `b5a9262f1c76da76ea6f84fca0f1ee821ff67001` | Source/component behavior confirmed; native seed settlement, profile/save isolation, gameplay, provider execution, deployment, and release unverified |
 | `coop-receipt-query-v1-mcp` | `POST /v1/instances/{id}/coop/receipt-query` | Proposed-artifact checksum/schema tests, canonical-wire mapping tests, and read-only projection checks | Additive proposed-unadmitted profile; no admitted consumers or native producer/host/provider/deployment/release compatibility |
+| `coop-native-v1-mcp` | `GET /v1/instances/{id}/coop/native/observation`, fixed POST `legal-catalog`, `action`, `vote`, `rejoin`, and `recover` routes | Seven-tool catalog, copied-artifact checks, fixed-route mapping, closed-envelope validation, and receipt/effect/observation relation tests | Source/component consumer confirmed at schema digest `2f3bc99e…`; live two-peer host settlement, provider execution, deployment, and release compatibility unverified |
 
 ### Historical Runtime-v4 request-binding update — 2026-09-07
 
@@ -286,6 +287,19 @@ reconciliation routes, validate the selected standard context and identity fence
 same operation ID for unknown recovery. A settled projection requires canonical seed readback, a
 fresh observation, and the `run_started` witness. These source/component and artifact checks do not
 establish native host settlement, profile/save isolation, gameplay, deployment, or release support.
+
+### Native co-op compatibility
+
+The additive `coop-native-v1-mcp` profile is selected with `STS2_RUNTIME_PROFILE=coop-native-v1` and
+consumes the checked-in `sts2-protocol/coop-native-v1` artifact at schema digest
+`2f3bc99e53080fa11b39592b64fb0ab964a16f568719a2622d0b2caf766ab629`. It exposes seven typed tools:
+observation, legal catalog, local action, shared vote, peer rejoin, same-operation recovery, and
+response-only effect projection. Observation is a bodyless GET; the other producer calls use the
+fixed native POST routes listed above. The MCP projection and executable binding reject unknown
+members, foreign identity, status/route drift, and receipt/effect/observation generation or
+authority mismatches. The profile's source/component and synthetic boundary evidence does not
+establish a native host session, two-peer settlement, model participation, deployment, or release
+support; those require the host-backed acceptance campaign described in the project ledger.
 ### Recovery vocabulary ownership
 
 `sts2.recover` accepts exactly four recovery kinds: `reobserve`, `reconcile`, `release_lease`, and

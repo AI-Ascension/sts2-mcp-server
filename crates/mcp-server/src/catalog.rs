@@ -3,6 +3,8 @@
 use crate::json::JsonValue;
 use crate::transport::{LEGACY_MAX_FRAME_BYTES, MAX_FRAME_BYTES};
 
+#[path = "catalog_coop_native.rs"]
+mod coop_native;
 #[path = "catalog_coop_receipt_query.rs"]
 mod coop_receipt_query;
 #[path = "catalog_coop_synchronization.rs"]
@@ -34,6 +36,13 @@ pub const RECOVER_TOOL: &str = "sts2.recover";
 pub const MAP_SNAPSHOT_TOOL: &str = "sts2.map_snapshot";
 pub const COOP_SYNCHRONIZATION_TOOL: &str = coop_synchronization::SYNC_TOOL;
 pub const COOP_RECEIPT_QUERY_TOOL: &str = coop_receipt_query::COOP_RECEIPT_QUERY_TOOL;
+pub const COOP_NATIVE_OBSERVATION_TOOL: &str = coop_native::OBSERVATION_TOOL;
+pub const COOP_NATIVE_ACTION_TOOL: &str = coop_native::ACTION_TOOL;
+pub const COOP_NATIVE_VOTE_TOOL: &str = coop_native::VOTE_TOOL;
+pub const COOP_NATIVE_REJOIN_TOOL: &str = coop_native::REJOIN_TOOL;
+pub const COOP_NATIVE_EFFECT_TOOL: &str = coop_native::EFFECT_TOOL;
+pub const COOP_NATIVE_RECOVER_TOOL: &str = coop_native::RECOVER_TOOL;
+pub const COOP_NATIVE_LEGAL_CATALOG_TOOL: &str = coop_native::LEGAL_CATALOG_TOOL;
 pub const EXPERT_STATE_TOOL: &str = runtime_v4_expert::EXPERT_STATE_TOOL;
 pub const EXPERT_ACTION_TOOL: &str = runtime_v4_expert::EXPERT_ACTION_TOOL;
 pub const EXPERT_RECONCILE_TOOL: &str = runtime_v4_expert::EXPERT_RECONCILE_TOOL;
@@ -138,6 +147,11 @@ impl ToolCatalog {
         Self::seeded_run_v1()
     }
 
+    #[must_use]
+    pub fn coop_native() -> Self {
+        coop_native::build()
+    }
+
     /// Largest MCP frame this profile accepts. The poc, runtime-v1, and runtime-v2
     /// profiles keep their historical 16 KiB limit; only the Runtime-v3 semantic
     /// profile accepts frames up to [`MAX_FRAME_BYTES`].
@@ -148,6 +162,7 @@ impl ToolCatalog {
             || self.is_runtime_v4_expert_rest_action()
             || self.is_runtime_map_v1()
             || self.is_seeded_run()
+            || self.is_coop_native()
         {
             MAX_FRAME_BYTES
         } else {
@@ -189,6 +204,10 @@ impl ToolCatalog {
 
     pub(crate) fn is_seeded_run(&self) -> bool {
         self.revision == seeded_run::REVISION
+    }
+
+    pub(crate) fn is_coop_native(&self) -> bool {
+        self.revision == coop_native::REVISION
     }
 
     pub(crate) fn descriptor(&self, name: &str) -> Option<&ToolDescriptor> {

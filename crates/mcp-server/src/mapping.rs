@@ -12,6 +12,8 @@ use crate::server::McpServer;
 
 const INVALID_REQUEST_ID: &str = "request id contains an unsafe or oversized header value";
 
+#[path = "mapping_coop_native.rs"]
+mod coop_native;
 #[path = "mapping_coop_receipt_query.rs"]
 mod coop_receipt_query;
 #[path = "mapping_coop_synchronization.rs"]
@@ -45,6 +47,9 @@ pub(crate) fn tools_call<G: GatewayAdapter>(
     server: &mut McpServer<G>,
     request: RpcRequest,
 ) -> RpcResponse {
+    if server.catalog.is_coop_native() {
+        return coop_native::tools_call(server, request);
+    }
     if server.catalog.is_coop_receipt_query() {
         return coop_receipt_query::tools_call(server, request);
     }

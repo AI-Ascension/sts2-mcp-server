@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: MIT
 
 use sts2_mcp_server::{
-    ToolCatalog, verify_coop_receipt_query_artifact, verify_runtime_v4_expert_rest_action_artifact,
+    ToolCatalog, verify_coop_native_artifact, verify_coop_receipt_query_artifact,
+    verify_runtime_v4_expert_rest_action_artifact,
 };
 
 use super::http::{
@@ -74,8 +75,30 @@ pub(crate) fn profile_for_name(profile: Option<&str>) -> Result<RuntimeProfile, 
             catalog: ToolCatalog::seeded_run_v1(),
             max_response_bytes: LEGACY_MAX_RESPONSE_BYTES,
         }),
+        "coop-native-v1" => {
+            verify_coop_native_artifact()
+                .map_err(|error| format!("native co-op component artifact is invalid: {error}"))?;
+            Ok(RuntimeProfile {
+                catalog: ToolCatalog::coop_native(),
+                max_response_bytes: RUNTIME_V3_MAX_RESPONSE_BYTES,
+            })
+        }
         value => Err(format!(
-            "STS2_RUNTIME_PROFILE must be runtime-v1, runtime-v2, runtime-v3-gameplay, runtime-v4-expert, runtime-v4-expert-rest-action, runtime-map-v1, coop-synchronization-v1, coop-receipt-query-v1, or seeded-run-v1, got {value}"
+            "STS2_RUNTIME_PROFILE must be runtime-v1, runtime-v2, runtime-v3-gameplay, runtime-v4-expert, runtime-v4-expert-rest-action, runtime-map-v1, coop-synchronization-v1, coop-receipt-query-v1, seeded-run-v1, or coop-native-v1, got {value}"
         )),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::super::http::RUNTIME_V3_MAX_RESPONSE_BYTES;
+    use super::profile_for_name;
+
+    #[test]
+    fn native_component_verifies_and_selects_its_catalog() -> Result<(), String> {
+        let profile = profile_for_name(Some("coop-native-v1"))?;
+        assert_eq!(profile.catalog.revision, "coop-native-v1-mcp");
+        assert_eq!(profile.max_response_bytes, RUNTIME_V3_MAX_RESPONSE_BYTES);
+        Ok(())
     }
 }
