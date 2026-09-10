@@ -120,12 +120,22 @@ pub(super) fn recovery_relations(
                     return Err("unknown native recovery response has the wrong route kind");
                 }
             }
-            if !matches!(
-                receipt.get("status").and_then(JsonValue::as_string),
-                Some("accepted" | "unknown")
-            ) || receipt.get("after_host_generation") != Some(&JsonValue::Null)
-                || before != observation_generation
-            {
+            let receipt_status = receipt.get("status").and_then(JsonValue::as_string);
+            let after_is_valid = match receipt_status {
+                // The canonical pending-rejoin witness records admission at
+                // the current host generation. An unresolved receipt remains
+                // explicitly after-null, including an accepted recover
+                // response on the reconcile route.
+                Some("accepted") if expected_recovery_kind == Some("rejoin") => {
+                    receipt.get("after_host_generation")
+                        == Some(&JsonValue::Number(observation_generation))
+                }
+                Some("accepted" | "unknown") => {
+                    receipt.get("after_host_generation") == Some(&JsonValue::Null)
+                }
+                _ => false,
+            };
+            if !after_is_valid || before != observation_generation {
                 return Err("unknown native recovery generations are inconsistent");
             }
         }

@@ -5,6 +5,10 @@ exists.
 
 ## Unreleased
 
+- 2026-09-10: Preserve the canonical pending-rejoin recovery response: an `unknown` response
+  with an `accepted` receipt may carry the unchanged host generation, while an `unknown` receipt
+  remains required to carry a null after-generation fence.
+
 - 2026-09-10: Harden the native co-op runtime adapter after the component profile merge. Native
   response kinds are now retained through HTTP 409 classification, response-only rejected effects
   no longer depend on a synthetic HTTP status, recovery responses must carry an outcome and match
