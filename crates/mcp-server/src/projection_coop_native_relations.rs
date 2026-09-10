@@ -88,16 +88,7 @@ pub(super) fn recovery_relations(
         .and_then(JsonValue::as_string)
         .ok_or("native recovery kind is missing")?;
     let Some(status) = object.get("status").and_then(JsonValue::as_string) else {
-        if expected_recovery_kind.is_some() && recovery_kind != "reconcile" {
-            return Err("pending native recovery kind does not match its route");
-        }
-        if recovery_kind != "reconcile"
-            || object.get("observation") != Some(&JsonValue::Null)
-            || object.get("receipt") != Some(&JsonValue::Null)
-        {
-            return Err("pending native recovery has inconsistent members");
-        }
-        return Ok(());
+        return Err("native recovery response is missing its outcome status");
     };
     let observation = object
         .get("observation")
@@ -119,8 +110,15 @@ pub(super) fn recovery_relations(
     }
     match status {
         "unknown" => {
-            if expected_recovery_kind == Some("rejoin") && recovery_kind != "rejoin" {
-                return Err("unknown native rejoin response has the wrong recovery kind");
+            if let Some(expected) = expected_recovery_kind {
+                let valid = match expected {
+                    "rejoin" => recovery_kind == "rejoin",
+                    "reconcile" => recovery_kind == "reconcile",
+                    _ => false,
+                };
+                if !valid {
+                    return Err("unknown native recovery response has the wrong route kind");
+                }
             }
             if !matches!(
                 receipt.get("status").and_then(JsonValue::as_string),
@@ -135,6 +133,9 @@ pub(super) fn recovery_relations(
             if expected_recovery_kind == Some("rejoin") && recovery_kind != "reconcile" {
                 return Err("settled native rejoin response must reconcile");
             }
+            if expected_recovery_kind == Some("reconcile") && recovery_kind != "reconcile" {
+                return Err("settled native reconcile response has the wrong route kind");
+            }
             if recovery_kind != "reconcile"
                 || receipt.get("status").and_then(JsonValue::as_string) != Some("settled")
                 || receipt.get("after_host_generation")
@@ -146,6 +147,9 @@ pub(super) fn recovery_relations(
         "rejected" => {
             if expected_recovery_kind == Some("rejoin") && recovery_kind != "reconcile" {
                 return Err("rejected native rejoin response must reconcile");
+            }
+            if expected_recovery_kind == Some("reconcile") && recovery_kind != "reconcile" {
+                return Err("rejected native reconcile response has the wrong route kind");
             }
             if recovery_kind != "reconcile"
                 || receipt.get("status").and_then(JsonValue::as_string) != Some("rejected")

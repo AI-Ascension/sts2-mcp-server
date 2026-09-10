@@ -70,3 +70,72 @@ fn rejects_rejoin_terminal_kind_drift() -> Result<(), String> {
     assert!(output.contains(r#""isError":true"#), "{output}");
     Ok(())
 }
+
+#[test]
+fn rejects_unknown_reconcile_response_on_rejoin_route() -> Result<(), String> {
+    let body = include_str!(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../protocol-artifact/coop-native-v1/golden/rejoin-pending-response.json"
+    ))
+    .replace("corr:native:rejoin", "corr-rejoin-unknown")
+    .replace("instance:native-test", "instance-1")
+    .replace("session:native-test", "session-1")
+    .replace("lease:native-test", "lease-1")
+    .replace("\"lease_epoch\":7", "\"lease_epoch\":1")
+    .replace("op:native:rejoin", "op-rejoin-unknown");
+    let mut value = parse_json(&body)?;
+    let JsonValue::Object(root) = &mut value else {
+        return Err(String::from("recovery response is not an object"));
+    };
+    let JsonValue::Object(recovery) = root
+        .get_mut("recovery")
+        .ok_or_else(|| String::from("recovery member is missing"))?
+    else {
+        return Err(String::from("recovery member is not an object"));
+    };
+    recovery.insert(String::from("kind"), JsonValue::string("reconcile"));
+    let mut server = server(GatewayResponse {
+        status: 200,
+        body: value,
+    });
+    let arguments = format!(
+        r#"{{{} ,"operation_id":"op-rejoin-unknown","actor_peer":"peer:client1","expected_host_generation":1,"recovery":{{"kind":"rejoin","rejoin_epoch":3}}}}"#,
+        common()
+    );
+    let output = server.handle_frame(&frame(
+        "corr-rejoin-unknown",
+        COOP_NATIVE_REJOIN_TOOL,
+        &arguments,
+    ));
+    assert!(output.contains(r#""isError":true"#), "{output}");
+    Ok(())
+}
+
+#[test]
+fn rejects_rejoin_kind_on_reconcile_route_for_unknown_outcome() -> Result<(), String> {
+    let body = include_str!(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../protocol-artifact/coop-native-v1/golden/rejoin-pending-response.json"
+    ))
+    .replace("corr:native:rejoin", "corr-recover-unknown")
+    .replace("instance:native-test", "instance-1")
+    .replace("session:native-test", "session-1")
+    .replace("lease:native-test", "lease-1")
+    .replace("\"lease_epoch\":7", "\"lease_epoch\":1")
+    .replace("op:native:rejoin", "op-recover-unknown");
+    let mut server = server(GatewayResponse {
+        status: 200,
+        body: parse_json(&body)?,
+    });
+    let arguments = format!(
+        r#"{{{} ,"operation_id":"op-recover-unknown","recovery":{{"kind":"reconcile","rejoin_epoch":3}}}}"#,
+        common()
+    );
+    let output = server.handle_frame(&frame(
+        "corr-recover-unknown",
+        COOP_NATIVE_RECOVER_TOOL,
+        &arguments,
+    ));
+    assert!(output.contains(r#""isError":true"#), "{output}");
+    Ok(())
+}

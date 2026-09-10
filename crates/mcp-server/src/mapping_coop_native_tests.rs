@@ -7,6 +7,8 @@ use crate::{
     McpServer, ToolCatalog, parse_json,
 };
 
+#[path = "mapping_coop_native_edge_tests.rs"]
+mod edge_tests;
 #[path = "mapping_coop_native_relation_tests.rs"]
 mod relation_tests;
 

@@ -167,7 +167,8 @@ observation/catalog/action/vote/rejoin/recover routes, response-only effect proj
 MCP and gateway identity, copied-artifact metadata, and bounded native envelopes. The projection
 tests reject unknown members, operation and route identity drift, HTTP status mismatches, duplicate
 catalog IDs, foreign voters, and receipt/effect/observation generation, digest, authority, or
-checkpoint inconsistencies. `runtime_support::binding` tests verify that the executable admits only
+checkpoint inconsistencies. They also retain native HTTP 409 response envelopes for projection and
+reject recovery request echoes and route-kind drift. `runtime_support::binding` tests verify that the executable admits only
 the six exact native v1 paths, requires the native protocol/schema identity on body-bearing calls,
 and preserves explicit gateway authority.
 

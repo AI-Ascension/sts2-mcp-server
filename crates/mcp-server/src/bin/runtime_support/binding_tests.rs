@@ -382,6 +382,24 @@ fn native_routes_are_exactly_allowlisted_and_schema_bound() {
     }
     wrong_schema.body = Some(wrong_body);
     assert_eq!(admit(&config(), &wrong_schema), Err(GatewayError::Rejected));
+
+    let native_body = JsonValue::object([
+        (
+            String::from("protocol_version"),
+            JsonValue::string(sts2_mcp_server::COOP_NATIVE_PROTOCOL_VERSION),
+        ),
+        (
+            String::from("schema_digest"),
+            JsonValue::string(sts2_mcp_server::COOP_NATIVE_SCHEMA_DIGEST),
+        ),
+    ]);
+    let mut action = observation;
+    action.path = String::from("/v1/instances/instance/coop/native/action");
+    action.method = GatewayMethod::Post;
+    action.body = Some(native_body.clone());
+    assert_eq!(response_kind(&config(), &action), Some("effect_response"));
+    action.path = String::from("/v1/instances/instance/coop/native/recover");
+    assert_eq!(response_kind(&config(), &action), Some("recovery_response"));
 }
 
 #[test]

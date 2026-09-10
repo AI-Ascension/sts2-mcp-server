@@ -5,6 +5,12 @@ exists.
 
 ## Unreleased
 
+- 2026-09-10: Harden the native co-op runtime adapter after the component profile merge. Native
+  response kinds are now retained through HTTP 409 classification, response-only rejected effects
+  no longer depend on a synthetic HTTP status, recovery responses must carry an outcome and match
+  their route kind, and a recovery request echo is rejected. The added regressions remain
+  source/component checks; live native settlement is still unverified.
+
 - 2026-09-10: Add the additive `coop-native-v1-mcp` consumer profile, selected with
   `STS2_RUNTIME_PROFILE=coop-native-v1`. Its seven typed tools map native observation, legal
   catalogs, local actions, shared votes, peer rejoin, same-operation recovery, and response-only

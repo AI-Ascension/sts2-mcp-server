@@ -51,7 +51,7 @@ pub(crate) fn project_coop_native_response(
     body: &JsonValue,
     context: &NativeContext,
     expected_kind: &str,
-    status_code: u16,
+    status_code: Option<u16>,
     expected_operation: Option<&str>,
     expected_generation: Option<i64>,
     expected_recovery_kind: Option<&str>,
@@ -68,30 +68,35 @@ pub(crate) fn project_coop_native_response(
     }
     match expected_kind {
         "observation" => {
-            if status_code != 200 {
+            if status_code.is_some_and(|status| status != 200) {
                 return Err("native observation returned an unsupported HTTP status");
             }
             observation_response(object)?;
         }
         "effect_response" => {
-            if !matches!(status_code, 200 | 409)
-                || (status_code == 409
-                    && object.get("status").and_then(JsonValue::as_string) != Some("rejected"))
-                || (status_code == 200
-                    && object.get("status").and_then(JsonValue::as_string) == Some("rejected"))
-            {
+            if status_code.is_some_and(|status_code| {
+                !matches!(status_code, 200 | 409)
+                    || (status_code == 409
+                        && object.get("status").and_then(JsonValue::as_string) != Some("rejected"))
+                    || (status_code == 200
+                        && object.get("status").and_then(JsonValue::as_string) == Some("rejected"))
+            }) {
                 return Err("native effect HTTP status does not match its response");
             }
             effect_response(object)?;
             relations::effect_relations(object, expected_generation)?;
         }
         "recovery_response" => {
-            if !matches!(status_code, 200 | 409)
-                || (status_code == 409
-                    && object.get("status").and_then(JsonValue::as_string) != Some("rejected"))
-                || (status_code == 200
-                    && object.get("status").and_then(JsonValue::as_string) == Some("rejected"))
-            {
+            if object.get("status") == Some(&JsonValue::Null) {
+                return Err("native recovery response must carry an outcome status");
+            }
+            if status_code.is_some_and(|status_code| {
+                !matches!(status_code, 200 | 409)
+                    || (status_code == 409
+                        && object.get("status").and_then(JsonValue::as_string) != Some("rejected"))
+                    || (status_code == 200
+                        && object.get("status").and_then(JsonValue::as_string) == Some("rejected"))
+            }) {
                 return Err("native recovery HTTP status does not match its response");
             }
             recovery_response(object)?;
@@ -105,7 +110,8 @@ pub(crate) fn project_coop_native_response(
         .unwrap_or("");
     Ok((
         body.clone(),
-        !(200..300).contains(&status_code) || matches!(status, "rejected" | "unknown"),
+        status_code.is_some_and(|status| !(200..300).contains(&status))
+            || matches!(status, "rejected" | "unknown"),
     ))
 }
 
@@ -113,7 +119,7 @@ pub(crate) fn project_coop_native_effect(
     body: &JsonValue,
     context: &NativeContext,
 ) -> Result<(JsonValue, bool), &'static str> {
-    project_coop_native_response(body, context, "effect_response", 200, None, None, None)
+    project_coop_native_response(body, context, "effect_response", None, None, None, None)
 }
 
 pub(crate) fn project_coop_native_legal_catalog(
