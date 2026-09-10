@@ -186,3 +186,46 @@ overlapping coordinates and disconnected visible components, checks visited posi
 relationships, and keeps graph, host-action, and opaque action-option identities separate. Legacy
 profiles and their bounds remain unchanged. This source/component adapter does not prove host map
 freshness, visualizer rendering, or navigation effects.
+
+## Runtime-v4 expert REST-action profile
+
+The additive `runtime-v4-expert-rest-action` profile is selected with
+`STS2_RUNTIME_PROFILE=runtime-v4-expert-rest-action`. It exposes exactly `sts2.expert_state`,
+`sts2.expert_rest_action`, and `sts2.expert_rest_reconcile`, mapped to the fixed routes
+`GET /v4/instances/{id}/expert-state`, `POST /v4/instances/{id}/expert-rest-action`, and
+`GET /v4/instances/{id}/expert-rest-actions/{operation_id}`. State is read-only; action submission
+and reconciliation use the same operation identity, and reconciliation has no mutation-bearing body.
+
+An action operation is bound to its MCP session, instance, gateway session, lease and epoch, request
+generation, state ID, and typed action. Reusing an operation ID with different binding or action data
+fails before gateway forwarding. Accepted, rejected, unknown, cancelled, and transport-failure paths
+retain that binding; reconciliation reuses it and never resubmits the action. Response status mapping
+is strict: accepted is HTTP 202, settled is 200, rejected is 400 or 409, unknown is 404/408/502/504,
+and cancelled is 499. Structured HTTP 503 behavior remains gateway-owned.
+
+Smith and Mend rest-option selections use a bounded admission catalog. At most 128 active or pending
+selection keys are admitted, with pending reservations taken before forwarding; a 129th admission
+fails closed. Terminal selections reclaim active capacity. The operation ledger retains a valid
+selection admission, generation, and terminal marker, so a late progress or completion receipt can
+still be validated after selector-key eviction without reactivating a completed selector. Newer
+generations supersede older receipts; an older receipt cannot rewind the retained admission.
+
+The copied candidate artifact has schema digest
+`bb3555fae28eb1f79d08a15e9884696a579e4c20836f5016509f17e0f4c36fbd`, 16 golden vectors, 22 mutation
+fixtures, and Smith/Mend producer fixtures. Artifact and synthetic mapping checks establish
+source/component behavior only. Native host legality, provider execution, deployment, and release
+compatibility remain unverified.
+
+## Co-op receipt-query profile
+
+The additive `coop-receipt-query-v1` profile is selected with
+`STS2_RUNTIME_PROFILE=coop-receipt-query-v1` and exposes only `sts2.coop_receipt_query`. It maps a
+read-only request to `POST /v1/instances/{id}/coop/receipt-query`, canonicalizes the ordered request
+fields as compact UTF-8 bytes, and caps the request and response body at 16 KiB. The gateway lookup
+uses the original operation and identity fields to retrieve a retained receipt; the MCP boundary does
+not observe current state, reconcile an operation, retry, queue, or mutate the game.
+
+The copied artifact is `proposed_unadmitted`, with schema digest
+`3e3eaedb93926b26025abb09d8028491e2632896753688c1182c698fed7d3f7c`. It currently has no admitted
+consumers. Its checksum and canonical-wire tests are contract evidence only; native producer, host,
+provider, deployment, and release compatibility remain unverified.

@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 
-use sts2_mcp_server::ToolCatalog;
+use sts2_mcp_server::{
+    ToolCatalog, verify_coop_receipt_query_artifact, verify_runtime_v4_expert_rest_action_artifact,
+};
 
 use super::http::{
     LEGACY_MAX_RESPONSE_BYTES, MAP_MAX_RESPONSE_BYTES, RUNTIME_V3_MAX_RESPONSE_BYTES,
@@ -43,6 +45,15 @@ pub(crate) fn profile_for_name(profile: Option<&str>) -> Result<RuntimeProfile, 
             catalog: ToolCatalog::runtime_v4_expert(),
             max_response_bytes: RUNTIME_V3_MAX_RESPONSE_BYTES,
         }),
+        "runtime-v4-expert-rest-action" => Ok(RuntimeProfile {
+            catalog: {
+                verify_runtime_v4_expert_rest_action_artifact().map_err(|error| {
+                    format!("Runtime-v4 expert REST-action artifact is invalid: {error}")
+                })?;
+                ToolCatalog::runtime_v4_expert_rest_action()
+            },
+            max_response_bytes: RUNTIME_V3_MAX_RESPONSE_BYTES,
+        }),
         "runtime-map-v1" => Ok(RuntimeProfile {
             catalog: ToolCatalog::runtime_map_v1(),
             max_response_bytes: MAP_MAX_RESPONSE_BYTES,
@@ -51,8 +62,16 @@ pub(crate) fn profile_for_name(profile: Option<&str>) -> Result<RuntimeProfile, 
             catalog: ToolCatalog::coop_synchronization(),
             max_response_bytes: 16 * 1024,
         }),
+        "coop-receipt-query-v1" => Ok(RuntimeProfile {
+            catalog: {
+                verify_coop_receipt_query_artifact()
+                    .map_err(|error| format!("co-op receipt-query artifact is invalid: {error}"))?;
+                ToolCatalog::coop_receipt_query()
+            },
+            max_response_bytes: 16 * 1024,
+        }),
         value => Err(format!(
-            "STS2_RUNTIME_PROFILE must be runtime-v1, runtime-v2, runtime-v3-gameplay, runtime-v4-expert, runtime-map-v1, or coop-synchronization-v1, got {value}"
+            "STS2_RUNTIME_PROFILE must be runtime-v1, runtime-v2, runtime-v3-gameplay, runtime-v4-expert, runtime-v4-expert-rest-action, runtime-map-v1, coop-synchronization-v1, or coop-receipt-query-v1, got {value}"
         )),
     }
 }

@@ -57,6 +57,8 @@ host to a supported compatibility row.
 | `runtime-v1-mcp` | Fixed single-instance runtime adapter | Mapping/artifact tests, component TCP lane, and authorized exact-host trace | Bounded adapter path confirmed for STS2 v0.107.1 Windows x86-64; gameplay and broader compatibility unverified |
 | `runtime-v2-mcp` | `GET /v2/instances/{id}/state`, `POST /v2/instances/{id}/action`, `GET /v2/instances/{id}/operations/{operation_id}` | Copied-artifact checksum, deterministic mapping/projection tests, profile and identity unit tests | Source/fake seam confirmed; live gateway, host settlement, gameplay mutation, and end-to-end compatibility unverified |
 | `runtime-v4-expert-mcp` | `GET /v4/instances/{id}/expert-state`, `POST /v4/instances/{id}/expert-action`, `GET /v4/instances/{id}/expert-actions/{operation_id}` | Exact-head source/component review at MCP `901c9ed`, integrated at `5fc337b` | Request binding and bounded projection confirmed; native host legality, settled effects, provider execution, cross-consumer integration, deployment, and release unverified |
+| `runtime-v4-expert-rest-action-mcp` | `GET /v4/instances/{id}/expert-state`, `POST /v4/instances/{id}/expert-rest-action`, `GET /v4/instances/{id}/expert-rest-actions/{operation_id}` | Candidate artifact/checksum tests, REST-action mapping/error/capacity tests, and Smith/Mend producer fixtures | Source/component and synthetic contract behavior confirmed; native host legality, provider execution, cross-consumer integration, deployment, and release unverified |
+| `coop-receipt-query-v1-mcp` | `POST /v1/instances/{id}/coop/receipt-query` | Proposed-artifact checksum/schema tests, canonical-wire mapping tests, and read-only projection checks | Additive proposed-unadmitted profile; no admitted consumers or native producer/host/provider/deployment/release compatibility |
 
 ### Dated Runtime-v4 request-binding update — 2026-09-07
 
@@ -226,6 +228,39 @@ consumed. The old `coop-gameplay-v1` profile/digest and generation input argumen
 Current generation is observed from the gateway. The tool retains 16 KiB frame/body/content
 bounds and never injects missing bodyless-request authority. See
 [ADR 0015](decisions/0015-executable-coop-synchronization.md).
+
+### Runtime-v4 expert REST-action compatibility
+
+The `runtime-v4-expert-rest-action-mcp` profile consumes the candidate artifact
+`sts2-protocol/runtime-v4-expert-rest-action` at schema digest
+`bb3555fae28eb1f79d08a15e9884696a579e4c20836f5016509f17e0f4c36fbd`. The copied inventory contains
+16 goldens, 22 mutation fixtures, and Smith/Mend producer fixtures. The profile revision is
+`runtime-v4-expert-rest-action-mcp`; its three tools and routes are listed in the profile table.
+
+Action and reconcile responses must preserve correlation, instance, gateway session, lease/epoch,
+operation, generation, state, and typed action identity. Conflicting operation reuse fails before
+forwarding, and a valid reconciliation uses the original operation binding without redispatch. The
+synthetic status contract maps 404/408/502/504 to `unknown` and 499 to `cancelled`; structured 503
+handling remains a gateway concern. These checks do not establish a live gateway, native host
+legality, settled effects, provider execution, deployment, or release support.
+
+The selector catalog admits at most 128 active or pending keys and reserves capacity before forwarding.
+The 129th pending selector is rejected locally. Terminal entries reclaim capacity. Operation-bound
+selection admission and terminal state survive bounded selector-key eviction, allowing a late valid
+receipt to be projected while preventing a completed selector from becoming active again. Generation
+ordering prevents an older receipt from rewinding newer retained progress. The capacity regression
+also confirms an evicted terminal selector does not reactivate after a late original-operation GET.
+
+### Co-op receipt-query compatibility
+
+`coop-receipt-query-v1-mcp` consumes the proposed-unadmitted
+`sts2-protocol/coop-receipt-query-v1` artifact at schema digest
+`3e3eaedb93926b26025abb09d8028491e2632896753688c1182c698fed7d3f7c`. Its only tool performs a
+retained receipt lookup through `POST /v1/instances/{id}/coop/receipt-query`; canonical compact UTF-8
+ordered bytes and a 16 KiB request/response bound are enforced. It does not observe, reconcile, retry,
+queue, or mutate, and its manifest contains no admitted consumers. Canonical-wire, validation, and
+checksum tests are artifact/component evidence; native producers, hosts, providers, deployment, and
+release compatibility are unverified.
 ### Recovery vocabulary ownership
 
 `sts2.recover` accepts exactly four recovery kinds: `reobserve`, `reconcile`, `release_lease`, and

@@ -3,6 +3,8 @@
 use crate::json::JsonValue;
 use crate::transport::{LEGACY_MAX_FRAME_BYTES, MAX_FRAME_BYTES};
 
+#[path = "catalog_coop_receipt_query.rs"]
+mod coop_receipt_query;
 #[path = "catalog_coop_synchronization.rs"]
 mod coop_synchronization;
 #[path = "catalog_runtime.rs"]
@@ -15,6 +17,8 @@ mod runtime_v2;
 mod runtime_v3_gameplay;
 #[path = "catalog_runtime_v4_expert.rs"]
 mod runtime_v4_expert;
+#[path = "catalog_runtime_v4_expert_rest_action.rs"]
+mod runtime_v4_expert_rest_action;
 
 pub const GET_STATE_TOOL: &str = "get_state";
 pub const SUBMIT_ACTION_TOOL: &str = "submit_action";
@@ -27,9 +31,13 @@ pub const REOBSERVE_TOOL: &str = "sts2.reobserve";
 pub const RECOVER_TOOL: &str = "sts2.recover";
 pub const MAP_SNAPSHOT_TOOL: &str = "sts2.map_snapshot";
 pub const COOP_SYNCHRONIZATION_TOOL: &str = coop_synchronization::SYNC_TOOL;
+pub const COOP_RECEIPT_QUERY_TOOL: &str = coop_receipt_query::COOP_RECEIPT_QUERY_TOOL;
 pub const EXPERT_STATE_TOOL: &str = runtime_v4_expert::EXPERT_STATE_TOOL;
 pub const EXPERT_ACTION_TOOL: &str = runtime_v4_expert::EXPERT_ACTION_TOOL;
 pub const EXPERT_RECONCILE_TOOL: &str = runtime_v4_expert::EXPERT_RECONCILE_TOOL;
+pub const EXPERT_REST_ACTION_TOOL: &str = runtime_v4_expert_rest_action::EXPERT_REST_ACTION_TOOL;
+pub const EXPERT_REST_RECONCILE_TOOL: &str =
+    runtime_v4_expert_rest_action::EXPERT_REST_RECONCILE_TOOL;
 pub(crate) const MAX_IDENTIFIER_BYTES: usize = 128;
 const INSTANCE_ID_PATTERN: &str = "^[A-Za-z0-9_-]{1,128}$";
 const SESSION_ID_PATTERN: &str = "^[A-Za-z0-9_.:/-]{1,128}$";
@@ -72,135 +80,8 @@ pub struct ToolCatalog {
     tools: Vec<ToolDescriptor>,
 }
 
-impl Default for ToolCatalog {
-    fn default() -> Self {
-        let state_schema = JsonValue::object([
-            ("type".to_owned(), JsonValue::string("object")),
-            ("additionalProperties".to_owned(), JsonValue::Bool(false)),
-            (
-                "required".to_owned(),
-                JsonValue::Array(vec![
-                    JsonValue::string("instance_id"),
-                    JsonValue::string("mcp_session_id"),
-                ]),
-            ),
-            (
-                "properties".to_owned(),
-                JsonValue::object([
-                    (
-                        "instance_id".to_owned(),
-                        JsonValue::object([
-                            ("type".to_owned(), JsonValue::string("string")),
-                            ("minLength".to_owned(), JsonValue::Number(1)),
-                            (
-                                "maxLength".to_owned(),
-                                JsonValue::Number(MAX_IDENTIFIER_BYTES as i64),
-                            ),
-                            ("pattern".to_owned(), JsonValue::string(INSTANCE_ID_PATTERN)),
-                        ]),
-                    ),
-                    (
-                        "mcp_session_id".to_owned(),
-                        JsonValue::object([
-                            ("type".to_owned(), JsonValue::string("string")),
-                            ("minLength".to_owned(), JsonValue::Number(1)),
-                            (
-                                "maxLength".to_owned(),
-                                JsonValue::Number(MAX_IDENTIFIER_BYTES as i64),
-                            ),
-                            ("pattern".to_owned(), JsonValue::string(SESSION_ID_PATTERN)),
-                        ]),
-                    ),
-                ]),
-            ),
-        ]);
-        let action_schema = JsonValue::object([
-            ("type".to_owned(), JsonValue::string("object")),
-            ("additionalProperties".to_owned(), JsonValue::Bool(false)),
-            (
-                "required".to_owned(),
-                JsonValue::Array(vec![
-                    JsonValue::string("instance_id"),
-                    JsonValue::string("mcp_session_id"),
-                    JsonValue::string("generation"),
-                    JsonValue::string("action_id"),
-                    JsonValue::string("units"),
-                ]),
-            ),
-            (
-                "properties".to_owned(),
-                JsonValue::object([
-                    (
-                        "instance_id".to_owned(),
-                        JsonValue::object([
-                            ("type".to_owned(), JsonValue::string("string")),
-                            ("minLength".to_owned(), JsonValue::Number(1)),
-                            (
-                                "maxLength".to_owned(),
-                                JsonValue::Number(MAX_IDENTIFIER_BYTES as i64),
-                            ),
-                            ("pattern".to_owned(), JsonValue::string(INSTANCE_ID_PATTERN)),
-                        ]),
-                    ),
-                    (
-                        "mcp_session_id".to_owned(),
-                        JsonValue::object([
-                            ("type".to_owned(), JsonValue::string("string")),
-                            ("minLength".to_owned(), JsonValue::Number(1)),
-                            (
-                                "maxLength".to_owned(),
-                                JsonValue::Number(MAX_IDENTIFIER_BYTES as i64),
-                            ),
-                            ("pattern".to_owned(), JsonValue::string(SESSION_ID_PATTERN)),
-                        ]),
-                    ),
-                    (
-                        "generation".to_owned(),
-                        JsonValue::object([
-                            ("type".to_owned(), JsonValue::string("integer")),
-                            ("minimum".to_owned(), JsonValue::Number(0)),
-                        ]),
-                    ),
-                    (
-                        "action_id".to_owned(),
-                        JsonValue::object([
-                            ("type".to_owned(), JsonValue::string("string")),
-                            ("const".to_owned(), JsonValue::string("use_budget")),
-                        ]),
-                    ),
-                    (
-                        "units".to_owned(),
-                        JsonValue::object([
-                            ("type".to_owned(), JsonValue::string("integer")),
-                            ("minimum".to_owned(), JsonValue::Number(0)),
-                            ("maximum".to_owned(), JsonValue::Number(8)),
-                        ]),
-                    ),
-                ]),
-            ),
-        ]);
-        Self {
-            revision: String::from("poc-v1-mcp"),
-            capabilities: CapabilityCatalog::default(),
-            tools: vec![
-                ToolDescriptor {
-                    name: String::from(GET_STATE_TOOL),
-                    description: String::from(
-                        "Read one bounded state snapshot through the authenticated gateway.",
-                    ),
-                    input_schema: state_schema,
-                },
-                ToolDescriptor {
-                    name: String::from(SUBMIT_ACTION_TOOL),
-                    description: String::from(
-                        "Submit one typed use_budget action through the authenticated gateway.",
-                    ),
-                    input_schema: action_schema,
-                },
-            ],
-        }
-    }
-}
+#[path = "catalog_default.rs"]
+mod default;
 
 impl ToolCatalog {
     #[must_use]
@@ -224,6 +105,11 @@ impl ToolCatalog {
     }
 
     #[must_use]
+    pub fn runtime_v4_expert_rest_action() -> Self {
+        runtime_v4_expert_rest_action::build()
+    }
+
+    #[must_use]
     pub fn runtime_map_v1() -> Self {
         runtime_map::build()
     }
@@ -233,12 +119,20 @@ impl ToolCatalog {
         coop_synchronization::build()
     }
 
+    #[must_use]
+    pub fn coop_receipt_query() -> Self {
+        coop_receipt_query::build()
+    }
+
     /// Largest MCP frame this profile accepts. The poc, runtime-v1, and runtime-v2
     /// profiles keep their historical 16 KiB limit; only the Runtime-v3 semantic
     /// profile accepts frames up to [`MAX_FRAME_BYTES`].
     #[must_use]
     pub fn max_frame_bytes(&self) -> usize {
-        if self.is_runtime_v3_gameplay() || self.is_runtime_v4_expert() || self.is_runtime_map_v1()
+        if self.is_runtime_v3_gameplay()
+            || self.is_runtime_v4_expert()
+            || self.is_runtime_v4_expert_rest_action()
+            || self.is_runtime_map_v1()
         {
             MAX_FRAME_BYTES
         } else {
@@ -262,12 +156,20 @@ impl ToolCatalog {
         self.revision == runtime_v4_expert::REVISION
     }
 
+    pub(crate) fn is_runtime_v4_expert_rest_action(&self) -> bool {
+        self.revision == runtime_v4_expert_rest_action::REVISION
+    }
+
     pub(crate) fn is_runtime_map_v1(&self) -> bool {
         self.revision == runtime_map::REVISION
     }
 
     pub(crate) fn is_coop_synchronization(&self) -> bool {
         self.revision == coop_synchronization::REVISION
+    }
+
+    pub(crate) fn is_coop_receipt_query(&self) -> bool {
+        self.revision == coop_receipt_query::REVISION
     }
 
     pub(crate) fn descriptor(&self, name: &str) -> Option<&ToolDescriptor> {

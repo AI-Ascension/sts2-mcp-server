@@ -17,7 +17,7 @@ Run from this target root:
 
 ```bash
 cargo metadata --locked --offline --no-deps --format-version 1
-for profile in poc-v1 runtime-v1 runtime-v2 runtime-v3-gameplay; do
+for profile in poc-v1 runtime-v1 runtime-v2 runtime-v3-gameplay runtime-v4-expert runtime-v4-expert-action runtime-v4-expert-rest-action runtime-map-v1 coop-synchronization-v1 coop-receipt-query-v1; do
   (cd "protocol-artifact/$profile" && sha256sum --check SHA256SUMS)
 done
 cargo test --locked --offline --package sts2-mcp-server --test artifact
@@ -178,3 +178,35 @@ position/history references, duplicate bindings or action-option IDs, and over-l
 Profile frame/body/projected-content limits are 256 KiB; existing profiles retain their historical
 limits. These checks are source/component and artifact-integrity evidence, not host map freshness,
 visualizer, provider, or gameplay evidence.
+
+## Runtime-v4 expert REST-action checks
+
+`runtime_v4_expert_rest_action.rs` covers the exact three-tool catalog, fixed state/action/reconcile
+routes, typed Smith and Mend action shapes, operation identity binding, generation/state fencing,
+selector admission, and completion witnesses. `runtime_v4_expert_rest_action_errors.rs` checks the
+404/408/502/504 `unknown` and 499 `cancelled` mappings, forged same-operation action/generation/state
+rejection, and the no-rebinding rule after transport failure. `runtime_v4_expert_rest_action_capacity.rs`
+checks that 128 active or pending selector admissions are bounded before forwarding, the 129th is
+rejected, terminal capacity is reclaimed, and a late progress GET after terminal completion and
+selector-key eviction preserves the original receipt without reactivating the completed selector.
+
+The copied candidate artifact verification checks the manifest status, schema digest
+`bb3555fae28eb1f79d08a15e9884696a579e4c20836f5016509f17e0f4c36fbd`, source schema identity, all 16
+goldens, 22 mutation fixtures, producer fixtures, and every `SHA256SUMS` entry. Smith and Mend
+fixtures provide synthetic producer lifecycle evidence. The tests use gateway doubles and prove
+source/component behavior; they do not prove native host legality, provider execution, deployment,
+or release compatibility.
+
+## Co-op receipt-query checks
+
+The receipt-query mapping tests verify the exact `sts2.coop_receipt_query` catalog, configured MCP and
+gateway sessions, fixed `POST /v1/instances/{id}/coop/receipt-query` route, explicit authority headers,
+canonical compact UTF-8 request bytes, complete read-only receipt projection, and rejection of absent
+or unsorted actor/participant identity before the gateway. The profile enforces a 16 KiB request and
+response bound and performs no observe, reconcile, retry, queue, or mutation operation.
+
+Artifact verification checks the proposed-unadmitted manifest, schema `$id`, digest
+`3e3eaedb93926b26025abb09d8028491e2632896753688c1182c698fed7d3f7c`, conformance/fixture/golden
+JSON, and every checksum entry. These are canonical-wire, artifact-integrity, and synthetic mapping
+checks; no admitted consumer, native producer, host, provider, deployment, or release evidence is
+implied.

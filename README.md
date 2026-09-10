@@ -67,9 +67,9 @@ directory run:
 
 ```bash
 cargo metadata --locked --no-deps --format-version 1
-sha256sum -c --ignore-missing protocol-artifact/poc-v1/SHA256SUMS
-(cd protocol-artifact/runtime-v2 && sha256sum -c SHA256SUMS)
-(cd protocol-artifact/runtime-map-v1 && sha256sum -c SHA256SUMS)
+for profile in poc-v1 runtime-v1 runtime-v2 runtime-v3-gameplay runtime-v4-expert runtime-v4-expert-action runtime-v4-expert-rest-action runtime-map-v1 coop-synchronization-v1 coop-receipt-query-v1; do
+  (cd "protocol-artifact/$profile" && sha256sum -c SHA256SUMS)
+done
 cargo test --locked --package sts2-mcp-server --test artifact
 cargo test --locked --package sts2-mcp-server --test runtime_v2_artifact --test runtime_v2_mapping
 cargo fmt --all --check
@@ -151,3 +151,26 @@ Dated current-main source/component update (2026-09-08): merged MCP main
 source/component and artifact-copy scope; host extraction, live map freshness, visualizer
 validation, native map visibility, navigation, gameplay, release, and publication remain
 unverified.
+
+The additive `runtime-v4-expert-rest-action` profile is selected with
+`STS2_RUNTIME_PROFILE=runtime-v4-expert-rest-action`. It exposes exactly `sts2.expert_state`,
+`sts2.expert_rest_action`, and `sts2.expert_rest_reconcile`, using fixed routes
+`GET /v4/instances/{id}/expert-state`, `POST /v4/instances/{id}/expert-rest-action`, and
+`GET /v4/instances/{id}/expert-rest-actions/{operation_id}`. The candidate artifact is pinned to
+schema digest `bb3555fae28eb1f79d08a15e9884696a579e4c20836f5016509f17e0f4c36fbd` and contains 16
+goldens, 22 mutation fixtures, and Smith/Mend producer fixtures. Operation identity and action
+bindings survive accepted, unknown, and transport-failure outcomes; reconciliation uses the same
+operation identity. Selector admission allows 128 active or pending entries, rejects the 129th before
+forwarding, and reclaims terminal entries. Per-operation admission and terminal state lets a late
+progress receipt remain valid after selector-key eviction without reactivating a completed selector.
+HTTP 404/408/502/504 are `unknown` and 499 is `cancelled`; structured 503 handling remains
+gateway-owned. These are source/component and synthetic contract claims; native host legality,
+provider execution, deployment, and release remain unverified.
+
+The additive `coop-receipt-query-v1` profile is selected with
+`STS2_RUNTIME_PROFILE=coop-receipt-query-v1`. Its only tool is `sts2.coop_receipt_query`, mapped to
+`POST /v1/instances/{id}/coop/receipt-query`. The proposed-unadmitted artifact pins schema digest
+`3e3eaedb93926b26025abb09d8028491e2632896753688c1182c698fed7d3f7c`, uses canonical compact
+ordered UTF-8 bytes, and keeps the request/response body within 16 KiB. It performs a retained
+receipt lookup only and does not observe, reconcile, retry, or mutate. The artifact has no admitted
+consumers; native producer, host, provider, deployment, and release compatibility remain unverified.

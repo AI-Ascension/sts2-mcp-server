@@ -1,12 +1,29 @@
 // SPDX-License-Identifier: MIT
 
+use std::collections::{BTreeMap, BTreeSet};
+
 use crate::catalog::ToolCatalog;
 use crate::gateway::GatewayAdapter;
 use crate::json::JsonValue;
+use crate::projection::{RestActionSelectionAdmission, RestActionSelectionKey};
 use crate::protocol::{
     INVALID_PARAMS, METHOD_NOT_FOUND, PARSE_ERROR, RpcError, RpcRequest, RpcResponse,
 };
 use crate::transport::{FrameCodec, FrameError};
+
+#[path = "server_runtime_v4_expert_rest_action.rs"]
+mod runtime_v4_expert_rest_action;
+pub(crate) use runtime_v4_expert_rest_action::{
+    RestActionOperationContext, RestActionOperationSelection,
+};
+
+#[path = "server_runtime_v4_expert_rest_action_capacity.rs"]
+mod runtime_v4_expert_rest_action_capacity;
+pub(crate) use runtime_v4_expert_rest_action_capacity::REST_ACTION_SELECTOR_CAPACITY_ERROR;
+
+#[cfg(test)]
+#[path = "server_tests.rs"]
+mod tests;
 
 pub const SERVER_NAME: &str = "sts2-mcp-server";
 pub const SERVER_VERSION: &str = "0.0.0";
@@ -17,7 +34,19 @@ pub struct McpServer<G> {
     pub(crate) catalog: ToolCatalog,
     pub(crate) gateway_session_id: Option<String>,
     pub(crate) mcp_session_id: Option<String>,
+    pub(crate) rest_action_selections: BTreeMap<RestActionSelectionKey, RestActionSelectionContext>,
+    pub(crate) rest_action_operations: BTreeMap<String, RestActionOperationContext>,
+    pub(crate) rest_action_selector_reservations: BTreeSet<String>,
 }
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub(crate) struct RestActionSelectionContext {
+    pub(crate) admission: RestActionSelectionAdmission,
+    pub(crate) generation: i64,
+    pub(crate) terminal: bool,
+}
+
+const MAX_REST_ACTION_SELECTIONS: usize = 128;
 
 impl<G: GatewayAdapter> McpServer<G> {
     pub fn new(gateway: G) -> Self {
@@ -26,6 +55,9 @@ impl<G: GatewayAdapter> McpServer<G> {
             catalog: ToolCatalog::default(),
             gateway_session_id: None,
             mcp_session_id: None,
+            rest_action_selections: BTreeMap::new(),
+            rest_action_operations: BTreeMap::new(),
+            rest_action_selector_reservations: BTreeSet::new(),
         }
     }
 
@@ -35,6 +67,9 @@ impl<G: GatewayAdapter> McpServer<G> {
             catalog,
             gateway_session_id: None,
             mcp_session_id: None,
+            rest_action_selections: BTreeMap::new(),
+            rest_action_operations: BTreeMap::new(),
+            rest_action_selector_reservations: BTreeSet::new(),
         }
     }
 
@@ -55,6 +90,9 @@ impl<G: GatewayAdapter> McpServer<G> {
             catalog,
             gateway_session_id: Some(gateway_session_id.into()),
             mcp_session_id: Some(mcp_session_id.into()),
+            rest_action_selections: BTreeMap::new(),
+            rest_action_operations: BTreeMap::new(),
+            rest_action_selector_reservations: BTreeSet::new(),
         }
     }
 
@@ -202,16 +240,4 @@ fn frame_error(error: FrameError) -> RpcError {
 fn unsupported_method(method: &str) -> String {
     let method: String = method.chars().take(64).collect();
     format!("capability or method is not supported: {method}")
-}
-
-#[cfg(test)]
-mod tests {
-    use crate::mapping::safe_segment;
-
-    #[test]
-    fn accepts_only_path_safe_instance_segments() {
-        assert!(safe_segment("instance-1_alpha"));
-        assert!(!safe_segment("../instance"));
-        assert!(!safe_segment("instance/child"));
-    }
 }

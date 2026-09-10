@@ -14,6 +14,8 @@ mod runtime_v2;
 mod runtime_v3_gameplay;
 #[path = "projection_runtime_v4_expert.rs"]
 mod runtime_v4_expert;
+#[path = "projection_runtime_v4_expert_rest_action.rs"]
+mod runtime_v4_expert_rest_action;
 
 pub(crate) use runtime::project_runtime_gateway_body;
 pub(crate) use runtime_map::{RuntimeMapProjectionContext, project_runtime_map_gateway_body};
@@ -26,6 +28,12 @@ pub(crate) use runtime_v3_gameplay::{
 };
 pub(crate) use runtime_v4_expert::{
     project_runtime_v4_expert_action_gateway_body, project_runtime_v4_expert_gateway_body,
+};
+pub(crate) use runtime_v4_expert_rest_action::{
+    RestActionSelectionAdmission, RestActionSelectionKey,
+    project_runtime_v4_expert_rest_action_gateway_body_with_admission,
+    rest_action_selection_admission, rest_action_selection_id,
+    validate_runtime_v4_expert_rest_action_reference,
 };
 
 const ALLOWLISTED_KINDS: [&str; 4] = [

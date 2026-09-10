@@ -1,7 +1,10 @@
 // SPDX-License-Identifier: MIT
 
 use super::{RuntimeConfig, safe_header_value};
-use sts2_mcp_server::{GatewayError, GatewayMethod, GatewayRequest, JsonValue};
+use sts2_mcp_server::{
+    COOP_RECEIPT_QUERY_PROTOCOL_VERSION, GatewayError, GatewayMethod, GatewayRequest, JsonValue,
+    RUNTIME_V4_EXPERT_REST_ACTION_PROTOCOL_VERSION,
+};
 
 pub(super) fn is_runtime_result(body: &JsonValue) -> bool {
     matches!(
@@ -21,6 +24,7 @@ pub(super) fn is_runtime_result(body: &JsonValue) -> bool {
                             | "reobserve_response"
                             | "recover_response"
                             | "snapshot_response"
+                            | "receipt_query_response"
                     )
             )
     )
@@ -58,11 +62,15 @@ pub(super) fn admit(config: &RuntimeConfig, request: &GatewayRequest) -> Result<
         match (request.method, route) {
             (GatewayMethod::Get, "expert-state") if request.body.is_none() => {}
             (GatewayMethod::Post, "expert-action") if request.body.is_some() => {}
+            (GatewayMethod::Post, "expert-rest-action") if request.body.is_some() => {}
             (GatewayMethod::Get, route)
-                if request.body.is_none() && route.starts_with("expert-actions/") =>
+                if request.body.is_none()
+                    && (route.starts_with("expert-actions/")
+                        || route.starts_with("expert-rest-actions/")) =>
             {
                 let operation_id = route
                     .strip_prefix("expert-actions/")
+                    .or_else(|| route.strip_prefix("expert-rest-actions/"))
                     .ok_or(GatewayError::Rejected)?;
                 if !safe_operation_id(operation_id) {
                     return Err(GatewayError::Rejected);
@@ -76,6 +84,7 @@ pub(super) fn admit(config: &RuntimeConfig, request: &GatewayRequest) -> Result<
     // must not silently substitute authority, including for bodyless observation calls.
     let is_legacy_v1_injection = version == "v1"
         && !request.path.ends_with("/coop/synchronization")
+        && !request.path.ends_with("/coop/receipt-query")
         && !request.path.ends_with("/map-snapshot");
     if !is_legacy_v1_injection {
         // MCP correlation sessions are a separate namespace; only explicit gateway
@@ -120,6 +129,15 @@ pub(super) fn response_kind(
                     Some("snapshot_response")
                 }
                 (GatewayMethod::Post, "action") => Some("action_response"),
+                (GatewayMethod::Post, "coop/receipt-query")
+                    if version == "v1"
+                        && request.body.as_ref().and_then(|body| match body {
+                            JsonValue::Object(object) => object.get("protocol_version"),
+                            _ => None,
+                        }) == Some(&JsonValue::string(COOP_RECEIPT_QUERY_PROTOCOL_VERSION)) =>
+                {
+                    Some("receipt_query_response")
+                }
                 (GatewayMethod::Get, route)
                     if version == "v2" && route.starts_with("operations/") =>
                 {
@@ -134,6 +152,24 @@ pub(super) fn response_kind(
         return match (request.method, route) {
             (GatewayMethod::Get, "expert-state") => Some("state_response"),
             (GatewayMethod::Post, "expert-action") => Some("action_response"),
+            (GatewayMethod::Post, "expert-rest-action")
+                if request.body.as_ref().and_then(|body| match body {
+                    JsonValue::Object(object) => object.get("protocol_version"),
+                    _ => None,
+                }) == Some(&JsonValue::string(
+                    RUNTIME_V4_EXPERT_REST_ACTION_PROTOCOL_VERSION,
+                )) =>
+            {
+                Some("action_response")
+            }
+            (GatewayMethod::Get, route)
+                if route.starts_with("expert-rest-actions/")
+                    && safe_operation_id(
+                        route.strip_prefix("expert-rest-actions/").unwrap_or(""),
+                    ) =>
+            {
+                Some("action_response")
+            }
             (GatewayMethod::Get, route)
                 if route.starts_with("expert-actions/")
                     && safe_operation_id(route.strip_prefix("expert-actions/").unwrap_or("")) =>

@@ -5,6 +5,28 @@ exists.
 
 ## Unreleased
 
+- 2026-09-09: Add the additive `runtime-v4-expert-rest-action-mcp` profile with
+  `sts2.expert_state`, `sts2.expert_rest_action`, and `sts2.expert_rest_reconcile`. The fixed gateway
+  paths are `GET /v4/instances/{id}/expert-state`, `POST /v4/instances/{id}/expert-rest-action`, and
+  `GET /v4/instances/{id}/expert-rest-actions/{operation_id}`. Its candidate protocol artifact pins
+  schema digest `bb3555fae28eb1f79d08a15e9884696a579e4c20836f5016509f17e0f4c36fbd`, with 16 goldens,
+  22 mutation fixtures, and Smith/Mend producer fixtures. Operation identity and action bindings are
+  retained through accepted, unknown, and transport-failure outcomes; reconciliation uses the same
+  operation. Selector admission is bounded to 128 active or pending entries, rejects the 129th before
+  forwarding, reclaims terminal entries, and retains per-operation admission/terminal state so a late
+  progress receipt remains valid without reactivating a completed selector. HTTP 404/408/502/504 map to
+  `unknown`, HTTP 499 to `cancelled`; structured HTTP 503 handling remains gateway-owned. This is
+  source/component and synthetic contract evidence; native host legality, settled effects, provider
+  execution, deployment, cross-consumer integration, and release remain unverified.
+
+- 2026-09-09: Add the additive `coop-receipt-query-v1-mcp` profile with the read-only
+  `sts2.coop_receipt_query` tool and fixed `POST /v1/instances/{id}/coop/receipt-query` path. It
+  consumes the proposed-unadmitted `coop-receipt-query-v1` artifact at schema digest
+  `3e3eaedb93926b26025abb09d8028491e2632896753688c1182c698fed7d3f7c`, using canonical compact
+  UTF-8 ordered bytes and a 16 KiB request/response bound. The tool performs retained receipt lookup
+  only; it does not observe, reconcile, retry, or mutate, and the artifact has no admitted consumers.
+  Native producer, host, provider, deployment, and release compatibility remain unverified.
+
 - 2026-09-07: Record the Runtime-v4 expert source/component binding at MCP head
   `901c9edd94833fca6bfe322e0c515f91c8b2b281`, integrated in merge
   `5fc337b880b6c38389661c865003e304a02d1136`. Action and reconcile responses are bound to
