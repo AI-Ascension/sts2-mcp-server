@@ -21,6 +21,42 @@ fn runtime_v2_catalog_exposes_state_submit_and_reconcile() {
     assert!(catalog.contains("reconcile_action"));
     assert_eq!(catalog.matches("\"name\"").count(), 3);
     assert!(catalog.contains("runtime-v2-mcp"));
+    assert_eq!(catalog.matches("\"workflow_boot_epoch\"").count(), 3);
+}
+
+#[test]
+fn workflow_boot_epoch_is_optional_and_forwarded_as_an_authority_header() {
+    let mut server = McpServer::with_catalog(
+        RecordingGateway::new([Ok(GatewayResponse {
+            status: 200,
+            body: state_response("request-authority", 4),
+        })]),
+        ToolCatalog::runtime_v2(),
+    );
+    let response = server.handle_frame(
+        r#"{"jsonrpc":"2.0","id":"request-authority","method":"tools/call","params":{"name":"get_state","arguments":{"instance_id":"instance-1","mcp_session_id":"session-1","lease_id":"lease-1","lease_epoch":1,"generation":4,"workflow_boot_epoch":"boot-2026-09-10"}}}"#,
+    );
+    assert!(
+        response.contains("\"isError\":false"),
+        "response: {response}"
+    );
+    assert_eq!(
+        server.gateway().requests[0]
+            .headers
+            .get("x-sts2-workflow-boot-epoch")
+            .map(String::as_str),
+        Some("boot-2026-09-10")
+    );
+}
+
+#[test]
+fn malformed_workflow_boot_epoch_is_rejected_before_gateway_access() {
+    let mut server = McpServer::with_catalog(RecordingGateway::new([]), ToolCatalog::runtime_v2());
+    let response = server.handle_frame(
+        r#"{"jsonrpc":"2.0","id":"bad-authority","method":"tools/call","params":{"name":"get_state","arguments":{"instance_id":"instance-1","mcp_session_id":"session-1","lease_id":"lease-1","lease_epoch":1,"generation":4,"workflow_boot_epoch":"boot epoch"}}}"#,
+    );
+    assert!(response.contains("\"code\":-32602"), "response: {response}");
+    assert_eq!(server.gateway().requests.len(), 0);
 }
 
 #[test]
