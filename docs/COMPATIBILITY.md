@@ -56,11 +56,11 @@ host to a supported compatibility row.
 | --- | --- | --- | --- |
 | `runtime-v1-mcp` | Fixed single-instance runtime adapter | Mapping/artifact tests, component TCP lane, and authorized exact-host trace | Bounded adapter path confirmed for STS2 v0.107.1 Windows x86-64; gameplay and broader compatibility unverified |
 | `runtime-v2-mcp` | `GET /v2/instances/{id}/state`, `POST /v2/instances/{id}/action`, `GET /v2/instances/{id}/operations/{operation_id}` | Copied-artifact checksum, deterministic mapping/projection tests, profile and identity unit tests | Source/fake seam confirmed; live gateway, host settlement, gameplay mutation, and end-to-end compatibility unverified |
-| `runtime-v4-expert-mcp` | `GET /v4/instances/{id}/expert-state`, `POST /v4/instances/{id}/expert-action`, `GET /v4/instances/{id}/expert-actions/{operation_id}` | Exact-head source/component review at MCP `901c9ed`, integrated at `5fc337b` | Request binding and bounded projection confirmed; native host legality, settled effects, provider execution, cross-consumer integration, deployment, and release unverified |
+| `runtime-v4-expert-mcp` | `GET /v4/instances/{id}/expert-state`, `POST /v4/instances/{id}/expert-action`, `GET /v4/instances/{id}/expert-actions/{operation_id}` | Current default-main source/component review at MCP `3b6d71fe9642d27717ca6cfa07b5342b914c044c`; the exact v4 artifacts remain checksum-bound | Request binding and bounded projection confirmed at the current source head; native host legality, settled effects, provider execution, cross-consumer integration, deployment, and release unverified |
 | `runtime-v4-expert-rest-action-mcp` | `GET /v4/instances/{id}/expert-state`, `POST /v4/instances/{id}/expert-rest-action`, `GET /v4/instances/{id}/expert-rest-actions/{operation_id}` | Candidate artifact/checksum tests, REST-action mapping/error/capacity tests, and Smith/Mend producer fixtures | Source/component and synthetic contract behavior confirmed; native host legality, provider execution, cross-consumer integration, deployment, and release unverified |
 | `coop-receipt-query-v1-mcp` | `POST /v1/instances/{id}/coop/receipt-query` | Proposed-artifact checksum/schema tests, canonical-wire mapping tests, and read-only projection checks | Additive proposed-unadmitted profile; no admitted consumers or native producer/host/provider/deployment/release compatibility |
 
-### Dated Runtime-v4 request-binding update — 2026-09-07
+### Historical Runtime-v4 request-binding update — 2026-09-07
 
 The source/component update at MCP head `901c9edd94833fca6bfe322e0c515f91c8b2b281`, integrated
 in merge `5fc337b880b6c38389661c865003e304a02d1136`, binds action and reconcile responses to the
@@ -78,6 +78,20 @@ evidence.
 
 Native host legality, settled effects, provider execution, cross-consumer integration, deployment,
 and release remain unverified.
+
+### Current default-main Runtime-v4 update — 2026-09-10
+
+MCP main at
+[`3b6d71fe9642d27717ca6cfa07b5342b914c044c`](https://github.com/AI-Ascension/sts2-mcp-server/commit/3b6d71fe9642d27717ca6cfa07b5342b914c044c)
+contains the Runtime-v4 expert state/action mapping and the merged REST expert-action selector
+recovery. Source, copied-artifact, envelope, mapping, and bounded selector checks at this head are
+source/component evidence. The admitted expert artifacts retain schema digests
+`0ee034d5da83f34e9fa0ba23038738d56ef8cfccb1c6e752af3ab63d212c8e42` and
+`393318bda8c3522c0ecbacc78b95471a9f4dc3f825169d2048f4c74a7b7f2929`; the separate REST-action
+artifact remains a candidate at digest
+`bb3555fae28eb1f79d08a15e9884696a579e4c20836f5016509f17e0f4c36fbd`. Native host legality,
+settled effects, provider execution, deployment, release, and live cross-consumer compatibility
+remain unverified.
 
 The `runtime-v1-mcp` profile is compatible only with the exact `runtime-v1` schema digest and
 allowlisted response shapes. It makes no provider, game-rule, gameplay mutation, or release-support
@@ -277,7 +291,7 @@ envelope, and the absence of any other request.
 
 | Surface | Producer pin | Current evidence | Result |
 | --- | --- | --- | --- |
-| `runtime-map-v1-mcp` catalog and mapping | merged protocol main commit `b3d3034f32e68d70c9e681f906ee37d74db153c4`, schema digest `ceab0d2dfc471d1ec36d12edaf4654b8c7fdced06548bf47265e11c63f98115b` | artifact checksum/schema tests, catalog and mapping tests, and a real TCP adapter test at MCP main `10c4532167fcb91d577ddf3a71cb4759c28bef08` | Confirmed source/component behavior and copied-artifact integrity; host and visualizer compatibility unverified |
+| `runtime-map-v1-mcp` catalog and mapping | current protocol main commit `f2dac90529f584a6511c1760adce9da28f7f910a`, schema digest `ceab0d2dfc471d1ec36d12edaf4654b8c7fdced06548bf47265e11c63f98115b` | artifact checksum/schema tests, catalog and mapping tests, and the current MCP main source/component head `3b6d71fe` | Confirmed source/component behavior and copied-artifact integrity; host and visualizer compatibility unverified |
 | `sts2.map_snapshot` | bodyless `GET /v1/instances/{id}/map-snapshot` | explicit MCP/gateway session and authority context, complete graph projection, stale/foreign/unknown-field rejection | Additive profile behavior confirmed in doubles and loopback adapter; live map freshness unverified |
 
 `STS2_RUNTIME_PROFILE=runtime-map-v1` selects seven tools and 256 KiB frame, gateway-body, and
