@@ -26,6 +26,10 @@ pub(super) fn is_runtime_result(body: &JsonValue) -> bool {
                             | "snapshot_response"
                             | "receipt_query_response"
                             | "start_response"
+                            | "observation"
+                            | "legal_catalog_response"
+                            | "effect_response"
+                            | "recovery_response"
                     )
             )
     )
@@ -125,6 +129,26 @@ pub(super) fn response_kind(
         let prefix = format!("/{version}/instances/{}/", config.instance_id);
         if let Some(route) = request.path.strip_prefix(&prefix) {
             return match (request.method, route) {
+                (GatewayMethod::Get, "coop/native/observation")
+                    if version == "v1" && request.body.is_none() =>
+                {
+                    Some("observation")
+                }
+                (GatewayMethod::Post, "coop/native/legal-catalog")
+                    if version == "v1" && is_native_body(request) =>
+                {
+                    Some("legal_catalog_response")
+                }
+                (GatewayMethod::Post, "coop/native/action" | "coop/native/vote")
+                    if version == "v1" && is_native_body(request) =>
+                {
+                    Some("effect_response")
+                }
+                (GatewayMethod::Post, "coop/native/rejoin" | "coop/native/recover")
+                    if version == "v1" && is_native_body(request) =>
+                {
+                    Some("recovery_response")
+                }
                 (GatewayMethod::Get, "coop/synchronization")
                     if version == "v1" && request.body.is_none() =>
                 {
@@ -200,6 +224,19 @@ pub(super) fn response_kind(
         };
     }
     None
+}
+
+fn is_native_body(request: &GatewayRequest) -> bool {
+    request.body.as_ref().is_some_and(|body| {
+        matches!(
+            body,
+            JsonValue::Object(object)
+                if object.get("protocol_version")
+                    == Some(&JsonValue::string(COOP_NATIVE_PROTOCOL_VERSION))
+                    && object.get("schema_digest")
+                        == Some(&JsonValue::string(sts2_mcp_server::COOP_NATIVE_SCHEMA_DIGEST))
+        )
+    })
 }
 
 fn is_native_route(config: &RuntimeConfig, request: &GatewayRequest) -> bool {

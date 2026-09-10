@@ -37,7 +37,7 @@ pub(super) fn forward<G: GatewayAdapter>(
             &response.body,
             &context.projection_context(),
             expected_kind,
-            response.status,
+            Some(response.status),
             expected_operation,
             expected_generation,
             expected_recovery_kind,

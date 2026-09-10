@@ -106,6 +106,10 @@ fn runtime_result_recognition_includes_reconcile_response() {
         "snapshot_response",
         "legal_actions_response",
         "reobserve_response",
+        "observation",
+        "legal_catalog_response",
+        "effect_response",
+        "recovery_response",
     ] {
         assert!(is_runtime_result(&JsonValue::object([(
             String::from("kind"),
@@ -116,6 +120,22 @@ fn runtime_result_recognition_includes_reconcile_response() {
         String::from("kind"),
         JsonValue::string("reconcile_request"),
     )])));
+}
+
+#[test]
+fn native_conflict_responses_are_retained_for_projection() -> Result<(), String> {
+    let body = JsonValue::object([
+        (
+            String::from("protocol_version"),
+            JsonValue::string(COOP_NATIVE_PROTOCOL_VERSION),
+        ),
+        (String::from("kind"), JsonValue::string("effect_response")),
+    ]);
+    assert!(is_runtime_result(&body));
+    let response = exchange::classify(GatewayResponse { status: 409, body })
+        .map_err(|error| format!("classify failed: {error:?}"))?;
+    assert_eq!(response.status, 409);
+    Ok(())
 }
 
 #[test]
