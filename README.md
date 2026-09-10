@@ -122,6 +122,15 @@ IDs and digests
 Independent source/component checks passed; native host legality, settled effects, provider
 execution, deployment, and release remain `unverified`.
 
+Current default-main source/component update (2026-09-10): MCP main
+[`3b6d71fe9642d27717ca6cfa07b5342b914c044c`](https://github.com/AI-Ascension/sts2-mcp-server/commit/3b6d71fe9642d27717ca6cfa07b5342b914c044c)
+contains the Runtime-v4 expert state/action mapping and merged REST expert-action selector recovery.
+The copied admitted expert artifacts retain the digests above; the separate REST-action artifact
+remains a candidate at digest
+`bb3555fae28eb1f79d08a15e9884696a579e4c20836f5016509f17e0f4c36fbd`. These source/component and
+bounded synthetic checks do not establish native host legality, settled effects, provider execution,
+deployment, release, or live cross-consumer compatibility.
+
 For the gateway's coordinator-reported peer agreement, select
 `STS2_RUNTIME_PROFILE=coop-synchronization-v1`. Its only tool is
 `sts2.coop_synchronization`, with explicit `instance_id`, `mcp_session_id`, `lease_id`, and
@@ -143,7 +152,7 @@ the corrected visible-map artifact and generation-bound graph projection, and us
 response, and projected-content limits. Legacy profiles remain unchanged; host map freshness and
 visualizer rendering remain unverified. See [ADR 0016](docs/decisions/0016-runtime-map-profile.md).
 
-Dated current-main source/component update (2026-09-08): merged MCP main
+Historical source/component map update (2026-09-08): MCP main
 `10c4532167fcb91d577ddf3a71cb4759c28bef08` contains the additive
 `runtime-map-v1` profile and copied-artifact consumer. Its producer pin is merged protocol main
 `b3d3034f32e68d70c9e681f906ee37d74db153c4` at schema digest
@@ -151,6 +160,14 @@ Dated current-main source/component update (2026-09-08): merged MCP main
 source/component and artifact-copy scope; host extraction, live map freshness, visualizer
 validation, native map visibility, navigation, gameplay, release, and publication remain
 unverified.
+
+Current default-main map source/component update (2026-09-10): MCP main
+[`3b6d71fe9642d27717ca6cfa07b5342b914c044c`](https://github.com/AI-Ascension/sts2-mcp-server/commit/3b6d71fe9642d27717ca6cfa07b5342b914c044c)
+retains the additive `runtime-map-v1` profile and copied-artifact consumer, aligned with current
+protocol main `f2dac90529f584a6511c1760adce9da28f7f910a` at schema digest
+`ceab0d2dfc471d1ec36d12edaf4654b8c7fdced06548bf47265e11c63f98115b`. This is source/component
+and artifact-copy evidence; host extraction, map freshness, visualizer validation, native map
+visibility, navigation, gameplay, deployment, release, and publication remain unverified.
 
 The additive `runtime-v4-expert-rest-action` profile is selected with
 `STS2_RUNTIME_PROFILE=runtime-v4-expert-rest-action`. It exposes exactly `sts2.expert_state`,
