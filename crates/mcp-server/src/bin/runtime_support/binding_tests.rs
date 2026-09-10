@@ -338,6 +338,53 @@ fn co_op_bodyless_read_cannot_inject_missing_or_foreign_authority() {
 }
 
 #[test]
+fn native_routes_are_exactly_allowlisted_and_schema_bound() {
+    let mut observation = request();
+    observation.path = String::from("/v1/instances/instance/coop/native/observation");
+    observation.method = GatewayMethod::Get;
+    observation.body = None;
+    assert_eq!(admit(&config(), &observation), Ok(()));
+
+    let native_body = JsonValue::object([
+        (
+            String::from("protocol_version"),
+            JsonValue::string(sts2_mcp_server::COOP_NATIVE_PROTOCOL_VERSION),
+        ),
+        (
+            String::from("schema_digest"),
+            JsonValue::string(sts2_mcp_server::COOP_NATIVE_SCHEMA_DIGEST),
+        ),
+        (String::from("instance_id"), JsonValue::string("instance")),
+        (String::from("session_id"), JsonValue::string("session")),
+        (String::from("lease_id"), JsonValue::string("lease")),
+        (String::from("lease_epoch"), JsonValue::Number(1)),
+    ]);
+    for suffix in ["legal-catalog", "action", "vote", "rejoin", "recover"] {
+        let mut native = request();
+        native.path = format!("/v1/instances/instance/coop/native/{suffix}");
+        native.method = GatewayMethod::Post;
+        native.body = Some(native_body.clone());
+        assert_eq!(admit(&config(), &native), Ok(()), "{suffix}");
+    }
+
+    let mut extra = observation.clone();
+    extra.path.push_str("/extra");
+    assert_eq!(admit(&config(), &extra), Err(GatewayError::Rejected));
+    let mut wrong_schema = request();
+    wrong_schema.path = String::from("/v1/instances/instance/coop/native/action");
+    wrong_schema.method = GatewayMethod::Post;
+    let mut wrong_body = native_body;
+    if let JsonValue::Object(object) = &mut wrong_body {
+        object.insert(
+            String::from("schema_digest"),
+            JsonValue::string("0000000000000000000000000000000000000000000000000000000000000000"),
+        );
+    }
+    wrong_schema.body = Some(wrong_body);
+    assert_eq!(admit(&config(), &wrong_schema), Err(GatewayError::Rejected));
+}
+
+#[test]
 fn v4_bodyless_reads_allow_the_http_adapter_to_inject_gateway_authority() {
     let mut request = request();
     request.path = "/v4/instances/instance/expert-state".to_owned();

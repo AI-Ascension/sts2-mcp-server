@@ -11,8 +11,9 @@ use http::ReadError;
 pub(crate) use profiles::profile_from_environment;
 
 use sts2_mcp_server::{
-    COOP_RECEIPT_QUERY_PROTOCOL_VERSION, GatewayAdapter, GatewayError, GatewayRequest,
-    GatewayResponse, JsonValue, RUNTIME_MAP_V1_PROTOCOL_VERSION, RUNTIME_V2_PROTOCOL_VERSION,
+    COOP_NATIVE_PROTOCOL_VERSION, COOP_NATIVE_SCHEMA_DIGEST, COOP_RECEIPT_QUERY_PROTOCOL_VERSION,
+    GatewayAdapter, GatewayError, GatewayRequest, GatewayResponse, JsonValue,
+    RUNTIME_MAP_V1_PROTOCOL_VERSION, RUNTIME_V2_PROTOCOL_VERSION,
     RUNTIME_V3_GAMEPLAY_PROTOCOL_VERSION, RUNTIME_V4_EXPERT_ACTION_PROTOCOL_VERSION,
     RUNTIME_V4_EXPERT_REST_ACTION_PROTOCOL_VERSION, SEEDED_RUN_PROTOCOL_VERSION,
     SEEDED_RUN_SCHEMA_DIGEST,
@@ -125,6 +126,10 @@ impl RuntimeGatewayAdapter {
             object.get("protocol_version"),
             Some(JsonValue::String(value)) if value == COOP_RECEIPT_QUERY_PROTOCOL_VERSION
         );
+        let is_coop_native = matches!(
+            object.get("protocol_version"),
+            Some(JsonValue::String(value)) if value == COOP_NATIVE_PROTOCOL_VERSION
+        );
         let is_seeded_run = matches!(
             object.get("protocol_version"),
             Some(JsonValue::String(value)) if value == SEEDED_RUN_PROTOCOL_VERSION
@@ -135,6 +140,7 @@ impl RuntimeGatewayAdapter {
             || is_runtime_v4_rest_action
             || is_runtime_map
             || is_coop_receipt_query
+            || is_coop_native
             || is_seeded_run
         {
             if object.get("instance_id")
@@ -148,6 +154,12 @@ impl RuntimeGatewayAdapter {
             }
             if is_seeded_run
                 && object.get("schema_digest") != Some(&JsonValue::string(SEEDED_RUN_SCHEMA_DIGEST))
+            {
+                return Err(GatewayError::Rejected);
+            }
+            if is_coop_native
+                && object.get("schema_digest")
+                    != Some(&JsonValue::string(COOP_NATIVE_SCHEMA_DIGEST))
             {
                 return Err(GatewayError::Rejected);
             }

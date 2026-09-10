@@ -5,6 +5,15 @@ exists.
 
 ## Unreleased
 
+- 2026-09-10: Add the additive `coop-native-v1-mcp` consumer profile, selected with
+  `STS2_RUNTIME_PROFILE=coop-native-v1`. Its seven typed tools map native observation, legal
+  catalogs, local actions, shared votes, peer rejoin, same-operation recovery, and response-only
+  effect projection to fixed gateway routes. The checked-in component artifact is pinned to schema
+  digest `2f3bc99e53080fa11b39592b64fb0ab964a16f568719a2622d0b2caf766ab629`; MCP and the executable
+  adapter enforce closed envelopes, route/status fences, and receipt/effect/observation relations.
+  Source/component checks do not establish a live two-peer native session, provider participation,
+  deployment, or release compatibility.
+
 - 2026-09-10: Add the additive `seeded-run-v1-mcp` profile with exactly `start_seeded_run` and
   `reconcile_seeded_run`, fixed gateway start/reconciliation routes, bounded standard context and
   identity validation, canonical seed and `run_started` witness projection, and same-operation

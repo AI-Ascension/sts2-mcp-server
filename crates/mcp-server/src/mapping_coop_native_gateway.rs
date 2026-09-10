@@ -16,6 +16,22 @@ pub(super) fn forward<G: GatewayAdapter>(
     expected_kind: &str,
     expected_operation: Option<&str>,
 ) -> RpcResponse {
+    let expected_generation = request
+        .body
+        .as_ref()
+        .and_then(crate::json::JsonValue::as_object)
+        .and_then(|object| object.get("expected_host_generation"))
+        .and_then(|value| match value {
+            crate::json::JsonValue::Number(value) => Some(*value),
+            _ => None,
+        });
+    let expected_recovery_kind = if request.path.ends_with("/rejoin") {
+        Some("rejoin")
+    } else if request.path.ends_with("/recover") {
+        Some("reconcile")
+    } else {
+        None
+    };
     match server.gateway.forward(request) {
         Ok(response) => match project_coop_native_response(
             &response.body,
@@ -23,6 +39,8 @@ pub(super) fn forward<G: GatewayAdapter>(
             expected_kind,
             response.status,
             expected_operation,
+            expected_generation,
+            expected_recovery_kind,
         ) {
             Ok((body, is_error)) => crate::mapping::tool_result(id, body.to_json(), is_error),
             Err(message) => crate::mapping::tool_result(id, message, true),

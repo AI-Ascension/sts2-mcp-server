@@ -72,3 +72,17 @@ Timeout or disconnect uncertainty maps to `unknown`, not a generic successful or
 Only an explicit `settled` result with a fresh post-action observation and `turn_end_settled` witness
 is surfaced as settled. The deterministic fake/source seam is confirmed; live host settlement,
 gameplay mutation, and end-to-end compatibility are unverified.
+
+## `coop-native-v1-mcp` component profile
+
+The additive `coop-native-v1-mcp` profile is selected with `STS2_RUNTIME_PROFILE=coop-native-v1`.
+It exposes typed native observation, legal catalog, local action, shared vote, peer rejoin, recovery,
+and response-only effect tools. The adapter sends observation to the fixed bodyless observation route
+and sends producer operations to the fixed native POST routes; it has no arbitrary downstream path or
+direct host access.
+
+The profile validates the checked-in component artifact, closed envelope and provenance, configured
+MCP/gateway identity, route/status pairing, and receipt/effect/observation generation, digest,
+authority, and checkpoint relations. Rejected and unknown outcomes stay errors and are never retried.
+This confirms the MCP consumer boundary only. A host-backed two-peer session, model participation,
+deployment, and release compatibility require separate acceptance evidence.

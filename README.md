@@ -11,7 +11,7 @@ Ascension flagship toolkit. The repository slug remains `sts2-mcp-server`;
 
 > **AI-Ascension · tier 3: thin MCP adapter** — Thin MCP tool adapter that maps approved calls to the authenticated gateway API without bypassing it.
 >
-> **Status:** deterministic tests, the bounded `runtime-v1` host trace, the runtime-v3 gameplay adapter path, the read-only `coop-synchronization-v1` executable profile, and the additive `seeded-run-v1` source/component profile are `confirmed` for the recorded STS2 v0.107.1 evidence · native multiplayer, live seeded-run settlement, and broader compatibility `unverified`.
+> **Status:** deterministic tests, the bounded `runtime-v1` host trace, the runtime-v3 gameplay adapter path, the read-only `coop-synchronization-v1` executable profile, and the additive `seeded-run-v1` and `coop-native-v1` source/component profiles are `confirmed` for the recorded STS2 v0.107.1 evidence · native multiplayer, live seeded-run settlement, and broader compatibility `unverified`.
 > **Proof:** [45-second browser replay](https://ai-ascension.github.io/proof.html) · [Evidence ledger](https://ai-ascension.github.io/evidence.html) · [This repository on the map](https://ai-ascension.github.io/repositories.html#sts2-mcp-server)
 > **Seam tests:** [crates/mcp-server/tests/seam.rs](crates/mcp-server/tests/seam.rs) — one tool call maps to one gateway request; malformed frames are rejected before the gateway.
 > **Owner:** `sts2-mcp-server` owns the external MCP process boundary: framing, server identity and capabilities, tool schemas, bounded validation, and the versioned mapping to the gateway API.
@@ -27,6 +27,18 @@ The separate `coop-synchronization-v1` profile is read-only coordinator reportin
 multiplayer gameplay. The additive `seeded-run-v1` profile maps one bounded start and one read-only
 reconciliation tool through the leased gateway; its source/component checks do not establish a live
 native seeded run, profile/save isolation, or release compatibility.
+
+The additive `coop-native-v1` profile is selected with `STS2_RUNTIME_PROFILE=coop-native-v1`. It
+exposes seven typed tools for native observation, legal catalogs, local actions, shared votes, peer
+rejoin, same-operation recovery, and response-only effect projection. Observation uses the bodyless
+`GET /v1/instances/{id}/coop/native/observation` route; the other gateway calls use fixed POST routes
+for `legal-catalog`, `action`, `vote`, `rejoin`, and `recover`. The profile consumes the checked-in
+`coop-native-v1` artifact at schema digest
+`2f3bc99e53080fa11b39592b64fb0ab964a16f568719a2622d0b2caf766ab629`, validates receipt/effect/
+observation generation and identity relations, and rejects status or route drift. These are
+source/component and synthetic gateway-boundary checks; a disposable two-peer host-backed native
+session, provider participation, deployment, and release support remain unverified. See
+[ADR 0018](docs/decisions/0018-coop-native-component-consumer.md).
 
 ## Owner and consumers
 
@@ -73,7 +85,7 @@ directory run:
 
 ```bash
 cargo metadata --locked --no-deps --format-version 1
-for profile in poc-v1 runtime-v1 runtime-v2 runtime-v3-gameplay runtime-v4-expert runtime-v4-expert-action runtime-v4-expert-rest-action runtime-map-v1 coop-synchronization-v1 coop-receipt-query-v1 seeded-run-v1; do
+for profile in poc-v1 runtime-v1 runtime-v2 runtime-v3-gameplay runtime-v4-expert runtime-v4-expert-action runtime-v4-expert-rest-action runtime-map-v1 coop-synchronization-v1 coop-receipt-query-v1 seeded-run-v1 coop-native-v1; do
   (cd "protocol-artifact/$profile" && sha256sum -c SHA256SUMS)
 done
 cargo test --locked --package sts2-mcp-server --test artifact

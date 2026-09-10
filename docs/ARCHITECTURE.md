@@ -187,6 +187,23 @@ prototype remains preserved in history under ADR 0012; ADR 0015 implements its a
 read-only scope. The response's source label is retained, and no action/vote/effect tool or
 peer-report ingestion capability is exposed. Gateway owns roster, freshness and authority.
 
+## Native co-op component profile
+
+The additive `coop-native-v1-mcp` profile is selected with
+`STS2_RUNTIME_PROFILE=coop-native-v1` and consumes the checked-in
+`sts2-protocol/coop-native-v1` artifact. Its seven tools map observation, legal catalogs, local
+actions, shared votes, peer rejoin, same-operation recovery, and response-only effect projection.
+Observation uses the bodyless `GET /v1/instances/{id}/coop/native/observation` route; the other
+producer operations use exact POST routes for `legal-catalog`, `action`, `vote`, `rejoin`, and
+`recover`. The executable binding admits only those paths and requires the native protocol/schema
+identity before opening a connection.
+
+The MCP boundary validates the closed envelope, producer provenance, configured identity, status and
+HTTP status pairing, and cross-object receipt/effect/observation authority, digest, checkpoint, and
+generation relations. `unknown` and rejected outcomes remain errors and are never retried. This
+profile is a consumer component; host authority, provider calls, native multiplayer settlement,
+deployment, and release compatibility remain outside this source/component evidence.
+
 ## Runtime-map profile
 
 ADR 0016 adds the additive `runtime-map-v1-mcp` catalog. It keeps the six Runtime-v3 gameplay

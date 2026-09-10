@@ -7,6 +7,9 @@ use crate::{
     McpServer, ToolCatalog, parse_json,
 };
 
+#[path = "mapping_coop_native_relation_tests.rs"]
+mod relation_tests;
+
 #[derive(Clone)]
 struct RecordingGateway {
     response: GatewayResponse,
