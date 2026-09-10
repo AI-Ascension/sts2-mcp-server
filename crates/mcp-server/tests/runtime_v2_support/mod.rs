@@ -70,6 +70,21 @@ pub fn state_call(
 }
 
 #[allow(dead_code)]
+pub fn state_call_with_boot_epoch(
+    id: &str,
+    instance: &str,
+    session: &str,
+    lease: &str,
+    lease_epoch: i64,
+    generation: i64,
+    workflow_boot_epoch: &str,
+) -> String {
+    format!(
+        r#"{{"jsonrpc":"2.0","id":"{id}","method":"tools/call","params":{{"name":"get_state","arguments":{{"instance_id":"{instance}","mcp_session_id":"{session}","lease_id":"{lease}","lease_epoch":{lease_epoch},"generation":{generation},"workflow_boot_epoch":"{workflow_boot_epoch}"}}}}}}"#
+    )
+}
+
+#[allow(dead_code)]
 pub fn reconcile_call(
     id: &str,
     instance: &str,

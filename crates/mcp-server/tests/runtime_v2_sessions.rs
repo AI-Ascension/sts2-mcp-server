@@ -5,7 +5,10 @@
 mod support;
 
 use sts2_mcp_server::{GatewayResponse, JsonValue, McpServer, ToolCatalog};
-use support::{RecordingGateway, reconcile_call, state_call, state_response, submit_call};
+use support::{
+    RecordingGateway, reconcile_call, state_call, state_call_with_boot_epoch, state_response,
+    submit_call,
+};
 
 #[test]
 fn executable_uses_configured_mcp_session_and_gateway_session()
@@ -85,7 +88,15 @@ fn executable_uses_configured_mcp_session_and_gateway_session()
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .spawn()?;
-    let call = state_call("state-1", "instance-1", "mcp-1", "lease-1", 1, 4);
+    let call = state_call_with_boot_epoch(
+        "state-1",
+        "instance-1",
+        "mcp-1",
+        "lease-1",
+        1,
+        4,
+        "boot-2026-09-10",
+    );
     writeln!(child.stdin.take().ok_or("no stdin")?, "{call}")?;
     let output = child.wait_with_output()?;
     let request = peer.join().map_err(|_| "peer panicked")??;
@@ -93,6 +104,7 @@ fn executable_uses_configured_mcp_session_and_gateway_session()
     assert!(String::from_utf8(output.stdout)?.contains("\"isError\":false"));
     assert!(request.contains("x-mcp-session-id: mcp-1\r\n"));
     assert!(request.contains("x-sts2-session-id: session-1\r\n"));
+    assert!(request.contains("x-sts2-workflow-boot-epoch: boot-2026-09-10\r\n"));
     assert!(request.contains("\"session_id\":\"session-1\""));
     Ok(())
 }
