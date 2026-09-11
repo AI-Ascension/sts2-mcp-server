@@ -5,6 +5,13 @@ exists.
 
 ## Unreleased
 
+- 2026-09-11: Restore `coop-native-v1` body-identity compatibility. Native operation, peer, action,
+  proposal, and vote-choice identifiers now retain the reviewed protocol's 512-byte alphabet and
+  length bound, including `/` and `..` in an operation identity, because they are closed envelope fields rather
+  than HTTP headers or path segments. Configured header/path identities remain separately limited to
+  128 bytes. This preserves same-operation rejoin and uncertain-outcome recovery without making a
+  native settlement claim.
+
 - 2026-09-10: Preserve the canonical pending-rejoin recovery response: an `unknown` response
   with an `accepted` receipt may carry the unchanged host generation, while an `unknown` receipt
   remains required to carry a null after-generation fence.

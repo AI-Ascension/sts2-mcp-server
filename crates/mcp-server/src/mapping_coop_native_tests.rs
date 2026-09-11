@@ -9,6 +9,8 @@ use crate::{
 
 #[path = "mapping_coop_native_edge_tests.rs"]
 mod edge_tests;
+#[path = "mapping_coop_native_identity_tests.rs"]
+mod identity_tests;
 #[path = "mapping_coop_native_relation_tests.rs"]
 mod relation_tests;
 

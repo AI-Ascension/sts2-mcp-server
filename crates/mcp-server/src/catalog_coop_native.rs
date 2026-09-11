@@ -42,7 +42,12 @@ pub(super) fn build() -> super::ToolCatalog {
                         "expected_host_generation",
                         "action",
                     ],
-                    &[(String::from("action"), action_schema())],
+                    &[
+                        (String::from("operation_id"), body_identity()),
+                        (String::from("actor_peer"), peer_identity()),
+                        (String::from("expected_host_generation"), generation()),
+                        (String::from("action"), schema::action_schema()),
+                    ],
                 ),
             ),
             descriptor(
@@ -59,7 +64,12 @@ pub(super) fn build() -> super::ToolCatalog {
                         "expected_host_generation",
                         "vote",
                     ],
-                    &[(String::from("vote"), vote_schema())],
+                    &[
+                        (String::from("operation_id"), body_identity()),
+                        (String::from("actor_peer"), peer_identity()),
+                        (String::from("expected_host_generation"), generation()),
+                        (String::from("vote"), schema::vote_schema()),
+                    ],
                 ),
             ),
             descriptor(
@@ -76,7 +86,12 @@ pub(super) fn build() -> super::ToolCatalog {
                         "expected_host_generation",
                         "recovery",
                     ],
-                    &[(String::from("recovery"), rejoin_schema())],
+                    &[
+                        (String::from("operation_id"), body_identity()),
+                        (String::from("actor_peer"), peer_identity()),
+                        (String::from("expected_host_generation"), generation()),
+                        (String::from("recovery"), schema::rejoin_schema()),
+                    ],
                 ),
             ),
             descriptor(
@@ -105,7 +120,10 @@ pub(super) fn build() -> super::ToolCatalog {
                         "operation_id",
                         "recovery",
                     ],
-                    &[(String::from("recovery"), schema::recovery_schema())],
+                    &[
+                        (String::from("operation_id"), body_identity()),
+                        (String::from("recovery"), schema::recovery_schema()),
+                    ],
                 ),
             ),
             descriptor(
@@ -189,7 +207,20 @@ fn identity(pattern: &str) -> JsonValue {
 }
 
 fn peer_identity() -> JsonValue {
-    identity("^peer:[A-Za-z0-9_.:/-]{5,507}$")
+    bounded_identity("^peer:[A-Za-z0-9_.:/-]{5,507}$", 512)
+}
+
+pub(super) fn body_identity() -> JsonValue {
+    bounded_identity("^[A-Za-z0-9_.:/-]{1,512}$", 512)
+}
+
+fn bounded_identity(pattern: &str, maximum: usize) -> JsonValue {
+    JsonValue::object([
+        (String::from("type"), JsonValue::string("string")),
+        (String::from("minLength"), JsonValue::Number(1)),
+        (String::from("maxLength"), JsonValue::Number(maximum as i64)),
+        (String::from("pattern"), JsonValue::string(pattern)),
+    ])
 }
 
 fn generation() -> JsonValue {
@@ -211,104 +242,4 @@ fn nullable(schema: JsonValue) -> JsonValue {
             JsonValue::object([(String::from("type"), JsonValue::string("null"))]),
         ]),
     )])
-}
-
-fn action_schema() -> JsonValue {
-    JsonValue::object([
-        (String::from("type"), JsonValue::string("object")),
-        (String::from("additionalProperties"), JsonValue::Bool(false)),
-        (
-            String::from("required"),
-            JsonValue::Array(
-                ["kind", "action_id", "target_peer"]
-                    .into_iter()
-                    .map(JsonValue::string)
-                    .collect(),
-            ),
-        ),
-        (
-            String::from("properties"),
-            JsonValue::object([
-                (
-                    String::from("kind"),
-                    JsonValue::object([(
-                        String::from("enum"),
-                        JsonValue::Array(
-                            [
-                                "play_card",
-                                "end_turn",
-                                "select_card",
-                                "choose_reward",
-                                "confirm_selection",
-                            ]
-                            .into_iter()
-                            .map(JsonValue::string)
-                            .collect(),
-                        ),
-                    )]),
-                ),
-                (
-                    String::from("action_id"),
-                    identity("^[A-Za-z0-9_.:/-]{1,128}$"),
-                ),
-                (String::from("target_peer"), nullable(peer_identity())),
-            ]),
-        ),
-    ])
-}
-
-fn vote_schema() -> JsonValue {
-    JsonValue::object([
-        (String::from("type"), JsonValue::string("object")),
-        (String::from("additionalProperties"), JsonValue::Bool(false)),
-        (
-            String::from("required"),
-            JsonValue::Array(
-                ["proposal_id", "voter_peer", "choice"]
-                    .into_iter()
-                    .map(JsonValue::string)
-                    .collect(),
-            ),
-        ),
-        (
-            String::from("properties"),
-            JsonValue::object([
-                (
-                    String::from("proposal_id"),
-                    identity("^[A-Za-z0-9_.:/-]{1,128}$"),
-                ),
-                (String::from("voter_peer"), peer_identity()),
-                (
-                    String::from("choice"),
-                    identity("^[A-Za-z0-9_.:/-]{1,128}$"),
-                ),
-            ]),
-        ),
-    ])
-}
-
-fn rejoin_schema() -> JsonValue {
-    JsonValue::object([
-        (String::from("type"), JsonValue::string("object")),
-        (String::from("additionalProperties"), JsonValue::Bool(false)),
-        (
-            String::from("required"),
-            JsonValue::Array(
-                ["kind", "rejoin_epoch"]
-                    .into_iter()
-                    .map(JsonValue::string)
-                    .collect(),
-            ),
-        ),
-        (
-            String::from("properties"),
-            JsonValue::object([
-                (
-                    String::from("kind"),
-                    JsonValue::object([(String::from("const"), JsonValue::string("rejoin"))]),
-                ),
-                (String::from("rejoin_epoch"), generation()),
-            ]),
-        ),
-    ])
 }

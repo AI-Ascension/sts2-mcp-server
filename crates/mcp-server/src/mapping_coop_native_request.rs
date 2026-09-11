@@ -6,8 +6,6 @@ use crate::json::JsonValue;
 use crate::mapping::{safe_header_value, safe_segment};
 use crate::protocol_artifact_coop_native::COOP_NATIVE_MAX_GENERATION;
 
-use crate::catalog::MAX_IDENTIFIER_BYTES;
-
 pub(super) fn identity<'a>(
     arguments: &'a BTreeMap<String, JsonValue>,
     key: &str,
@@ -31,11 +29,8 @@ pub(super) fn operation_id<'a>(
     let value = arguments
         .get(key)
         .and_then(JsonValue::as_string)
-        .filter(|value| safe_header_value(value))
+        .filter(|value| body_identity(value))
         .ok_or("native operation_id is missing, unsafe, or oversized")?;
-    if value.contains('/') {
-        return Err("native operation_id must not contain '/'");
-    }
     Ok(value)
 }
 
@@ -80,7 +75,7 @@ pub(super) fn action(value: Option<&JsonValue>) -> Result<JsonValue, &'static st
     let action_id = object
         .get("action_id")
         .and_then(JsonValue::as_string)
-        .filter(|value| safe_header_value(value))
+        .filter(|value| body_identity(value))
         .ok_or("native action_id is missing or unsafe")?;
     let target_peer = match object.get("target_peer") {
         Some(JsonValue::Null) => JsonValue::Null,
@@ -102,7 +97,7 @@ pub(super) fn vote(value: Option<&JsonValue>) -> Result<JsonValue, &'static str>
     let proposal_id = object
         .get("proposal_id")
         .and_then(JsonValue::as_string)
-        .filter(|value| safe_header_value(value))
+        .filter(|value| body_identity(value))
         .ok_or("native proposal_id is missing or unsafe")?;
     let voter_peer = object
         .get("voter_peer")
@@ -112,7 +107,7 @@ pub(super) fn vote(value: Option<&JsonValue>) -> Result<JsonValue, &'static str>
     let choice = object
         .get("choice")
         .and_then(JsonValue::as_string)
-        .filter(|value| safe_header_value(value))
+        .filter(|value| body_identity(value))
         .ok_or("native vote choice is missing or unsafe")?;
     Ok(JsonValue::object([
         (String::from("proposal_id"), JsonValue::string(proposal_id)),
@@ -158,7 +153,18 @@ fn exact_object<'a>(
 }
 
 pub(super) fn peer_identity(value: &str) -> bool {
-    value.strip_prefix("peer:").is_some_and(|suffix| {
-        (5..=(MAX_IDENTIFIER_BYTES - 1)).contains(&suffix.len()) && safe_header_value(value)
-    })
+    value
+        .strip_prefix("peer:")
+        .is_some_and(|suffix| (5..=507).contains(&suffix.len()) && body_identity(value))
+}
+
+// These values are carried only in the closed native envelope. They must not
+// inherit the shorter HTTP header limit used for configured instance, session,
+// lease, and correlation identities.
+fn body_identity(value: &str) -> bool {
+    !value.is_empty()
+        && value.len() <= 512
+        && value.bytes().all(|byte| {
+            byte.is_ascii_alphanumeric() || matches!(byte, b'-' | b'_' | b'.' | b':' | b'/')
+        })
 }

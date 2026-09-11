@@ -196,7 +196,6 @@ fn booleans(object: &BTreeMap<String, JsonValue>, fields: &[&str]) -> Result<(),
 pub(super) fn safe_identity(value: &str) -> bool {
     !value.is_empty()
         && value.len() <= 512
-        && !value.contains("..")
         && value.bytes().all(|byte| {
             byte.is_ascii_alphanumeric() || matches!(byte, b'-' | b'_' | b'.' | b':' | b'/')
         })
