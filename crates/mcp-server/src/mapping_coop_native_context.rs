@@ -83,14 +83,6 @@ impl Context {
             (String::from("x-sts2-session-id"), self.session.clone()),
             (String::from("x-sts2-lease-id"), self.lease.clone()),
             (String::from("x-sts2-lease-epoch"), self.epoch.to_string()),
-            (
-                String::from("x-sts2-protocol-version"),
-                String::from(COOP_NATIVE_PROTOCOL_VERSION),
-            ),
-            (
-                String::from("x-sts2-schema-digest"),
-                String::from(COOP_NATIVE_SCHEMA_DIGEST),
-            ),
         ]);
         result
     }
@@ -132,13 +124,7 @@ impl Context {
                 recovery: None,
             },
         );
-        let mut request =
-            self.gateway_request(GatewayMethod::Post, "legal-catalog", Some(body), id);
-        request.headers.insert(
-            String::from("x-sts2-host-generation"),
-            expected_generation.to_string(),
-        );
-        request
+        self.gateway_request(GatewayMethod::Post, "legal-catalog", Some(body), id)
     }
 }
 
