@@ -314,6 +314,13 @@ is selected. The canonical peer ID is compared with every tool-visible native ac
 private token is injected solely as `x-sts2-peer-token` for all six native gateway routes. Neither
 value modifies the frozen v1 artifact or catalog. Missing, partial, unsafe, non-canonical, equal,
 or actor-substituted bindings fail closed before MCP opens a gateway connection.
+The executable adapter reads the private credential only from trusted runtime configuration to add
+that header; it is never protocol-visible or model-facing.
+
+For every projected response that carries an observation, MCP additionally requires the observation's
+sole `role: "local"` `peer_token` to equal the configured canonical peer ID. A mismatch is a
+fail-closed attribution error; it neither selects nor recovers a pending operation. Gateway alone
+selects recovery by the original operation and its route/session/lease fence.
 ### Recovery vocabulary ownership
 
 `sts2.recover` accepts exactly four recovery kinds: `reobserve`, `reconcile`, `release_lease`, and

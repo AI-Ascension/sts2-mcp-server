@@ -25,6 +25,13 @@ only in `x-sts2-peer-token` after the runtime adapter has verified every relevan
 MCP rejects missing/partial bindings, a credential presented as an actor, a foreign actor, and a
 caller-supplied peer-token header before it contacts gateway. No credential belongs in an MCP
 descriptor, request argument, native envelope, projection, or copied v1 artifact.
+The executable adapter does receive the private credential through trusted runtime configuration
+solely to attach its gateway authentication header; this is not protocol-visible credential data.
+
+When a native response carries an observation, MCP also checks that the observation's exactly one
+local peer token equals the configured canonical peer ID. This is response attribution only: a
+mismatch is rejected and cannot choose a pending operation or alter recovery, which remain
+gateway-owned by original operation and route/session/lease fence.
 
 This lane does not add gateway route registration, host access, provider execution, or lifecycle
 control. The current gateway and harness heads must implement and independently verify their named

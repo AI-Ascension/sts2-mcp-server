@@ -130,6 +130,33 @@ pub(super) fn validate_observation(value: &JsonValue) -> Result<(), &'static str
     }
     Ok(())
 }
+
+/// A native route is attributable only when gateway's configured canonical
+/// peer is the observation's single local peer. The private route credential
+/// is deliberately not represented here or in the frozen v1 envelope.
+pub(super) fn validate_bound_local_peer(
+    value: &JsonValue,
+    expected_peer: Option<&str>,
+) -> Result<(), &'static str> {
+    let Some(expected_peer) = expected_peer else {
+        return Ok(());
+    };
+    let peers = value
+        .as_object()
+        .and_then(|object| object.get("peers"))
+        .and_then(JsonValue::as_array)
+        .ok_or("native observation peers are missing")?;
+    if peers.iter().any(|peer| {
+        peer.as_object().is_some_and(|object| {
+            object.get("role").and_then(JsonValue::as_string) == Some("local")
+                && object.get("peer_token").and_then(JsonValue::as_string) == Some(expected_peer)
+        })
+    }) {
+        Ok(())
+    } else {
+        Err("native observation local peer does not match configured gateway peer")
+    }
+}
 pub(super) fn generation(value: Option<&JsonValue>) -> Result<i64, &'static str> {
     match value {
         Some(JsonValue::Number(value)) if (0..=COOP_NATIVE_MAX_GENERATION).contains(value) => {

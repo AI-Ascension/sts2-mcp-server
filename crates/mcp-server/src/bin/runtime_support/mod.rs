@@ -93,6 +93,12 @@ impl RuntimeConfig {
             coop_native_peer_binding,
         })
     }
+
+    pub(crate) fn native_peer_id(&self) -> Option<&str> {
+        self.coop_native_peer_binding
+            .as_ref()
+            .map(|binding| binding.peer_id.as_str())
+    }
 }
 
 pub(crate) struct RuntimeGatewayAdapter {

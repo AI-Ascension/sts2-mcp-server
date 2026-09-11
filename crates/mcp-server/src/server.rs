@@ -34,6 +34,7 @@ pub struct McpServer<G> {
     pub(crate) catalog: ToolCatalog,
     pub(crate) gateway_session_id: Option<String>,
     pub(crate) mcp_session_id: Option<String>,
+    pub(crate) native_peer_id: Option<String>,
     pub(crate) rest_action_selections: BTreeMap<RestActionSelectionKey, RestActionSelectionContext>,
     pub(crate) rest_action_operations: BTreeMap<String, RestActionOperationContext>,
     pub(crate) rest_action_selector_reservations: BTreeSet<String>,
@@ -55,6 +56,7 @@ impl<G: GatewayAdapter> McpServer<G> {
             catalog: ToolCatalog::default(),
             gateway_session_id: None,
             mcp_session_id: None,
+            native_peer_id: None,
             rest_action_selections: BTreeMap::new(),
             rest_action_operations: BTreeMap::new(),
             rest_action_selector_reservations: BTreeSet::new(),
@@ -67,6 +69,7 @@ impl<G: GatewayAdapter> McpServer<G> {
             catalog,
             gateway_session_id: None,
             mcp_session_id: None,
+            native_peer_id: None,
             rest_action_selections: BTreeMap::new(),
             rest_action_operations: BTreeMap::new(),
             rest_action_selector_reservations: BTreeSet::new(),
@@ -90,10 +93,18 @@ impl<G: GatewayAdapter> McpServer<G> {
             catalog,
             gateway_session_id: Some(gateway_session_id.into()),
             mcp_session_id: Some(mcp_session_id.into()),
+            native_peer_id: None,
             rest_action_selections: BTreeMap::new(),
             rest_action_operations: BTreeMap::new(),
             rest_action_selector_reservations: BTreeSet::new(),
         }
+    }
+
+    /// Binds native response attribution to the peer selected by gateway
+    /// configuration. This value is never a caller-provided tool argument.
+    pub fn with_native_peer_id(mut self, peer_id: impl Into<String>) -> Self {
+        self.native_peer_id = Some(peer_id.into());
+        self
     }
 
     /// Compatibility entry point: an empty string means no notification response.
@@ -128,6 +139,10 @@ impl<G: GatewayAdapter> McpServer<G> {
 
     pub(crate) fn mcp_session_id(&self) -> Option<&str> {
         self.mcp_session_id.as_deref()
+    }
+
+    pub(crate) fn native_peer_id(&self) -> Option<&str> {
+        self.native_peer_id.as_deref()
     }
 
     fn dispatch(&mut self, request: RpcRequest) -> RpcResponse {
