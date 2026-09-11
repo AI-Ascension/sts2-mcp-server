@@ -275,3 +275,36 @@ fn rejects_129_byte_configured_path_identity_before_gateway_access() -> Result<(
     assert!(server.gateway().requests.is_empty());
     Ok(())
 }
+
+#[test]
+fn rejects_observation_not_attributable_to_the_gateway_bound_peer() -> Result<(), String> {
+    let mut gateway_response = response("observation", "corr-bound-peer", None)?;
+    let JsonValue::Object(body) = &mut gateway_response.body else {
+        return Err(String::from("response body is not an object"));
+    };
+    let Some(JsonValue::Object(observation)) = body.get_mut("observation") else {
+        return Err(String::from("response observation is missing"));
+    };
+    let Some(JsonValue::Array(peers)) = observation.get_mut("peers") else {
+        return Err(String::from("observation peers are missing"));
+    };
+    let Some(JsonValue::Object(local)) = peers.first_mut() else {
+        return Err(String::from("local peer is missing"));
+    };
+    local.insert(
+        String::from("peer_token"),
+        JsonValue::string("peer:foreign"),
+    );
+    let mut server = server(gateway_response).with_native_peer_id("peer:host1");
+    let output = server.handle_frame(&frame(
+        "corr-bound-peer",
+        COOP_NATIVE_OBSERVATION_TOOL,
+        &format!(r#"{{{}}}"#, common()),
+    ));
+    assert!(output.contains(r#""isError":true"#), "{output}");
+    assert!(
+        output.contains("local peer does not match configured gateway peer"),
+        "{output}"
+    );
+    Ok(())
+}

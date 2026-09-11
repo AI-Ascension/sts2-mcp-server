@@ -24,6 +24,7 @@ pub(super) struct Context {
     pub(super) mcp_session: String,
     pub(super) lease: String,
     pub(super) epoch: i64,
+    pub(super) bound_peer: Option<String>,
 }
 
 impl Context {
@@ -60,6 +61,7 @@ impl Context {
             mcp_session: supplied_session.to_owned(),
             lease: lease.to_owned(),
             epoch,
+            bound_peer: server.native_peer_id().map(str::to_owned),
         })
     }
 
@@ -70,6 +72,7 @@ impl Context {
             session: self.session.clone(),
             lease: self.lease.clone(),
             epoch: self.epoch,
+            bound_peer: self.bound_peer.clone(),
         }
     }
 

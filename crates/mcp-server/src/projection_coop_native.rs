@@ -45,6 +45,8 @@ pub(crate) struct NativeContext {
     pub(crate) session: String,
     pub(crate) lease: String,
     pub(crate) epoch: i64,
+    /// Gateway-selected canonical peer, not a credential or tool input.
+    pub(crate) bound_peer: Option<String>,
 }
 
 pub(crate) fn project_coop_native_response(
@@ -104,6 +106,7 @@ pub(crate) fn project_coop_native_response(
         }
         _ => return Err("native co-op response kind is unsupported"),
     }
+    validate_observation_binding(object, context)?;
     let status = object
         .get("status")
         .and_then(JsonValue::as_string)
@@ -155,6 +158,12 @@ pub(crate) fn project_coop_native_legal_catalog(
             .get("observation")
             .ok_or("native legal catalog observation is missing")?,
     )?;
+    observation::validate_bound_local_peer(
+        object
+            .get("observation")
+            .ok_or("native legal catalog observation is missing")?,
+        context.bound_peer.as_deref(),
+    )?;
     if object.get("actor_peer").and_then(JsonValue::as_string) != Some(actor_peer)
         || !metadata::legal_peer_identity(actor_peer)
         || object.get("expected_host_generation") != Some(&JsonValue::Number(expected_generation))
@@ -175,6 +184,19 @@ pub(crate) fn project_coop_native_legal_catalog(
         .ok_or("native legal catalog is missing")?;
     validate_catalog(catalog, actor_peer, expected_generation)?;
     Ok((body.clone(), false))
+}
+
+fn validate_observation_binding(
+    object: &BTreeMap<String, JsonValue>,
+    context: &NativeContext,
+) -> Result<(), &'static str> {
+    let observation = object
+        .get("observation")
+        .ok_or("native response observation is missing")?;
+    if observation != &JsonValue::Null {
+        observation::validate_bound_local_peer(observation, context.bound_peer.as_deref())?;
+    }
+    Ok(())
 }
 
 fn validate_catalog(

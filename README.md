@@ -40,6 +40,14 @@ source/component and synthetic gateway-boundary checks; a disposable two-peer ho
 session, provider participation, deployment, and release support remain unverified. See
 [ADR 0018](docs/decisions/0018-coop-native-component-consumer.md).
 
+The native profile also requires `STS2_COOP_NATIVE_PEER_TOKEN` and
+`STS2_COOP_NATIVE_PEER_ID` together. The peer ID is the canonical `peer:…` identity used by the
+typed tools; the token is a distinct private route credential. MCP never exposes the token in a
+catalog, tool argument, envelope, or response projection, and injects it only as the trusted
+`x-sts2-peer-token` gateway header after it validates the configured peer binding. The executable
+adapter necessarily reads that credential from trusted runtime configuration for this header step;
+it is not protocol-visible or model-facing identity.
+
 ## Owner and consumers
 
 `sts2-mcp-server` owns the external MCP process boundary: framing, server identity and capabilities,

@@ -18,6 +18,7 @@ fn config() -> RuntimeConfig {
         mcp_session_id: String::from("configured-session"),
         lease_id: String::from("configured-lease"),
         lease_epoch: 7,
+        coop_native_peer_binding: None,
     }
 }
 

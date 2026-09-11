@@ -5,6 +5,14 @@ exists.
 
 ## Unreleased
 
+- 2026-09-11: Add ADR 0035 native peer-route transport binding to the executable
+  `coop-native-v1` consumer. Selecting that profile now requires the paired runtime-only
+  `STS2_COOP_NATIVE_PEER_TOKEN` and canonical `STS2_COOP_NATIVE_PEER_ID` configuration. MCP
+  validates each tool-visible actor against the configured canonical peer, rejects a credential
+  presented as an actor, and injects the private token only as `x-sts2-peer-token` after request
+  admission. The credential is absent from tool descriptors, arguments, native envelopes, and
+  copied v1 artifact bytes. Other profiles retain their existing configuration behavior.
+
 - 2026-09-11: Restore `coop-native-v1` body-identity compatibility. Native operation, peer, action,
   proposal, and vote-choice identifiers now retain the reviewed protocol's 512-byte alphabet and
   length bound, including `/` and `..` in an operation identity, because they are closed envelope fields rather

@@ -15,17 +15,23 @@ fn main() {
 }
 
 fn run() -> Result<(), String> {
-    let config = runtime_http::RuntimeConfig::from_environment()?;
     let profile = runtime_http::profile_from_environment()?;
+    let config =
+        runtime_http::RuntimeConfig::from_environment(profile.requires_coop_native_peer_binding)?;
     let gateway_session_id = config.session_id.clone();
     let mcp_session_id = config.mcp_session_id.clone();
+    let native_peer_id = config.native_peer_id().map(str::to_owned);
     let adapter = runtime_http::RuntimeGatewayAdapter::new(config, profile.max_response_bytes);
-    let mut server = McpServer::with_catalog_and_sessions(
+    let server = McpServer::with_catalog_and_sessions(
         adapter,
         profile.catalog,
         gateway_session_id,
         mcp_session_id,
     );
+    let mut server = match native_peer_id {
+        Some(peer_id) => server.with_native_peer_id(peer_id),
+        None => server,
+    };
     let max_frame_bytes = server.catalog().max_frame_bytes();
     let stdin = io::stdin();
     let mut input = stdin.lock();

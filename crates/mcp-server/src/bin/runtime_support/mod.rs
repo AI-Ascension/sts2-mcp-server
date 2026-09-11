@@ -4,6 +4,9 @@ use std::net::SocketAddr;
 
 mod binding;
 use binding::is_runtime_result;
+#[path = "config_coop_native.rs"]
+mod coop_native_config;
+use coop_native_config::CoopNativePeerBinding;
 mod exchange;
 mod http;
 mod profiles;
@@ -31,10 +34,13 @@ pub(crate) struct RuntimeConfig {
     pub(crate) mcp_session_id: String,
     pub(crate) lease_id: String,
     pub(crate) lease_epoch: i64,
+    coop_native_peer_binding: Option<CoopNativePeerBinding>,
 }
 
 impl RuntimeConfig {
-    pub(crate) fn from_environment() -> Result<Self, String> {
+    pub(crate) fn from_environment(
+        requires_coop_native_peer_binding: bool,
+    ) -> Result<Self, String> {
         let gateway_address = gateway_address(&required_or_default(
             "STS2_GATEWAY_ADDR",
             "127.0.0.1:15525",
@@ -67,6 +73,14 @@ impl RuntimeConfig {
                 "STS2_GATEWAY_TOKEN is empty, unsafe, or oversized",
             ));
         }
+        // The native credential pair is meaningful only to the native profile.
+        // Do not make unrelated profiles fail because an operator has a partial
+        // native configuration in their process environment.
+        let coop_native_peer_binding = if requires_coop_native_peer_binding {
+            coop_native_config::from_environment(true)?
+        } else {
+            None
+        };
         Ok(Self {
             gateway_address,
             gateway_token,
@@ -76,7 +90,14 @@ impl RuntimeConfig {
             mcp_session_id,
             lease_id,
             lease_epoch,
+            coop_native_peer_binding,
         })
+    }
+
+    pub(crate) fn native_peer_id(&self) -> Option<&str> {
+        self.coop_native_peer_binding
+            .as_ref()
+            .map(|binding| binding.peer_id.as_str())
     }
 }
 
@@ -197,6 +218,7 @@ impl RuntimeGatewayAdapter {
 impl GatewayAdapter for RuntimeGatewayAdapter {
     fn forward(&mut self, request: GatewayRequest) -> Result<GatewayResponse, GatewayError> {
         binding::admit(&self.config, &request)?;
+        let request = binding::attach_native_peer_token(&self.config, request)?;
         let response_kind = binding::response_kind(&self.config, &request);
         let expert_state_route = request.method == sts2_mcp_server::GatewayMethod::Get
             && request.path == format!("/v4/instances/{}/expert-state", self.config.instance_id);
