@@ -5,6 +5,13 @@ exists.
 
 ## Unreleased
 
+- 2026-09-11: Keep `coop-native-v1` protocol version, schema digest, and expected host generation
+  in its closed request envelopes rather than redundant HTTP headers. The native executable gate
+  now verifies that `x-sts2-protocol-version`, `x-sts2-schema-digest`, and
+  `x-sts2-host-generation` are absent at the synthetic downstream producer while private peer
+  credentials remain gateway-only. This is executable synthetic-boundary evidence, not a native
+  host or settlement claim.
+
 - 2026-09-11: Add ADR 0035 native peer-route transport binding to the executable
   `coop-native-v1` consumer. Selecting that profile now requires the paired runtime-only
   `STS2_COOP_NATIVE_PEER_TOKEN` and canonical `STS2_COOP_NATIVE_PEER_ID` configuration. MCP

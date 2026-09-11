@@ -180,13 +180,7 @@ fn maps_legal_catalog_to_generation_bound_read_route() -> Result<(), String> {
         body.as_object().and_then(|object| object.get("receipt")),
         Some(&JsonValue::Null)
     );
-    assert_eq!(
-        request
-            .headers
-            .get("x-sts2-host-generation")
-            .map(String::as_str),
-        Some("1")
-    );
+    assert!(!request.headers.contains_key("x-sts2-host-generation"));
     Ok(())
 }
 
@@ -263,13 +257,9 @@ fn maps_observation_action_vote_rejoin_and_recovery_to_fixed_routes() -> Result<
             .ok_or_else(|| format!("{name} did not reach gateway"))?;
         assert_eq!(request.method, method, "{name}");
         assert_eq!(request.path, path, "{name}");
-        assert_eq!(
-            request
-                .headers
-                .get("x-sts2-schema-digest")
-                .map(String::as_str),
-            Some(COOP_NATIVE_SCHEMA_DIGEST)
-        );
+        assert!(!request.headers.contains_key("x-sts2-protocol-version"));
+        assert!(!request.headers.contains_key("x-sts2-schema-digest"));
+        assert!(!request.headers.contains_key("x-sts2-host-generation"));
     }
     Ok(())
 }

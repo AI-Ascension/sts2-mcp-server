@@ -177,6 +177,23 @@ invoke a model or provider, prove native host legality or settlement, or establi
 release, or Workshop compatibility. The host-backed acceptance campaign must exercise at least two
 native instances and preserve the same operation identity through disconnect/rejoin recovery.
 
+The ignored `native_profile_gateway_runtime` gate runs the MCP executable against an exact reviewed
+gateway binary and a bounded synthetic loopback producer. It verifies that the closed envelope
+retains `protocol_version`, `schema_digest`, and `expected_host_generation` while the downstream
+producer receives none of the redundant `x-sts2-protocol-version`, `x-sts2-schema-digest`, or
+`x-sts2-host-generation` headers. It also covers private-credential non-forwarding, unknown-action
+recovery with a null actor, stale lease rejection, and peer-attribution rejection. Run it only with
+the reviewed gateway binary:
+
+```sh
+STS2_COOP_GATEWAY_BINARY=/path/to/reviewed/sts2-gateway-runtime \
+  cargo test --locked --package sts2-mcp-server --test native_profile_gateway_runtime \
+  -- --ignored --exact native_profile_executable_gate_uses_private_binding_and_fences_recovery
+```
+
+The producer is synthetic test code, not a game host; passing this gate does not prove real native
+host behavior, two-peer settlement, or gameplay.
+
 ## Runtime-map profile checks
 
 `runtime_map_v1.rs` verifies the exact seven-tool catalog, `sts2.map_snapshot` argument schema,
