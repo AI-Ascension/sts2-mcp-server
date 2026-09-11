@@ -62,6 +62,13 @@ host to a supported compatibility row.
 | `coop-receipt-query-v1-mcp` | `POST /v1/instances/{id}/coop/receipt-query` | Proposed-artifact checksum/schema tests, canonical-wire mapping tests, and read-only projection checks | Additive proposed-unadmitted profile; no admitted consumers or native producer/host/provider/deployment/release compatibility |
 | `coop-native-v1-mcp` | `GET /v1/instances/{id}/coop/native/observation`, fixed POST `legal-catalog`, `action`, `vote`, `rejoin`, and `recover` routes | Seven-tool catalog, copied-artifact checks, fixed-route mapping, closed-envelope validation, and receipt/effect/observation relation tests | Source/component consumer confirmed at schema digest `2f3bc99e…`; live two-peer host settlement, provider execution, deployment, and release compatibility unverified |
 
+For `coop-native-v1-mcp`, configured instance, MCP-session, gateway-session, lease, and correlation
+identities remain header/path bounded at 128 bytes. Operation, peer, action, proposal, and vote-choice
+identities are closed envelope fields and retain the protocol's 512-byte alphabet and length bound;
+they are not rewritten, put in a route, or silently narrowed (including valid `..` body text). A timeout or `unknown` receipt remains an
+unsettled outcome tied to that same operation identity and must be reconciled through the fixed recovery
+tool, never retried by MCP.
+
 ### Historical Runtime-v4 request-binding update — 2026-09-07
 
 The source/component update at MCP head `901c9edd94833fca6bfe322e0c515f91c8b2b281`, integrated

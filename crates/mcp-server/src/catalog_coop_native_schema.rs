@@ -2,7 +2,98 @@
 
 use crate::json::JsonValue;
 
-use super::{generation, identity, nullable};
+use super::{body_identity, generation, identity, nullable, peer_identity};
+
+pub(super) fn action_schema() -> JsonValue {
+    JsonValue::object([
+        (String::from("type"), JsonValue::string("object")),
+        (String::from("additionalProperties"), JsonValue::Bool(false)),
+        (
+            String::from("required"),
+            JsonValue::Array(
+                ["kind", "action_id", "target_peer"]
+                    .into_iter()
+                    .map(JsonValue::string)
+                    .collect(),
+            ),
+        ),
+        (
+            String::from("properties"),
+            JsonValue::object([
+                (
+                    String::from("kind"),
+                    JsonValue::object([(
+                        String::from("enum"),
+                        JsonValue::Array(
+                            [
+                                "play_card",
+                                "end_turn",
+                                "select_card",
+                                "choose_reward",
+                                "confirm_selection",
+                            ]
+                            .into_iter()
+                            .map(JsonValue::string)
+                            .collect(),
+                        ),
+                    )]),
+                ),
+                (String::from("action_id"), body_identity()),
+                (String::from("target_peer"), nullable(peer_identity())),
+            ]),
+        ),
+    ])
+}
+
+pub(super) fn vote_schema() -> JsonValue {
+    JsonValue::object([
+        (String::from("type"), JsonValue::string("object")),
+        (String::from("additionalProperties"), JsonValue::Bool(false)),
+        (
+            String::from("required"),
+            JsonValue::Array(
+                ["proposal_id", "voter_peer", "choice"]
+                    .into_iter()
+                    .map(JsonValue::string)
+                    .collect(),
+            ),
+        ),
+        (
+            String::from("properties"),
+            JsonValue::object([
+                (String::from("proposal_id"), body_identity()),
+                (String::from("voter_peer"), peer_identity()),
+                (String::from("choice"), body_identity()),
+            ]),
+        ),
+    ])
+}
+
+pub(super) fn rejoin_schema() -> JsonValue {
+    JsonValue::object([
+        (String::from("type"), JsonValue::string("object")),
+        (String::from("additionalProperties"), JsonValue::Bool(false)),
+        (
+            String::from("required"),
+            JsonValue::Array(
+                ["kind", "rejoin_epoch"]
+                    .into_iter()
+                    .map(JsonValue::string)
+                    .collect(),
+            ),
+        ),
+        (
+            String::from("properties"),
+            JsonValue::object([
+                (
+                    String::from("kind"),
+                    JsonValue::object([(String::from("const"), JsonValue::string("rejoin"))]),
+                ),
+                (String::from("rejoin_epoch"), generation()),
+            ]),
+        ),
+    ])
+}
 
 pub(super) fn recovery_schema() -> JsonValue {
     JsonValue::object([
@@ -92,10 +183,7 @@ pub(super) fn effect_envelope_schema() -> JsonValue {
             String::from("kind"),
             JsonValue::object([(String::from("const"), JsonValue::string("effect_response"))]),
         ),
-        (
-            String::from("operation_id"),
-            identity("^[A-Za-z0-9_.:/-]{1,128}$"),
-        ),
+        (String::from("operation_id"), body_identity()),
         (
             String::from("actor_peer"),
             JsonValue::object([(String::from("type"), JsonValue::string("null"))]),
@@ -175,10 +263,7 @@ fn receipt_schema() -> JsonValue {
         (
             String::from("properties"),
             JsonValue::object([
-                (
-                    String::from("operation_id"),
-                    identity("^[A-Za-z0-9_.:/-]{1,512}$"),
-                ),
+                (String::from("operation_id"), body_identity()),
                 (
                     String::from("status"),
                     identity("^(accepted|settled|rejected|unknown)$"),
@@ -188,27 +273,15 @@ fn receipt_schema() -> JsonValue {
                     String::from("after_host_generation"),
                     nullable(generation()),
                 ),
-                (
-                    String::from("authority_id"),
-                    identity("^[A-Za-z0-9_.:/-]{1,512}$"),
-                ),
-                (
-                    String::from("authority_epoch"),
-                    identity("^[A-Za-z0-9_.:/-]{1,512}$"),
-                ),
-                (
-                    String::from("checkpoint_id"),
-                    identity("^[A-Za-z0-9_.:/-]{1,512}$"),
-                ),
+                (String::from("authority_id"), body_identity()),
+                (String::from("authority_epoch"), body_identity()),
+                (String::from("checkpoint_id"), body_identity()),
                 (String::from("state_digest"), identity("^[0-9a-f]{64}$")),
                 (
                     String::from("native_checksum"),
                     nullable(identity("^[0-9a-f]{64}$")),
                 ),
-                (
-                    String::from("error_code"),
-                    nullable(identity("^[A-Za-z0-9_.:/-]{1,512}$")),
-                ),
+                (String::from("error_code"), nullable(body_identity())),
             ]),
         ),
     ])
