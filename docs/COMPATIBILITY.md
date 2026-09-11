@@ -307,6 +307,13 @@ members, foreign identity, status/route drift, and receipt/effect/observation ge
 authority mismatches. The profile's source/component and synthetic boundary evidence does not
 establish a native host session, two-peer settlement, model participation, deployment, or release
 support; those require the host-backed acceptance campaign described in the project ledger.
+
+The executable-only ADR 0035 peer route binding requires the paired
+`STS2_COOP_NATIVE_PEER_TOKEN` and `STS2_COOP_NATIVE_PEER_ID` configuration only when this profile
+is selected. The canonical peer ID is compared with every tool-visible native actor; the distinct
+private token is injected solely as `x-sts2-peer-token` for all six native gateway routes. Neither
+value modifies the frozen v1 artifact or catalog. Missing, partial, unsafe, non-canonical, equal,
+or actor-substituted bindings fail closed before MCP opens a gateway connection.
 ### Recovery vocabulary ownership
 
 `sts2.recover` accepts exactly four recovery kinds: `reobserve`, `reconcile`, `release_lease`, and

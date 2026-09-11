@@ -18,6 +18,14 @@ and receipts. `unknown` and rejected results remain tool errors; the adapter nev
 infers settlement. The artifact copy and deterministic gateway-double checks establish component
 behavior only.
 
+ADR 0035 adds an executable transport binding without changing the artifact. When this profile is
+selected, `STS2_COOP_NATIVE_PEER_TOKEN` and `STS2_COOP_NATIVE_PEER_ID` must be paired. The latter
+is a canonical `peer:…` tool-visible identity; the former is a distinct private credential inserted
+only in `x-sts2-peer-token` after the runtime adapter has verified every relevant native actor.
+MCP rejects missing/partial bindings, a credential presented as an actor, a foreign actor, and a
+caller-supplied peer-token header before it contacts gateway. No credential belongs in an MCP
+descriptor, request argument, native envelope, projection, or copied v1 artifact.
+
 This lane does not add gateway route registration, host access, provider execution, or lifecycle
 control. The current gateway and harness heads must implement and independently verify their named
 consumer contracts before this profile can be used across the runtime. Live native multiplayer

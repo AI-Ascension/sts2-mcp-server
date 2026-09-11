@@ -15,6 +15,9 @@ use super::http::{
 pub(crate) struct RuntimeProfile {
     pub(crate) catalog: ToolCatalog,
     pub(crate) max_response_bytes: usize,
+    /// Native producer routes require a private transport binding that is not
+    /// part of the serialized MCP or coop-native-v1 contracts.
+    pub(crate) requires_coop_native_peer_binding: bool,
 }
 
 pub(crate) fn profile_from_environment() -> Result<RuntimeProfile, String> {
@@ -33,18 +36,22 @@ pub(crate) fn profile_for_name(profile: Option<&str>) -> Result<RuntimeProfile, 
         "runtime-v1" => Ok(RuntimeProfile {
             catalog: ToolCatalog::runtime_v1(),
             max_response_bytes: LEGACY_MAX_RESPONSE_BYTES,
+            requires_coop_native_peer_binding: false,
         }),
         "runtime-v2" => Ok(RuntimeProfile {
             catalog: ToolCatalog::runtime_v2(),
             max_response_bytes: LEGACY_MAX_RESPONSE_BYTES,
+            requires_coop_native_peer_binding: false,
         }),
         "runtime-v3-gameplay" => Ok(RuntimeProfile {
             catalog: ToolCatalog::runtime_v3_gameplay(),
             max_response_bytes: RUNTIME_V3_MAX_RESPONSE_BYTES,
+            requires_coop_native_peer_binding: false,
         }),
         "runtime-v4-expert" => Ok(RuntimeProfile {
             catalog: ToolCatalog::runtime_v4_expert(),
             max_response_bytes: RUNTIME_V3_MAX_RESPONSE_BYTES,
+            requires_coop_native_peer_binding: false,
         }),
         "runtime-v4-expert-rest-action" => Ok(RuntimeProfile {
             catalog: {
@@ -54,14 +61,17 @@ pub(crate) fn profile_for_name(profile: Option<&str>) -> Result<RuntimeProfile, 
                 ToolCatalog::runtime_v4_expert_rest_action()
             },
             max_response_bytes: RUNTIME_V3_MAX_RESPONSE_BYTES,
+            requires_coop_native_peer_binding: false,
         }),
         "runtime-map-v1" => Ok(RuntimeProfile {
             catalog: ToolCatalog::runtime_map_v1(),
             max_response_bytes: MAP_MAX_RESPONSE_BYTES,
+            requires_coop_native_peer_binding: false,
         }),
         "coop-synchronization-v1" => Ok(RuntimeProfile {
             catalog: ToolCatalog::coop_synchronization(),
             max_response_bytes: 16 * 1024,
+            requires_coop_native_peer_binding: false,
         }),
         "coop-receipt-query-v1" => Ok(RuntimeProfile {
             catalog: {
@@ -70,10 +80,12 @@ pub(crate) fn profile_for_name(profile: Option<&str>) -> Result<RuntimeProfile, 
                 ToolCatalog::coop_receipt_query()
             },
             max_response_bytes: 16 * 1024,
+            requires_coop_native_peer_binding: false,
         }),
         "seeded-run-v1" => Ok(RuntimeProfile {
             catalog: ToolCatalog::seeded_run_v1(),
             max_response_bytes: LEGACY_MAX_RESPONSE_BYTES,
+            requires_coop_native_peer_binding: false,
         }),
         "coop-native-v1" => {
             verify_coop_native_artifact()
@@ -81,6 +93,7 @@ pub(crate) fn profile_for_name(profile: Option<&str>) -> Result<RuntimeProfile, 
             Ok(RuntimeProfile {
                 catalog: ToolCatalog::coop_native(),
                 max_response_bytes: RUNTIME_V3_MAX_RESPONSE_BYTES,
+                requires_coop_native_peer_binding: true,
             })
         }
         value => Err(format!(
@@ -99,6 +112,7 @@ mod tests {
         let profile = profile_for_name(Some("coop-native-v1"))?;
         assert_eq!(profile.catalog.revision, "coop-native-v1-mcp");
         assert_eq!(profile.max_response_bytes, RUNTIME_V3_MAX_RESPONSE_BYTES);
+        assert!(profile.requires_coop_native_peer_binding);
         Ok(())
     }
 }

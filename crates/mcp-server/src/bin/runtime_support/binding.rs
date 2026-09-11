@@ -6,6 +6,9 @@ use sts2_mcp_server::{
     GatewayRequest, JsonValue, RUNTIME_V4_EXPERT_REST_ACTION_PROTOCOL_VERSION,
 };
 
+#[path = "binding_native_peer.rs"]
+mod native_peer;
+
 pub(super) fn is_runtime_result(body: &JsonValue) -> bool {
     matches!(
         body,
@@ -55,7 +58,10 @@ pub(super) fn admit(config: &RuntimeConfig, request: &GatewayRequest) -> Result<
     {
         return Err(GatewayError::Rejected);
     }
-    let native_route = version == "v1" && is_native_route(config, request);
+    let native_route = version == "v1" && native_peer::is_route(config, request);
+    if native_route {
+        native_peer::admit(config, request)?;
+    }
     if version != "v3"
         && version != "v4"
         && response_kind(config, request).is_none()
@@ -116,9 +122,23 @@ pub(super) fn admit(config: &RuntimeConfig, request: &GatewayRequest) -> Result<
     Ok(())
 }
 
+/// Inject the private route credential only after all caller-visible request
+/// fields have been admitted. The token cannot enter an MCP tool argument or
+/// native envelope, and no arbitrary caller-supplied token header is accepted.
+pub(super) fn attach_native_peer_token(
+    config: &RuntimeConfig,
+    request: GatewayRequest,
+) -> Result<GatewayRequest, GatewayError> {
+    native_peer::attach(config, request)
+}
+
 #[cfg(test)]
 #[path = "binding_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "binding_native_peer_tests.rs"]
+mod native_peer_tests;
 
 pub(super) fn response_kind(
     config: &RuntimeConfig,
@@ -237,36 +257,6 @@ fn is_native_body(request: &GatewayRequest) -> bool {
                         == Some(&JsonValue::string(sts2_mcp_server::COOP_NATIVE_SCHEMA_DIGEST))
         )
     })
-}
-
-fn is_native_route(config: &RuntimeConfig, request: &GatewayRequest) -> bool {
-    let prefix = format!("/v1/instances/{}/coop/native/", config.instance_id);
-    let Some(route) = request.path.strip_prefix(&prefix) else {
-        return false;
-    };
-    match (request.method, route, request.body.is_some()) {
-        (GatewayMethod::Get, "observation", false) => true,
-        (GatewayMethod::Post, "legal-catalog" | "action" | "vote" | "rejoin" | "recover", true) => {
-            request
-                .body
-                .as_ref()
-                .and_then(|body| match body {
-                    JsonValue::Object(object)
-                        if object.get("protocol_version")
-                            == Some(&JsonValue::string(COOP_NATIVE_PROTOCOL_VERSION))
-                            && object.get("schema_digest")
-                                == Some(&JsonValue::string(
-                                    sts2_mcp_server::COOP_NATIVE_SCHEMA_DIGEST,
-                                )) =>
-                    {
-                        Some(())
-                    }
-                    _ => None,
-                })
-                .is_some()
-        }
-        _ => false,
-    }
 }
 
 fn safe_operation_id(value: &str) -> bool {

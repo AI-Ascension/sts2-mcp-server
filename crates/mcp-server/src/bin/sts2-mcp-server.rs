@@ -15,8 +15,9 @@ fn main() {
 }
 
 fn run() -> Result<(), String> {
-    let config = runtime_http::RuntimeConfig::from_environment()?;
     let profile = runtime_http::profile_from_environment()?;
+    let config =
+        runtime_http::RuntimeConfig::from_environment(profile.requires_coop_native_peer_binding)?;
     let gateway_session_id = config.session_id.clone();
     let mcp_session_id = config.mcp_session_id.clone();
     let adapter = runtime_http::RuntimeGatewayAdapter::new(config, profile.max_response_bytes);
