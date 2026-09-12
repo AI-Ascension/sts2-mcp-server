@@ -95,13 +95,15 @@ pub(super) fn admit(config: &RuntimeConfig, request: &GatewayRequest) -> Result<
             _ => return Err(GatewayError::Rejected),
         }
     }
+    checkpoint_reference::admit(config, request)?;
     let adapter_injected_v4_authority = version == "v4" && request.body.is_none();
     // Runtime-v1 retains its documented configured identity injection. Newer profiles
     // must not silently substitute authority, including for bodyless observation calls.
     let is_legacy_v1_injection = version == "v1"
         && !request.path.ends_with("/coop/synchronization")
         && !request.path.ends_with("/coop/receipt-query")
-        && !request.path.ends_with("/map-snapshot");
+        && !request.path.ends_with("/map-snapshot")
+        && !request.path.ends_with("/checkpoint-reference");
     if !is_legacy_v1_injection {
         // MCP correlation sessions are a separate namespace; only explicit gateway
         // authority headers/body fields are compared with configured gateway identity.
@@ -173,6 +175,11 @@ pub(super) fn response_kind(
                     if version == "v1" && request.body.is_none() =>
                 {
                     Some("synchronization_response")
+                }
+                (GatewayMethod::Get, "checkpoint-reference")
+                    if version == "v1" && request.body.is_none() =>
+                {
+                    Some("checkpoint_reference_response")
                 }
                 (GatewayMethod::Get, "state") => Some("state_response"),
                 (GatewayMethod::Get, "map-snapshot") if version == "v1" => {
@@ -285,6 +292,10 @@ pub(super) fn response(
         ("correlation_id", correlation),
         ("kind", kind),
     ] {
+        if name == "kind" && kind == "checkpoint_reference_response" {
+            checkpoint_reference::response(config, body)?;
+            continue;
+        }
         if object.get(name) != Some(&JsonValue::string(expected)) {
             return Err(GatewayError::MalformedResponse);
         }
@@ -294,3 +305,6 @@ pub(super) fn response(
     }
     Ok(())
 }
+
+#[path = "binding_checkpoint_reference.rs"]
+mod checkpoint_reference;

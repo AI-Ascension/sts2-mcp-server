@@ -12,6 +12,8 @@ use crate::server::McpServer;
 
 const INVALID_REQUEST_ID: &str = "request id contains an unsafe or oversized header value";
 
+#[path = "mapping_checkpoint_reference.rs"]
+mod checkpoint_reference;
 #[path = "mapping_coop_native.rs"]
 mod coop_native;
 #[path = "mapping_coop_receipt_query.rs"]
@@ -67,6 +69,9 @@ pub(crate) fn tools_call<G: GatewayAdapter>(
     }
     if server.catalog.is_runtime_v4_expert_rest_action() {
         return runtime_v4_expert_rest_action::tools_call(server, request);
+    }
+    if server.catalog.is_checkpoint_reference_v1() {
+        return checkpoint_reference::tools_call(server, request);
     }
     if server.catalog.is_runtime_map_v1() {
         return runtime_map::tools_call(server, request);

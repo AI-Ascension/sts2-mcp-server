@@ -22,6 +22,7 @@ mod receipt_query_json;
 mod server;
 mod transport;
 
+pub use catalog::CHECKPOINT_REFERENCE_TOOL;
 pub use catalog::COOP_RECEIPT_QUERY_TOOL;
 pub use catalog::COOP_SYNCHRONIZATION_TOOL;
 pub use catalog::{
@@ -107,3 +108,5 @@ pub use protocol_artifact_seeded_run::{
 pub use receipt_query_json::canonical_coop_receipt_query;
 pub use server::{MCP_PROTOCOL_VERSION, McpServer, SERVER_NAME, SERVER_VERSION};
 pub use transport::{FrameCodec, FrameError, MAX_FRAME_BYTES};
+
+mod checkpoint_reference;

@@ -257,3 +257,12 @@ Artifact verification checks the proposed-unadmitted manifest, schema `$id`, dig
 JSON, and every checksum entry. These are canonical-wire, artifact-integrity, and synthetic mapping
 checks; no admitted consumer, native producer, host, provider, deployment, or release evidence is
 implied.
+
+## Public checkpoint reference profile
+
+`checkpoint_reference_mapping` exercises the production catalog and mapping with the pinned public
+reference golden, explicit authority headers, foreign identities, malformed arguments, unsupported
+versions, privileged fields, and unavailable transport. Executable binding tests exercise fixed-route
+admission and a synthetic HTTP response with a foreign caller. These are source/component tests,
+not proof of a native checkpoint producer or verified restore. Use `STS2_RUNTIME_PROFILE=checkpoint-reference-v1`
+to select the standalone read tool; existing profiles are unchanged.

@@ -5,6 +5,10 @@ exists.
 
 ## Unreleased
 
+- Add opt-in checkpoint-reference-v1 profile and the authorized sts2.checkpoint_reference
+  read tool. Closed, bounded projection rejects foreign authority and hidden data; missing
+  producers remain unavailable without capture or restore claims.
+
 - 2026-09-11: Keep `coop-native-v1` protocol version, schema digest, and expected host generation
   in its closed request envelopes rather than redundant HTTP headers. The native executable gate
   now verifies that `x-sts2-protocol-version`, `x-sts2-schema-digest`, and

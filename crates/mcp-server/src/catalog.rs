@@ -3,6 +3,8 @@
 use crate::json::JsonValue;
 use crate::transport::{LEGACY_MAX_FRAME_BYTES, MAX_FRAME_BYTES};
 
+#[path = "catalog_checkpoint_reference.rs"]
+mod checkpoint_reference;
 #[path = "catalog_coop_native.rs"]
 mod coop_native;
 #[path = "catalog_coop_receipt_query.rs"]
@@ -33,6 +35,7 @@ pub const DISPATCH_ACTION_TOOL: &str = "sts2.dispatch_action";
 pub const WAIT_FOR_TRANSITION_TOOL: &str = "sts2.wait_for_transition";
 pub const REOBSERVE_TOOL: &str = "sts2.reobserve";
 pub const RECOVER_TOOL: &str = "sts2.recover";
+pub const CHECKPOINT_REFERENCE_TOOL: &str = "sts2.checkpoint_reference";
 pub const MAP_SNAPSHOT_TOOL: &str = "sts2.map_snapshot";
 pub const COOP_SYNCHRONIZATION_TOOL: &str = coop_synchronization::SYNC_TOOL;
 pub const COOP_RECEIPT_QUERY_TOOL: &str = coop_receipt_query::COOP_RECEIPT_QUERY_TOOL;
@@ -123,6 +126,11 @@ impl ToolCatalog {
     }
 
     #[must_use]
+    pub fn checkpoint_reference_v1() -> Self {
+        checkpoint_reference::build()
+    }
+
+    #[must_use]
     pub fn runtime_map_v1() -> Self {
         runtime_map::build()
     }
@@ -188,6 +196,10 @@ impl ToolCatalog {
 
     pub(crate) fn is_runtime_v4_expert_rest_action(&self) -> bool {
         self.revision == runtime_v4_expert_rest_action::REVISION
+    }
+
+    pub(crate) fn is_checkpoint_reference_v1(&self) -> bool {
+        self.revision == checkpoint_reference::REVISION
     }
 
     pub(crate) fn is_runtime_map_v1(&self) -> bool {

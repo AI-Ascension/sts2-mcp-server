@@ -6,7 +6,7 @@ use std::collections::BTreeMap;
 use std::net::SocketAddr;
 use sts2_mcp_server::{Correlation, GatewayAdapter, RequestId};
 
-fn config() -> RuntimeConfig {
+pub(super) fn config() -> RuntimeConfig {
     RuntimeConfig {
         gateway_address: SocketAddr::from(([127, 0, 0, 1], 15525)),
         gateway_token: String::from("token"),
@@ -94,7 +94,7 @@ fn semantic_http_uncertainty_retains_the_received_error_origin() {
     }
 }
 
-fn request() -> GatewayRequest {
+pub(super) fn request() -> GatewayRequest {
     GatewayRequest {
         method: GatewayMethod::Get,
         path: String::from("/v2/instances/instance/operations/operation"),

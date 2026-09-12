@@ -63,6 +63,11 @@ pub(crate) fn profile_for_name(profile: Option<&str>) -> Result<RuntimeProfile, 
             max_response_bytes: RUNTIME_V3_MAX_RESPONSE_BYTES,
             requires_coop_native_peer_binding: false,
         }),
+        "checkpoint-reference-v1" => Ok(RuntimeProfile {
+            catalog: ToolCatalog::checkpoint_reference_v1(),
+            max_response_bytes: 8192,
+            requires_coop_native_peer_binding: false,
+        }),
         "runtime-map-v1" => Ok(RuntimeProfile {
             catalog: ToolCatalog::runtime_map_v1(),
             max_response_bytes: MAP_MAX_RESPONSE_BYTES,
@@ -97,7 +102,7 @@ pub(crate) fn profile_for_name(profile: Option<&str>) -> Result<RuntimeProfile, 
             })
         }
         value => Err(format!(
-            "STS2_RUNTIME_PROFILE must be runtime-v1, runtime-v2, runtime-v3-gameplay, runtime-v4-expert, runtime-v4-expert-rest-action, runtime-map-v1, coop-synchronization-v1, coop-receipt-query-v1, seeded-run-v1, or coop-native-v1, got {value}"
+            "STS2_RUNTIME_PROFILE must be runtime-v1, runtime-v2, runtime-v3-gameplay, runtime-v4-expert, runtime-v4-expert-rest-action, runtime-map-v1, coop-synchronization-v1, coop-receipt-query-v1, seeded-run-v1, coop-native-v1, or checkpoint-reference-v1, got {value}"
         )),
     }
 }
@@ -106,6 +111,15 @@ pub(crate) fn profile_for_name(profile: Option<&str>) -> Result<RuntimeProfile, 
 mod tests {
     use super::super::http::RUNTIME_V3_MAX_RESPONSE_BYTES;
     use super::profile_for_name;
+
+    #[test]
+    fn checkpoint_reference_profile_has_its_own_bounded_catalog() -> Result<(), String> {
+        let profile = profile_for_name(Some("checkpoint-reference-v1"))?;
+        assert_eq!(profile.catalog.revision, "checkpoint-reference-v1-mcp");
+        assert_eq!(profile.max_response_bytes, 8192);
+        assert!(!profile.requires_coop_native_peer_binding);
+        Ok(())
+    }
 
     #[test]
     fn native_component_verifies_and_selects_its_catalog() -> Result<(), String> {
