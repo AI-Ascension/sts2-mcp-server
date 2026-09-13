@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 
+use super::http::ReadError;
 use super::profiles::profile_for_name;
 use super::*;
 use std::collections::BTreeMap;
@@ -51,7 +52,10 @@ fn gateway_configuration_rejects_dns_remote_zero_port_and_unsafe_tokens() {
 
 #[test]
 fn oversized_http_responses_have_a_distinct_gateway_error() {
-    assert_eq!(map_io(ReadError::Oversized), GatewayError::ResponseTooLarge);
+    assert_eq!(
+        exchange::map_io(ReadError::Oversized),
+        GatewayError::ResponseTooLarge
+    );
 }
 
 fn request(body: JsonValue) -> GatewayRequest {

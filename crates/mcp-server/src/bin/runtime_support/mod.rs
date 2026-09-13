@@ -10,7 +10,6 @@ use coop_native_config::CoopNativePeerBinding;
 mod exchange;
 mod http;
 mod profiles;
-use http::ReadError;
 pub(crate) use profiles::profile_from_environment;
 
 use sts2_mcp_server::{
@@ -159,14 +158,16 @@ impl RuntimeGatewayAdapter {
             object.get("protocol_version"),
             Some(JsonValue::String(value)) if value == GAME_INFORMATION_PROTOCOL_VERSION
         );
-        if is_runtime_v2
-            || is_runtime_v3
-            || is_runtime_v4_action
-            || is_runtime_v4_rest_action
-            || is_runtime_map
-            || is_coop_receipt_query
-            || is_coop_native
-            || is_seeded_run
+        let is_save_profile = binding::is_save_profile_route(request);
+        if !is_save_profile
+            && (is_runtime_v2
+                || is_runtime_v3
+                || is_runtime_v4_action
+                || is_runtime_v4_rest_action
+                || is_runtime_map
+                || is_coop_receipt_query
+                || is_coop_native
+                || is_seeded_run)
         {
             if object.get("instance_id")
                 != Some(&JsonValue::string(self.config.instance_id.as_str()))
@@ -188,14 +189,14 @@ impl RuntimeGatewayAdapter {
             {
                 return Err(GatewayError::Rejected);
             }
-        } else if is_game_information {
+        } else if !is_save_profile && is_game_information {
             if object.get("schema_digest")
                 != Some(&JsonValue::string(GAME_INFORMATION_SCHEMA_DIGEST))
                 || object.get("kind") != Some(&JsonValue::string("query_request"))
             {
                 return Err(GatewayError::Rejected);
             }
-        } else {
+        } else if !is_save_profile {
             object.insert(
                 String::from("instance_id"),
                 JsonValue::string(self.config.instance_id.as_str()),
@@ -230,6 +231,7 @@ impl GatewayAdapter for RuntimeGatewayAdapter {
     fn forward(&mut self, request: GatewayRequest) -> Result<GatewayResponse, GatewayError> {
         binding::admit(&self.config, &request)?;
         let request = binding::attach_native_peer_token(&self.config, request)?;
+        let save_profile_route = binding::is_save_profile_route(&request);
         let response_kind = binding::response_kind(&self.config, &request);
         let expert_state_route = request.method == sts2_mcp_server::GatewayMethod::Get
             && request.path == format!("/v4/instances/{}/expert-state", self.config.instance_id);
@@ -249,16 +251,11 @@ impl GatewayAdapter for RuntimeGatewayAdapter {
         {
             binding::response(&self.config, &response.body, &correlation, kind)?;
         }
-        exchange::classify(response)
-    }
-}
-
-fn map_io(error: ReadError) -> GatewayError {
-    match error {
-        ReadError::Timeout => GatewayError::Timeout,
-        ReadError::Malformed => GatewayError::MalformedResponse,
-        ReadError::Oversized => GatewayError::ResponseTooLarge,
-        ReadError::Unavailable => GatewayError::Unavailable,
+        if save_profile_route {
+            binding::classify_save_profile(response)
+        } else {
+            exchange::classify(response)
+        }
     }
 }
 

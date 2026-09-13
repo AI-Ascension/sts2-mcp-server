@@ -31,6 +31,8 @@ mod runtime_v3_gameplay;
 mod runtime_v4_expert;
 #[path = "catalog_runtime_v4_expert_rest_action.rs"]
 mod runtime_v4_expert_rest_action;
+#[path = "catalog_save_profile.rs"]
+mod save_profile;
 #[path = "catalog_seeded_run.rs"]
 mod seeded_run;
 
@@ -62,6 +64,18 @@ pub const EXPERT_REST_RECONCILE_TOOL: &str =
     runtime_v4_expert_rest_action::EXPERT_REST_RECONCILE_TOOL;
 pub const START_SEEDED_RUN_TOOL: &str = seeded_run::START_SEEDED_RUN_TOOL;
 pub const RECONCILE_SEEDED_RUN_TOOL: &str = seeded_run::RECONCILE_SEEDED_RUN_TOOL;
+pub const SAVE_PROFILE_LIST_TOOL: &str = save_profile::LIST_TOOL;
+pub const SAVE_PROFILE_CURRENT_TOOL: &str = save_profile::CURRENT_TOOL;
+pub const SAVE_PROFILE_SELECT_TOOL: &str = save_profile::SELECT_TOOL;
+pub const SAVE_PROFILE_CREATE_DISPOSABLE_TOOL: &str = save_profile::CREATE_DISPOSABLE_TOOL;
+pub const SAVE_PROFILE_STATUS_TOOL: &str = save_profile::STATUS_TOOL;
+pub const SAVE_PROFILE_RECEIPT_TOOL: &str = save_profile::STATUS_TOOL;
+pub const SAVE_PROFILE_CONTRACT: &str = save_profile::CONTRACT;
+pub const SAVE_PROFILE_PROFILE: &str = save_profile::REVISION;
+pub const SAVE_PROFILE_SCHEMA_REVISION: &str = save_profile::CONTRACT;
+pub const SAVE_PROFILE_LAUNCH_PROFILE_CONTRACT: &str = save_profile::LAUNCH_PROFILE_CONTRACT;
+pub const SAVE_PROFILE_MAX_BODY_BYTES: usize = 16 * 1024;
+pub const SAVE_PROFILE_MAX_OPERATION_BYTES: usize = 128;
 pub const GAME_INFORMATION_CAPABILITIES_TOOL: &str = game_information::CAPABILITIES_TOOL;
 pub const GAME_INFORMATION_LIST_TOOL: &str = game_information::LIST_TOOL;
 pub const GAME_INFORMATION_SEARCH_TOOL: &str = game_information::SEARCH_TOOL;

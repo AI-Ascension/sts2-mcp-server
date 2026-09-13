@@ -63,6 +63,7 @@ host to a supported compatibility row.
 | `coop-native-v1-mcp` | `GET /v1/instances/{id}/coop/native/observation`, fixed POST `legal-catalog`, `action`, `vote`, `rejoin`, and `recover` routes | Seven-tool catalog, copied-artifact checks, fixed-route mapping, closed-envelope validation, and receipt/effect/observation relation tests | Source/component consumer confirmed at schema digest `2f3bc99e…`; live two-peer host settlement, provider execution, deployment, and release compatibility unverified |
 | `game-information-query-v1-mcp` | `GET /v1/instances/{id}/game-information/capabilities`, `POST /v1/instances/{id}/game-information/query` | Six-tool catalog, pinned protocol artifact/checksums, fake-gateway mapping, executable binding/profile and loopback capabilities tests | Source/component seam confirmed at merged protocol main `34f68b18` (schema `376845b0…`); gateway #52, producer capability negotiation, live snapshots, host extraction, provider, deployment, and release remain unverified |
 | `negotiated-composition-v1-mcp` | Negotiated union of the fixed Runtime-v3/map and game-information routes | Composition, scope/limit intersection, unavailable-feature, lifecycle, and stale-snapshot unit tests; both copied source artifacts verified before executable selection | Source/component composition seam confirmed; live producer discovery, gateway readiness/selection, host extraction, provider execution, deployment, and release compatibility unverified |
+| `save-profile-v1-mcp` | Fixed `GET` list/current/status and `POST` select/create-disposable routes under `/v1/instances/{id}` | Five-tool catalog, closed schemas, fake-gateway route/body/error/reconciliation tests, executable route/authority binding tests | Source/component consumer seam confirmed for merged gateway PR #53; game-mod launch-profile/save-slot integration, live gateway, host settlement, provider, deployment, and release remain unverified |
 
 For `coop-native-v1-mcp`, configured instance, MCP-session, gateway-session, lease, and correlation
 identities remain header/path bounded at 128 bytes. Operation, peer, action, proposal, and vote-choice
@@ -70,6 +71,15 @@ identities are closed envelope fields and retain the protocol's 512-byte alphabe
 they are not rewritten, put in a route, or silently narrowed (including valid `..` body text). A timeout or `unknown` receipt remains an
 unsettled outcome tied to that same operation identity and must be reconciled through the fixed recovery
 tool, never retried by MCP.
+
+For `save-profile-v1-mcp`, the MCP frame and request/projected-content limits remain 16 KiB, while
+the executable's legacy 64 KiB HTTP response budget still bounds the gateway body. Path/header and
+operation identities are at most 128 bytes; selection baselines require a 64-byte lowercase digest.
+The executable is opt-in with `STS2_RUNTIME_PROFILE=save-profile-v1` and
+`STS2_SAVE_PROFILE_CAPABILITY=read|read-write`; absent or `unsupported` means no advertised tools.
+MCP maps the MCP request identity to a mutation operation identity and carries it into status lookup.
+Gateway PR #53 is the source/component route contract; the launch-profile owner and game-mod
+readback are external gates.
 
 ### Historical Runtime-v4 request-binding update — 2026-09-07
 

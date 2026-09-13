@@ -21,6 +21,7 @@ for profile in poc-v1 runtime-v1 runtime-v2 runtime-v3-gameplay runtime-v4-exper
   (cd "protocol-artifact/$profile" && sha256sum --check SHA256SUMS)
 done
 cargo test --locked --offline --package sts2-mcp-server --test artifact
+cargo test --locked --offline --package sts2-mcp-server --test save_profile_mapping
 cargo fmt --all --check
 cargo clippy --workspace --all-targets --all-features --locked -- -D warnings
 cargo test --workspace --all-targets --all-features --locked
@@ -250,6 +251,23 @@ source artifacts before advertising the composition.
 These checks establish only the MCP source/component seam. They do not prove dynamic producer
 discovery, gateway readiness or instance selection, host extraction, fresh snapshots, provider
 execution, or the cross-repository acceptance path.
+
+## Save-profile MCP checks
+
+`save_profile_mapping.rs` verifies the exact five `save-profile-v1-mcp` descriptors and annotations,
+initialize capability metadata, fixed list/current/select/create-disposable/status routes, separate
+MCP and gateway session identities, empty/read versus mutation bodies, 16 KiB request bounds, strict
+baseline and identity validation, and stale/contract error projection. Read-only and unsupported
+catalogs cannot dispatch a mutation. A timeout on selection yields an `unknown` result retaining the
+MCP request/operation identity; a later status call reconciles that identity with one GET and never
+replays selection.
+
+Executable binding tests verify each route/method/body shape, required configured authority,
+foreign-target and unsafe-operation rejection before HTTP, no legacy authority injection into the
+save-profile body, and contract/bare-error response admission. The profile is intentionally not in
+the copied protocol-artifact checksum loop: `gateway-save-profile-v1` is a gateway-local contract.
+Gateway PR #53, launch-profile wiring, game-mod save-slot readback, host settlement, and live
+readiness are external and remain unverified.
 
 ## Runtime-v4 expert REST-action checks
 

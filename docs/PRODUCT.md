@@ -110,3 +110,20 @@ unsupported operations remain visible as bounded unavailable reasons and are not
 Lifecycle events invalidate tracked snapshots and require catalog refresh before forwarding.
 The source/component and copied-artifact checks do not establish producer discovery, gateway
 readiness, host extraction, live snapshot freshness, provider execution, or end-to-end acceptance.
+
+## `save-profile-v1-mcp` profile
+
+ADR 0025 defines the additive save-profile consumer selected with
+`STS2_RUNTIME_PROFILE=save-profile-v1`. It exposes bounded list/current/status reads plus explicit
+select and create-disposable mutations. Calls map only to the five gateway-owned fixed routes, with
+empty bodies for reads/create and exactly `profile_id` plus a two-field baseline for selection.
+Instance, session, lease, epoch, profile, baseline, operation, response, and user-data identities are
+typed and bounded; unknown fields, foreign targets, stale baselines, and unsupported revisions fail
+closed.
+
+The executable is capability-gated by `STS2_SAVE_PROFILE_CAPABILITY`: absent/`unsupported` advertises
+no save-profile tools, `read` advertises only passive reads, and `read-write` advertises all five.
+The status/receipt tool reconciles the original operation identity and never repeats a mutation.
+Gateway owns allocation, authorization, leases, ledger state, and forwarding; game-mod owns save-slot
+meaning and host effects. Gateway PR #53 is the source/component dependency. Launch-profile wiring,
+game-mod readback, host settlement, and integrated readiness remain unverified.

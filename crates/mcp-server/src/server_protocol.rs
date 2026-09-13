@@ -92,7 +92,7 @@ impl<G: crate::gateway::GatewayAdapter> McpServer<G> {
                 ),
             );
         }
-        let mut capabilities = self.catalog.capabilities.to_json();
+        let mut capabilities = self.catalog.capabilities_json();
         if self.catalog.is_negotiated_composition()
             && let JsonValue::Object(object) = &mut capabilities
         {

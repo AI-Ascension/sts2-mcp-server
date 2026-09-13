@@ -11,10 +11,17 @@ use sts2_mcp_server::{
 mod native_peer;
 #[path = "binding_response.rs"]
 mod response;
+#[path = "binding_save_profile.rs"]
+mod save_profile;
 pub(super) use response::validate as response;
 #[path = "binding_result.rs"]
 mod result;
-pub(super) use result::is_runtime_result;
+pub(super) use result::{is_runtime_result, is_save_profile_result};
+
+pub(super) fn is_save_profile_route(request: &GatewayRequest) -> bool {
+    save_profile::is_route(request)
+}
+pub(super) use save_profile::classify as classify_save_profile;
 
 pub(super) fn admit(config: &RuntimeConfig, request: &GatewayRequest) -> Result<(), GatewayError> {
     if request.correlation.mcp_session_id != config.mcp_session_id
@@ -39,6 +46,11 @@ pub(super) fn admit(config: &RuntimeConfig, request: &GatewayRequest) -> Result<
     let native_route = version == "v1" && native_peer::is_route(config, request);
     if native_route {
         native_peer::admit(config, request)?;
+    }
+    if is_save_profile_route(request)
+        && (!save_profile::headers_are_fixed(request) || !save_profile::body_is_fixed(request))
+    {
+        return Err(GatewayError::Rejected);
     }
     if version != "v3"
         && version != "v4"
@@ -83,7 +95,8 @@ pub(super) fn admit(config: &RuntimeConfig, request: &GatewayRequest) -> Result<
         && !request.path.ends_with("/map-snapshot")
         && !request.path.ends_with("/checkpoint-reference")
         && !request.path.ends_with("/game-information/capabilities")
-        && !request.path.ends_with("/game-information/query");
+        && !request.path.ends_with("/game-information/query")
+        && !is_save_profile_route(request);
     if !is_legacy_v1_injection {
         // MCP correlation sessions are a separate namespace; only explicit gateway
         // authority headers/body fields are compared with configured gateway identity.
@@ -98,7 +111,9 @@ pub(super) fn admit(config: &RuntimeConfig, request: &GatewayRequest) -> Result<
             let supplied = request.headers.get(name);
             if supplied.is_some_and(|value| value != expected)
                 || (supplied.is_none()
-                    && (request.body.is_none() || game_information_route)
+                    && (request.body.is_none()
+                        || game_information_route
+                        || is_save_profile_route(request))
                     && !adapter_injected_v4_authority)
             {
                 return Err(GatewayError::Rejected);
@@ -126,6 +141,10 @@ mod tests;
 #[path = "binding_native_peer_tests.rs"]
 mod native_peer_tests;
 
+#[cfg(test)]
+#[path = "binding_save_profile_tests.rs"]
+mod save_profile_tests;
+
 pub(super) fn response_kind(
     config: &RuntimeConfig,
     request: &GatewayRequest,
@@ -134,6 +153,9 @@ pub(super) fn response_kind(
     for version in ["v1", "v2"] {
         let prefix = format!("/{version}/instances/{}/", config.instance_id);
         if let Some(route) = request.path.strip_prefix(&prefix) {
+            if version == "v1" && save_profile::response_kind(request) {
+                return Some("save_profile_response");
+            }
             return match (request.method, route) {
                 (GatewayMethod::Get, "coop/native/observation")
                     if version == "v1" && request.body.is_none() =>

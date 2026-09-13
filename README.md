@@ -70,6 +70,20 @@ The profile is a source/component composition seam; dynamic producer capability 
 readiness, host extraction, and live snapshot freshness remain unverified. See
 [ADR 0021](docs/decisions/0021-negotiated-composition-profile.md).
 
+The additive `save-profile-v1-mcp` profile is selected with
+`STS2_RUNTIME_PROFILE=save-profile-v1`. It exposes five bounded tools:
+`sts2.save_profile_list`, `sts2.save_profile_current`, `sts2.save_profile_select`,
+`sts2.save_profile_create_disposable`, and `sts2.save_profile_status`. List/current/status are
+read-only; select and create-disposable are explicit mutations. Calls map only to the fixed
+gateway list/current/select/create-disposable/operation routes. Selection requires a bounded
+profile ID and baseline; disposable creation returns only gateway-owned opaque user-data provenance.
+`STS2_SAVE_PROFILE_CAPABILITY` defaults to `unsupported`, accepts `read` or `read-write`, and
+controls which descriptors are advertised; unsupported owners publish no usable save-profile tools.
+Timeouts preserve the MCP operation identity as `unknown`, and status reconciles it without replay.
+Gateway PR #53 supplies the source/component route contract. Launch-profile wiring, game-mod
+save-slot readback, host settlement, and integrated readiness remain unverified; see
+[ADR 0025](docs/decisions/0025-save-profile-mcp-tools.md).
+
 ## Owner and consumers
 
 `sts2-mcp-server` owns the external MCP process boundary: framing, server identity and capabilities,
@@ -120,6 +134,7 @@ for profile in poc-v1 runtime-v1 runtime-v2 runtime-v3-gameplay runtime-v4-exper
 done
 cargo test --locked --package sts2-mcp-server --test artifact
 cargo test --locked --package sts2-mcp-server --test runtime_v2_artifact --test runtime_v2_mapping
+cargo test --locked --package sts2-mcp-server --test save_profile_mapping
 cargo fmt --all --check
 cargo clippy --workspace --all-targets --all-features --locked -- -D warnings
 cargo test --workspace --all-targets --all-features --locked

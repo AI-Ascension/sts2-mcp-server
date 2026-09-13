@@ -35,6 +35,8 @@ mod runtime_v3_gameplay;
 mod runtime_v4_expert;
 #[path = "mapping_runtime_v4_expert_rest_action.rs"]
 mod runtime_v4_expert_rest_action;
+#[path = "mapping_save_profile.rs"]
+mod save_profile;
 #[path = "mapping_seeded_run.rs"]
 mod seeded_run;
 
@@ -52,6 +54,9 @@ pub(crate) fn tools_call<G: GatewayAdapter>(
 ) -> RpcResponse {
     if let Some(response) = server.reject_stale_call(&request) {
         return response;
+    }
+    if server.catalog.is_save_profile() {
+        return save_profile::tools_call(server, request);
     }
     let request_params = request.params.clone();
     let request_id = request.id.clone();
