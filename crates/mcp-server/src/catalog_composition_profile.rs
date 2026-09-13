@@ -10,11 +10,17 @@ use super::types::{
     NEGOTIATED_COMPOSITION_REVISION, NegotiationError, ToolLimits,
 };
 use crate::catalog::{
-    CHECKPOINT_REFERENCE_TOOL, COOP_RECEIPT_QUERY_TOOL, DISPATCH_ACTION_TOOL,
+    CHECKPOINT_REFERENCE_TOOL, COOP_NATIVE_ACTION_TOOL, COOP_NATIVE_EFFECT_TOOL,
+    COOP_NATIVE_LEGAL_CATALOG_TOOL, COOP_NATIVE_OBSERVATION_TOOL, COOP_NATIVE_RECOVER_TOOL,
+    COOP_NATIVE_REJOIN_TOOL, COOP_NATIVE_VOTE_TOOL, COOP_RECEIPT_QUERY_TOOL,
+    COOP_SYNCHRONIZATION_TOOL, DISPATCH_ACTION_TOOL, EXPERT_ACTION_TOOL, EXPERT_RECONCILE_TOOL,
+    EXPERT_REST_ACTION_TOOL, EXPERT_REST_RECONCILE_TOOL, EXPERT_STATE_TOOL,
     GAME_INFORMATION_AVAILABILITY_TOOL, GAME_INFORMATION_CAPABILITIES_TOOL,
     GAME_INFORMATION_DETAIL_TOOL, GAME_INFORMATION_GET_TOOL, GAME_INFORMATION_LIST_TOOL,
     GAME_INFORMATION_SEARCH_TOOL, LEGAL_ACTIONS_TOOL, MAP_SNAPSHOT_TOOL, OBSERVE_TOOL,
-    RECOVER_TOOL, REOBSERVE_TOOL, ToolCatalog, ToolDescriptor, WAIT_FOR_TRANSITION_TOOL,
+    RECONCILE_ACTION_TOOL, RECONCILE_SEEDED_RUN_TOOL, RECOVER_TOOL, REOBSERVE_TOOL,
+    START_SEEDED_RUN_TOOL, SUBMIT_ACTION_TOOL, ToolCatalog, ToolDescriptor,
+    WAIT_FOR_TRANSITION_TOOL,
 };
 
 pub(crate) fn layer_from_catalog(
@@ -23,7 +29,7 @@ pub(crate) fn layer_from_catalog(
 ) -> Result<CapabilityLayer, NegotiationError> {
     let mut layer = CapabilityLayer::new(owner, catalog.revision.clone());
     for tool in &catalog.tools {
-        let (group, required_scope) = operation_shape(&tool.name);
+        let (group, required_scope) = operation_shape(&tool.name)?;
         let revision = operation_revision(&tool.name, &catalog.revision);
         layer.insert(CapabilityOffer::supported(
             tool.name.clone(),
@@ -60,45 +66,46 @@ pub(crate) fn layer_from_catalogs(
     Ok(layer)
 }
 
-fn operation_shape(name: &str) -> (CapabilityGroup, CapabilityScope) {
-    if name == CAPABILITY_DISCOVERY_TOOL {
-        return (CapabilityGroup::ProfileReads, CapabilityScope::READ);
-    }
-    if matches!(
-        name,
+fn operation_shape(name: &str) -> Result<(CapabilityGroup, CapabilityScope), NegotiationError> {
+    let shape = match name {
+        CAPABILITY_DISCOVERY_TOOL => (CapabilityGroup::ProfileReads, CapabilityScope::READ),
         GAME_INFORMATION_CAPABILITIES_TOOL
-            | GAME_INFORMATION_LIST_TOOL
-            | GAME_INFORMATION_SEARCH_TOOL
-            | GAME_INFORMATION_GET_TOOL
-    ) {
-        return (CapabilityGroup::StaticReference, CapabilityScope::READ);
-    }
-    if matches!(
-        name,
-        GAME_INFORMATION_DETAIL_TOOL | GAME_INFORMATION_AVAILABILITY_TOOL
-    ) {
-        return (CapabilityGroup::LiveDetails, CapabilityScope::READ);
-    }
-    if name == MAP_SNAPSHOT_TOOL {
-        return (CapabilityGroup::Maps, CapabilityScope::READ);
-    }
-    if name == COOP_RECEIPT_QUERY_TOOL || name.contains("research") {
-        return (CapabilityGroup::ResearchReads, CapabilityScope::RESEARCH);
-    }
-    if name == CHECKPOINT_REFERENCE_TOOL || name.contains("profile") {
-        return (CapabilityGroup::ProfileReads, CapabilityScope::PROFILE);
-    }
-    if name.starts_with("sts2.") {
-        return (
-            CapabilityGroup::GameplayActions,
-            if name == DISPATCH_ACTION_TOOL {
-                CapabilityScope::MUTATE
-            } else {
-                CapabilityScope::READ
-            },
-        );
-    }
-    (CapabilityGroup::ProfileReads, CapabilityScope::PROFILE)
+        | GAME_INFORMATION_LIST_TOOL
+        | GAME_INFORMATION_SEARCH_TOOL
+        | GAME_INFORMATION_GET_TOOL => (CapabilityGroup::StaticReference, CapabilityScope::READ),
+        GAME_INFORMATION_DETAIL_TOOL | GAME_INFORMATION_AVAILABILITY_TOOL => {
+            (CapabilityGroup::LiveDetails, CapabilityScope::READ)
+        }
+        MAP_SNAPSHOT_TOOL => (CapabilityGroup::Maps, CapabilityScope::READ),
+        OBSERVE_TOOL
+        | LEGAL_ACTIONS_TOOL
+        | WAIT_FOR_TRANSITION_TOOL
+        | REOBSERVE_TOOL
+        | RECONCILE_ACTION_TOOL
+        | RECONCILE_SEEDED_RUN_TOOL
+        | EXPERT_STATE_TOOL
+        | EXPERT_RECONCILE_TOOL
+        | EXPERT_REST_RECONCILE_TOOL => (CapabilityGroup::GameplayActions, CapabilityScope::READ),
+        DISPATCH_ACTION_TOOL
+        | SUBMIT_ACTION_TOOL
+        | START_SEEDED_RUN_TOOL
+        | EXPERT_ACTION_TOOL
+        | EXPERT_REST_ACTION_TOOL
+        | COOP_NATIVE_ACTION_TOOL
+        | COOP_NATIVE_VOTE_TOOL => (CapabilityGroup::GameplayActions, CapabilityScope::MUTATE),
+        RECOVER_TOOL | COOP_NATIVE_RECOVER_TOOL | COOP_NATIVE_REJOIN_TOOL => {
+            (CapabilityGroup::GameplayActions, CapabilityScope::CONTROL)
+        }
+        COOP_NATIVE_OBSERVATION_TOOL | COOP_NATIVE_LEGAL_CATALOG_TOOL | COOP_NATIVE_EFFECT_TOOL => {
+            (CapabilityGroup::GameplayActions, CapabilityScope::READ)
+        }
+        COOP_RECEIPT_QUERY_TOOL => (CapabilityGroup::ResearchReads, CapabilityScope::RESEARCH),
+        COOP_SYNCHRONIZATION_TOOL => (CapabilityGroup::ResearchReads, CapabilityScope::READ),
+        CHECKPOINT_REFERENCE_TOOL => (CapabilityGroup::ProfileReads, CapabilityScope::PROFILE),
+        "get_state" => (CapabilityGroup::GameplayActions, CapabilityScope::READ),
+        _ => return Err(NegotiationError::InvalidOperation(name.to_owned())),
+    };
+    Ok(shape)
 }
 
 fn operation_revision(name: &str, profile_revision: &str) -> String {

@@ -12,7 +12,12 @@ use crate::catalog::{CapabilityCatalog, ToolCatalog, ToolDescriptor};
 
 impl NegotiatedCapabilitySet {
     pub fn negotiate(request: &NegotiationRequest) -> Result<Self, NegotiationError> {
-        negotiate(request)
+        let set = negotiate(request)?;
+        if set.operations.is_empty() {
+            Err(NegotiationError::NoCompatibleOperations)
+        } else {
+            Ok(set)
+        }
     }
 }
 
@@ -27,7 +32,7 @@ pub(crate) fn compose_profiles(
         .tools
         .push(super::profile::capability_discovery_descriptor());
     let mcp = CapabilityLayer::from_catalog(&merged)?;
-    let set = NegotiatedCapabilitySet::negotiate(&NegotiationRequest::new(
+    let set = negotiate(&NegotiationRequest::new(
         mcp,
         gateway,
         producer,
@@ -116,6 +121,7 @@ fn negotiate(request: &NegotiationRequest) -> Result<NegotiatedCapabilitySet, Ne
                         operation: mcp_offer.operation.clone(),
                         revision: mcp_offer.revision.clone(),
                         group: mcp_offer.group,
+                        required_scope: mcp_offer.required_scope,
                         effective_scope,
                         limits: mcp_offer.limits,
                     },
@@ -201,6 +207,7 @@ fn negotiate(request: &NegotiationRequest) -> Result<NegotiatedCapabilitySet, Ne
                 operation: mcp_offer.operation.clone(),
                 revision: mcp_offer.revision.clone(),
                 group: mcp_offer.group,
+                required_scope: mcp_offer.required_scope,
                 effective_scope,
                 limits: mcp_offer
                     .limits
@@ -209,11 +216,9 @@ fn negotiate(request: &NegotiationRequest) -> Result<NegotiatedCapabilitySet, Ne
             },
         );
     }
-    if operations.is_empty() {
-        return Err(NegotiationError::NoCompatibleOperations);
-    }
     Ok(NegotiatedCapabilitySet {
         revision: NEGOTIATED_COMPOSITION_REVISION.to_owned(),
+        caller_scope: request.caller_scope,
         operations,
         unavailable,
     })

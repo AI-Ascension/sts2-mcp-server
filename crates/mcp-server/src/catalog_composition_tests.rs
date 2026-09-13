@@ -55,6 +55,33 @@ fn composes_gameplay_map_and_lookup_tools_with_local_discovery() -> Result<(), N
 }
 
 #[test]
+fn overlapping_profile_descriptors_keep_their_operation_revision() -> Result<(), NegotiationError> {
+    let profiles = [
+        ToolCatalog::runtime_v3_gameplay(),
+        ToolCatalog::runtime_map_v1(),
+    ];
+    let (gateway, producer) = composition_layers(&profiles)?;
+    let catalog =
+        ToolCatalog::compose_profiles(&profiles, gateway, producer, CapabilityScope::ALL)?;
+
+    assert!(catalog.tools().iter().any(|tool| tool.name == OBSERVE_TOOL));
+    assert!(
+        catalog
+            .tools()
+            .iter()
+            .any(|tool| tool.name == MAP_SNAPSHOT_TOOL)
+    );
+    assert_eq!(
+        catalog
+            .composition()
+            .and_then(|set| set.available(OBSERVE_TOOL))
+            .map(|operation| operation.revision.as_str()),
+        Some("runtime-v3-gameplay-mcp")
+    );
+    Ok(())
+}
+
+#[test]
 fn missing_producer_feature_is_reported_without_shadowing_remaining_tools()
 -> Result<(), NegotiationError> {
     let profiles = [

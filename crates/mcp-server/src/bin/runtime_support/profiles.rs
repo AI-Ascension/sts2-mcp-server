@@ -113,26 +113,12 @@ pub(crate) fn profile_for_name(profile: Option<&str>) -> Result<RuntimeProfile, 
             requires_coop_native_peer_binding: false,
         }),
         "negotiated-composition-v1" => {
-            verify_runtime_map_artifact()
-                .map_err(|error| format!("runtime-map artifact is invalid: {error}"))?;
-            verify_game_information_artifact()
-                .map_err(|error| format!("game-information artifact is invalid: {error}"))?;
-            let profiles = [
-                ToolCatalog::runtime_map_v1(),
-                ToolCatalog::game_information(),
-            ];
-            let gateway = CapabilityLayer::from_catalogs(CapabilityOwner::Gateway, &profiles)
-                .map_err(|error| format!("gateway composition layer is invalid: {error}"))?;
-            let producer = CapabilityLayer::from_catalogs(CapabilityOwner::Producer, &profiles)
-                .map_err(|error| format!("producer composition layer is invalid: {error}"))?;
-            let catalog =
-                ToolCatalog::compose_profiles(&profiles, gateway, producer, CapabilityScope::ALL)
-                    .map_err(|error| format!("negotiated composition failed: {error}"))?;
-            Ok(RuntimeProfile {
-                catalog,
-                max_response_bytes: MAP_MAX_RESPONSE_BYTES.max(GAME_INFORMATION_MAX_RESPONSE_BYTES),
-                requires_coop_native_peer_binding: false,
-            })
+            // This standalone entry point has no trusted gateway/producer
+            // capability exchange. Unknown support and caller authority stay
+            // unavailable instead of being inferred from MCP catalogs.
+            let gateway = CapabilityLayer::new(CapabilityOwner::Gateway, "unverified-gateway");
+            let producer = CapabilityLayer::new(CapabilityOwner::Producer, "unverified-producer");
+            profile_for_negotiation(gateway, producer, CapabilityScope::NONE)
         }
         value => Err(format!(
             "STS2_RUNTIME_PROFILE must be runtime-v1, runtime-v2, runtime-v3-gameplay, runtime-v4-expert, runtime-v4-expert-rest-action, runtime-map-v1, coop-synchronization-v1, coop-receipt-query-v1, seeded-run-v1, coop-native-v1, checkpoint-reference-v1, game-information-query-v1, or negotiated-composition-v1, got {value}"
@@ -140,10 +126,39 @@ pub(crate) fn profile_for_name(profile: Option<&str>) -> Result<RuntimeProfile, 
     }
 }
 
+/// Compose the MCP-owned descriptors with authoritative gateway/producer
+/// offers and the caller scope supplied by the owning session.
+pub(crate) fn profile_for_negotiation(
+    gateway: CapabilityLayer,
+    producer: CapabilityLayer,
+    caller_scope: CapabilityScope,
+) -> Result<RuntimeProfile, String> {
+    verify_runtime_map_artifact()
+        .map_err(|error| format!("runtime-map artifact is invalid: {error}"))?;
+    verify_game_information_artifact()
+        .map_err(|error| format!("game-information artifact is invalid: {error}"))?;
+    let catalog = ToolCatalog::compose_profiles(
+        &[
+            ToolCatalog::runtime_map_v1(),
+            ToolCatalog::game_information(),
+        ],
+        gateway,
+        producer,
+        caller_scope,
+    )
+    .map_err(|error| format!("negotiated composition failed: {error}"))?;
+    Ok(RuntimeProfile {
+        catalog,
+        max_response_bytes: MAP_MAX_RESPONSE_BYTES.max(GAME_INFORMATION_MAX_RESPONSE_BYTES),
+        requires_coop_native_peer_binding: false,
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::super::http::{GAME_INFORMATION_MAX_RESPONSE_BYTES, RUNTIME_V3_MAX_RESPONSE_BYTES};
-    use super::profile_for_name;
+    use super::{profile_for_name, profile_for_negotiation};
+    use sts2_mcp_server::{CapabilityLayer, CapabilityOwner, CapabilityScope, ToolCatalog};
 
     #[test]
     fn checkpoint_reference_profile_has_its_own_bounded_catalog() -> Result<(), String> {
@@ -176,17 +191,25 @@ mod tests {
     }
 
     #[test]
-    fn negotiated_composition_profile_contains_gameplay_map_and_lookup_tools() -> Result<(), String>
-    {
+    fn executable_composition_profile_is_empty_without_external_evidence() -> Result<(), String> {
         let profile = profile_for_name(Some("negotiated-composition-v1"))?;
         assert_eq!(profile.catalog.revision, "negotiated-composition-v1-mcp");
-        assert!(
-            profile
-                .catalog
-                .tools()
-                .iter()
-                .any(|tool| tool.name == "sts2.observe")
-        );
+        assert!(profile.catalog.tools().is_empty());
+        assert!(!profile.requires_coop_native_peer_binding);
+        Ok(())
+    }
+
+    #[test]
+    fn negotiated_profile_advertises_only_the_four_party_intersection() -> Result<(), String> {
+        let profiles = [
+            ToolCatalog::runtime_map_v1(),
+            ToolCatalog::game_information(),
+        ];
+        let gateway = CapabilityLayer::from_catalogs(CapabilityOwner::Gateway, &profiles)
+            .map_err(|error| error.to_string())?;
+        let producer = CapabilityLayer::from_catalog_for(CapabilityOwner::Producer, &profiles[0])
+            .map_err(|error| error.to_string())?;
+        let profile = profile_for_negotiation(gateway, producer, CapabilityScope::READ)?;
         assert!(
             profile
                 .catalog
@@ -195,20 +218,19 @@ mod tests {
                 .any(|tool| tool.name == "sts2.map_snapshot")
         );
         assert!(
-            profile
+            !profile
                 .catalog
                 .tools()
                 .iter()
                 .any(|tool| tool.name == "sts2.game_information_search")
         );
         assert!(
-            profile
+            !profile
                 .catalog
                 .tools()
                 .iter()
-                .any(|tool| tool.name == "sts2.capabilities")
+                .any(|tool| tool.name == "sts2.dispatch_action")
         );
-        assert!(!profile.requires_coop_native_peer_binding);
         Ok(())
     }
 }

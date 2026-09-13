@@ -2,8 +2,9 @@
 
 use crate::mapping::safe_segment;
 use crate::{
-    CapabilityLayer, CapabilityOwner, CapabilityScope, GatewayAdapter, GatewayError,
-    GatewayResponse, JsonValue, SessionEvent, ToolCatalog,
+    CAPABILITY_DISCOVERY_TOOL, CapabilityLayer, CapabilityOwner, CapabilityScope,
+    GAME_INFORMATION_CAPABILITIES_TOOL, GatewayAdapter, GatewayError, GatewayResponse, JsonValue,
+    OBSERVE_TOOL, SessionEvent, ToolCatalog, ToolLimits,
 };
 
 #[derive(Default)]
@@ -25,6 +26,10 @@ impl GatewayAdapter for CountingGateway {
 }
 
 fn composed_catalog() -> Result<ToolCatalog, String> {
+    composed_catalog_with_scope(CapabilityScope::ALL)
+}
+
+fn composed_catalog_with_scope(scope: CapabilityScope) -> Result<ToolCatalog, String> {
     let profiles = [
         ToolCatalog::runtime_map_v1(),
         ToolCatalog::game_information(),
@@ -33,8 +38,22 @@ fn composed_catalog() -> Result<ToolCatalog, String> {
         .map_err(|error| error.to_string())?;
     let producer = CapabilityLayer::from_catalogs(CapabilityOwner::Producer, &profiles)
         .map_err(|error| error.to_string())?;
-    ToolCatalog::compose_profiles(&profiles, gateway, producer, CapabilityScope::ALL)
+    ToolCatalog::compose_profiles(&profiles, gateway, producer, scope)
         .map_err(|error| error.to_string())
+}
+
+fn composed_catalog_with_limit(operation: &str, limits: ToolLimits) -> Result<ToolCatalog, String> {
+    let mut catalog = composed_catalog()?;
+    let composition = catalog
+        .composition
+        .as_mut()
+        .ok_or_else(|| String::from("composition evidence is missing"))?;
+    let negotiated = composition
+        .operations
+        .get_mut(operation)
+        .ok_or_else(|| format!("{operation} is not negotiated"))?;
+    negotiated.limits = limits;
+    Ok(catalog)
 }
 
 #[test]
@@ -74,6 +93,129 @@ fn lifecycle_event_invalidates_snapshots_and_blocks_forwarding_until_refresh() -
     );
     assert!(stale_snapshot.contains("\"code\":-32009"));
     assert_eq!(server.gateway().requests, 0);
+    Ok(())
+}
+
+#[test]
+fn permission_revocation_is_enforced_before_refresh_gate_clears() -> Result<(), String> {
+    let mut server =
+        super::McpServer::with_catalog(CountingGateway::default(), composed_catalog()?);
+    let update = server.apply_session_event(SessionEvent::PermissionsChanged {
+        caller_scope: CapabilityScope::READ,
+    })?;
+    assert_eq!(
+        update.reason,
+        super::SessionRefreshReason::PermissionsChanged {
+            caller_scope: CapabilityScope::READ
+        }
+    );
+
+    assert!(
+        server
+            .refresh_composed_catalog(composed_catalog()?)
+            .is_err()
+    );
+    assert!(server.refresh_required());
+
+    server.refresh_composed_catalog(composed_catalog_with_scope(CapabilityScope::READ)?)?;
+    assert!(!server.refresh_required());
+    let listed = server
+        .handle_frame("{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"tools/list\",\"params\":{}}");
+    assert!(!listed.contains("\"name\":\"sts2.dispatch_action\""));
+    let dispatch = server.handle_frame(
+        "{\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"tools/call\",\"params\":{\"name\":\"sts2.dispatch_action\",\"arguments\":{}}}",
+    );
+    assert!(dispatch.contains("\"code\":-32601"));
+    assert_eq!(server.gateway().requests, 0);
+    Ok(())
+}
+
+#[test]
+fn snapshot_capacity_and_restart_invalidation_fail_closed() -> Result<(), String> {
+    let mut server =
+        super::McpServer::with_catalog(CountingGateway::default(), composed_catalog()?);
+    for index in 0..1024 {
+        server.register_snapshot_reference(format!("snapshot-{index}"))?;
+    }
+    assert!(
+        server
+            .register_snapshot_reference("snapshot-over-capacity")
+            .is_err()
+    );
+    let blocked = server.handle_frame(
+        "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"tools/call\",\"params\":{\"name\":\"sts2.observe\",\"arguments\":{}}}",
+    );
+    assert!(blocked.contains("\"code\":-32009"));
+    assert_eq!(server.gateway().requests, 0);
+
+    let mut server =
+        super::McpServer::with_catalog(CountingGateway::default(), composed_catalog()?);
+    for index in 0..1024 {
+        server.register_snapshot_reference(format!("snapshot-{index}"))?;
+    }
+    let update = server.apply_session_event(SessionEvent::ProducerRestart)?;
+    assert_eq!(update.invalidated_snapshot_count, 1024);
+    assert!(server.snapshot_is_invalidated("snapshot-0"));
+    server.register_snapshot_reference("snapshot-after-restart")?;
+    assert!(
+        server
+            .apply_session_event(SessionEvent::ProducerRestart)
+            .is_err()
+    );
+    assert!(server.snapshot_is_invalidated("snapshot-0"));
+    let blocked = server.handle_frame(
+        "{\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"tools/call\",\"params\":{\"name\":\"sts2.observe\",\"arguments\":{}}}",
+    );
+    assert!(blocked.contains("\"code\":-32009"));
+    Ok(())
+}
+
+#[test]
+fn composed_limits_bound_requests_and_projected_responses() -> Result<(), String> {
+    let request_catalog =
+        composed_catalog_with_limit(OBSERVE_TOOL, ToolLimits::bounded(1, 1024, 1024, 1))?;
+    let mut request_server =
+        super::McpServer::with_catalog(CountingGateway::default(), request_catalog);
+    let request = request_server.handle_frame(
+        "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"tools/call\",\"params\":{\"name\":\"sts2.observe\",\"arguments\":{}}}",
+    );
+    assert!(request.contains("negotiated_request_limit_exceeded"));
+    assert_eq!(request_server.gateway().requests, 0);
+
+    let response_catalog = composed_catalog_with_limit(
+        GAME_INFORMATION_CAPABILITIES_TOOL,
+        ToolLimits::bounded(16 * 1024, 1, 1024, 1),
+    )?;
+    let mut response_server =
+        super::McpServer::with_catalog(CountingGateway::default(), response_catalog);
+    let response = response_server.handle_frame(
+        "{\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"tools/call\",\"params\":{\"name\":\"sts2.game_information_capabilities\",\"arguments\":{\"instance_id\":\"instance\",\"mcp_session_id\":\"session\",\"lease_id\":\"lease\",\"lease_epoch\":1}}}",
+    );
+    assert!(response.contains("gateway_response_too_large"));
+    assert_eq!(response_server.gateway().requests, 1);
+
+    let content_catalog = composed_catalog_with_limit(
+        CAPABILITY_DISCOVERY_TOOL,
+        ToolLimits::bounded(16 * 1024, 16 * 1024, 1, 1),
+    )?;
+    let mut content_server =
+        super::McpServer::with_catalog(CountingGateway::default(), content_catalog);
+    let content = content_server.handle_frame(
+        "{\"jsonrpc\":\"2.0\",\"id\":3,\"method\":\"tools/call\",\"params\":{\"name\":\"sts2.capabilities\",\"arguments\":{}}}",
+    );
+    assert!(content.contains("negotiated_content_limit_exceeded"));
+    assert_eq!(content_server.gateway().requests, 0);
+
+    let page_catalog = composed_catalog_with_limit(
+        CAPABILITY_DISCOVERY_TOOL,
+        ToolLimits::bounded(16 * 1024, 16 * 1024, 16 * 1024, 1),
+    )?;
+    let mut page_server = super::McpServer::with_catalog(CountingGateway::default(), page_catalog);
+    let page = page_server.handle_frame(
+        "{\"jsonrpc\":\"2.0\",\"id\":4,\"method\":\"tools/call\",\"params\":{\"name\":\"sts2.capabilities\",\"arguments\":{\"page_items\":2}}}",
+    );
+    assert!(page.contains("negotiated_pagination_limit_exceeded"));
+    assert_eq!(page_server.gateway().requests, 0);
     Ok(())
 }
 

@@ -41,15 +41,21 @@ fn run() -> Result<(), String> {
         let Some(frame) = read_frame(&mut input, max_frame_bytes)? else {
             return Ok(());
         };
-        let Some(response) = server.handle_message(&frame) else {
-            continue;
-        };
-        output
-            .write_all(response.as_bytes())
-            .and_then(|_| output.write_all(b"\n"))
-            .and_then(|_| output.flush())
-            .map_err(|error| format!("MCP output failed: {error}"))?;
+        if let Some(response) = server.handle_message(&frame) {
+            write_line(&mut output, &response)?;
+        }
+        for notification in server.take_notifications() {
+            write_line(&mut output, &notification)?;
+        }
     }
+}
+
+fn write_line(output: &mut impl Write, value: &str) -> Result<(), String> {
+    output
+        .write_all(value.as_bytes())
+        .and_then(|_| output.write_all(b"\n"))
+        .and_then(|_| output.flush())
+        .map_err(|error| format!("MCP output failed: {error}"))
 }
 
 fn read_frame(input: &mut impl BufRead, max_frame_bytes: usize) -> Result<Option<String>, String> {

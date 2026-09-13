@@ -191,6 +191,7 @@ pub struct NegotiatedOperation {
     pub operation: String,
     pub revision: String,
     pub group: CapabilityGroup,
+    pub required_scope: CapabilityScope,
     pub effective_scope: CapabilityScope,
     pub limits: ToolLimits,
 }
@@ -206,6 +207,7 @@ pub struct UnavailableCapability {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct NegotiatedCapabilitySet {
     pub revision: String,
+    pub(crate) caller_scope: CapabilityScope,
     pub(crate) operations: BTreeMap<String, NegotiatedOperation>,
     pub(crate) unavailable: BTreeMap<String, UnavailableCapability>,
 }
@@ -229,6 +231,10 @@ impl NegotiatedCapabilitySet {
 
     pub fn is_empty(&self) -> bool {
         self.operations.is_empty()
+    }
+
+    pub fn caller_scope(&self) -> CapabilityScope {
+        self.caller_scope
     }
 }
 
