@@ -283,6 +283,10 @@ distinct; provisioning `pending`/`created` outcomes are retained. A timeout or m
 response becomes `unknown` with the original MCP operation identity and reconciliation guidance.
 `sts2.save_profile_status` reads that identity and never repeats the mutation.
 
+The gateway serializes each save-profile result body as a JSON array of byte values. MCP decodes that
+opaque representation under the same 16 KiB body bound, requires valid UTF-8 and JSON, and then
+applies the closed projection; an undecodable body fails closed instead of being treated as valid.
+
 Capability publication is fail-closed. The executable defaults this profile to unsupported unless
 `STS2_SAVE_PROFILE_CAPABILITY=read` or `read-write` is set (the plural spelling is accepted as an
 alias). Unsupported owners advertise no usable save-profile tools; read-only owners advertise only

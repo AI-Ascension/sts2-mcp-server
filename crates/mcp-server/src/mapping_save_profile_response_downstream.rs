@@ -2,7 +2,7 @@
 
 use std::collections::BTreeMap;
 
-use crate::catalog::SAVE_PROFILE_CONTRACT;
+use crate::catalog::{SAVE_PROFILE_CONTRACT, SAVE_PROFILE_MAX_BODY_BYTES};
 use crate::json::JsonValue;
 
 use super::Context;
@@ -66,18 +66,69 @@ struct DownstreamProjection {
     error_code: Option<String>,
 }
 
-pub(super) fn project(value: &JsonValue, context: &Context) -> Result<JsonValue, &'static str> {
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(super) enum DownstreamError {
+    Malformed(&'static str),
+    TooLarge,
+}
+
+impl From<&'static str> for DownstreamError {
+    fn from(message: &'static str) -> Self {
+        Self::Malformed(message)
+    }
+}
+
+pub(super) fn project(value: &JsonValue, context: &Context) -> Result<JsonValue, DownstreamError> {
     match value {
         JsonValue::Null => Ok(JsonValue::Null),
         JsonValue::Array(values) if values.is_empty() => Ok(JsonValue::Array(Vec::new())),
-        JsonValue::Array(_) => Err("save-profile downstream must be a bounded object"),
+        JsonValue::Array(values) => project_byte_array(values, context),
         JsonValue::Object(object) if object.is_empty() => Ok(JsonValue::object([])),
         JsonValue::Object(object) => {
+            bounded(value.to_json().len())?;
             reject_sensitive_material(value)?;
             validate_fields(object)?;
-            DownstreamProjection::parse(object, context).map(|projection| projection.to_json())
+            let projection = DownstreamProjection::parse(object, context)?;
+            Ok(projection.to_json())
         }
-        _ => Err("save-profile downstream must be an object or null"),
+        _ => {
+            bounded(value.to_json().len())?;
+            Err("save-profile downstream must be an object or null".into())
+        }
+    }
+}
+
+/// Decodes the gateway's opaque downstream body.
+///
+/// The gateway serializes a save-profile result body as a JSON array of byte
+/// values, so the body limit applies to the decoded bytes rather than to the
+/// numeric-array text that carries them.
+fn project_byte_array(
+    values: &[JsonValue],
+    context: &Context,
+) -> Result<JsonValue, DownstreamError> {
+    let bytes = values
+        .iter()
+        .map(|value| match value {
+            JsonValue::Number(byte) => {
+                u8::try_from(*byte).map_err(|_| "save-profile downstream is not a byte array")
+            }
+            _ => Err("save-profile downstream is not a byte array"),
+        })
+        .collect::<Result<Vec<u8>, _>>()?;
+    bounded(bytes.len())?;
+    let text = std::str::from_utf8(&bytes)
+        .map_err(|_| "save-profile downstream bytes are not valid UTF-8")?;
+    let decoded = crate::json::parse_json(text)
+        .map_err(|_| "save-profile downstream bytes are not valid JSON")?;
+    project(&decoded, context)
+}
+
+fn bounded(length: usize) -> Result<(), DownstreamError> {
+    if length > SAVE_PROFILE_MAX_BODY_BYTES {
+        Err(DownstreamError::TooLarge)
+    } else {
+        Ok(())
     }
 }
 
