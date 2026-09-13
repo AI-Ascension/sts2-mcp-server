@@ -101,7 +101,7 @@ fn map_snapshot_call<G: GatewayAdapter>(
             mcp_request_id: id.clone(),
         },
     };
-    match server.gateway.forward(request) {
+    match server.forward_gateway(request) {
         Ok(response) => response::gateway_success_map(id, response, &context.projection),
         Err(error) => gateway_error_result(id, error),
     }

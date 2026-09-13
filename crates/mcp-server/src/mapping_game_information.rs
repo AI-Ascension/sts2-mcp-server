@@ -134,7 +134,7 @@ fn forward_capabilities<G: GatewayAdapter>(
         ),
         None,
     );
-    match server.gateway.forward(request) {
+    match server.forward_gateway(request) {
         Ok(response) => match response::project_capabilities(&response.body, &context) {
             Ok((body, is_error)) => {
                 projected_result(context.request_id, body, is_error, response.status)
@@ -166,7 +166,7 @@ fn forward_query<G: GatewayAdapter>(
         ),
         Some(body),
     );
-    match server.gateway.forward(request) {
+    match server.forward_gateway(request) {
         Ok(response) => match response::project_query(&response.body, &context, &query) {
             Ok((body, is_error)) => {
                 projected_result(context.request_id, body, is_error, response.status)

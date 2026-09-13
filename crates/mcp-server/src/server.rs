@@ -1,15 +1,10 @@
 // SPDX-License-Identifier: MIT
 
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::{BTreeMap, BTreeSet, VecDeque};
 
-use crate::catalog::ToolCatalog;
-use crate::gateway::GatewayAdapter;
-use crate::json::JsonValue;
+use crate::catalog::{CapabilityScope, ToolCatalog, ToolLimits};
+use crate::gateway::{GatewayAdapter, GatewayError, GatewayRequest, GatewayResponse};
 use crate::projection::{RestActionSelectionAdmission, RestActionSelectionKey};
-use crate::protocol::{
-    INVALID_PARAMS, METHOD_NOT_FOUND, PARSE_ERROR, RpcError, RpcRequest, RpcResponse,
-};
-use crate::transport::{FrameCodec, FrameError};
 
 #[path = "server_runtime_v4_expert_rest_action.rs"]
 mod runtime_v4_expert_rest_action;
@@ -20,6 +15,11 @@ pub(crate) use runtime_v4_expert_rest_action::{
 #[path = "server_runtime_v4_expert_rest_action_capacity.rs"]
 mod runtime_v4_expert_rest_action_capacity;
 pub(crate) use runtime_v4_expert_rest_action_capacity::REST_ACTION_SELECTOR_CAPACITY_ERROR;
+#[path = "server_protocol.rs"]
+mod server_protocol;
+#[path = "server_session.rs"]
+mod session;
+pub use session::{SessionEvent, SessionRefreshReason, SessionUpdate};
 
 #[cfg(test)]
 #[path = "server_tests.rs"]
@@ -38,6 +38,15 @@ pub struct McpServer<G> {
     pub(crate) rest_action_selections: BTreeMap<RestActionSelectionKey, RestActionSelectionContext>,
     pub(crate) rest_action_operations: BTreeMap<String, RestActionOperationContext>,
     pub(crate) rest_action_selector_reservations: BTreeSet<String>,
+    pub(crate) session_epoch: u64,
+    pub(crate) refresh_required: Option<SessionRefreshReason>,
+    pub(crate) active_snapshots: BTreeSet<String>,
+    pub(crate) invalidated_snapshots: BTreeSet<String>,
+    pub(crate) snapshot_tracking_exhausted: bool,
+    pub(crate) notifications: VecDeque<String>,
+    pub(crate) dispatch_operation: Option<String>,
+    pub(crate) pending_revision: Option<String>,
+    pub(crate) authority_scope: CapabilityScope,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -60,10 +69,20 @@ impl<G: GatewayAdapter> McpServer<G> {
             rest_action_selections: BTreeMap::new(),
             rest_action_operations: BTreeMap::new(),
             rest_action_selector_reservations: BTreeSet::new(),
+            session_epoch: 0,
+            refresh_required: None,
+            active_snapshots: BTreeSet::new(),
+            invalidated_snapshots: BTreeSet::new(),
+            snapshot_tracking_exhausted: false,
+            notifications: VecDeque::new(),
+            dispatch_operation: None,
+            pending_revision: None,
+            authority_scope: CapabilityScope::ALL,
         }
     }
 
     pub fn with_catalog(gateway: G, catalog: ToolCatalog) -> Self {
+        let authority_scope = catalog_authority_scope(&catalog);
         Self {
             gateway,
             catalog,
@@ -73,6 +92,15 @@ impl<G: GatewayAdapter> McpServer<G> {
             rest_action_selections: BTreeMap::new(),
             rest_action_operations: BTreeMap::new(),
             rest_action_selector_reservations: BTreeSet::new(),
+            session_epoch: 0,
+            refresh_required: None,
+            active_snapshots: BTreeSet::new(),
+            invalidated_snapshots: BTreeSet::new(),
+            snapshot_tracking_exhausted: false,
+            notifications: VecDeque::new(),
+            dispatch_operation: None,
+            pending_revision: None,
+            authority_scope,
         }
     }
 
@@ -88,6 +116,7 @@ impl<G: GatewayAdapter> McpServer<G> {
         gateway_session_id: impl Into<String>,
         mcp_session_id: impl Into<String>,
     ) -> Self {
+        let authority_scope = catalog_authority_scope(&catalog);
         Self {
             gateway,
             catalog,
@@ -97,6 +126,15 @@ impl<G: GatewayAdapter> McpServer<G> {
             rest_action_selections: BTreeMap::new(),
             rest_action_operations: BTreeMap::new(),
             rest_action_selector_reservations: BTreeSet::new(),
+            session_epoch: 0,
+            refresh_required: None,
+            active_snapshots: BTreeSet::new(),
+            invalidated_snapshots: BTreeSet::new(),
+            snapshot_tracking_exhausted: false,
+            notifications: VecDeque::new(),
+            dispatch_operation: None,
+            pending_revision: None,
+            authority_scope,
         }
     }
 
@@ -107,30 +145,53 @@ impl<G: GatewayAdapter> McpServer<G> {
         self
     }
 
-    /// Compatibility entry point: an empty string means no notification response.
-    /// Transports should use `handle_message` and emit no bytes for `None`.
-    pub fn handle_frame(&mut self, frame: &str) -> String {
-        self.handle_message(frame).unwrap_or_default()
-    }
-
-    /// Notifications produce no response and never dispatch request-only tools.
-    pub fn handle_message(&mut self, frame: &str) -> Option<String> {
-        match FrameCodec::decode(frame, self.catalog.max_frame_bytes()) {
-            Ok(Some(request)) => Some(FrameCodec::encode(&self.dispatch(request))),
-            Ok(None) => None,
-            Err(error) => Some(FrameCodec::encode(&RpcResponse::failure(
-                None,
-                frame_error(error),
-            ))),
-        }
-    }
-
     pub fn catalog(&self) -> &ToolCatalog {
         &self.catalog
     }
 
     pub fn gateway(&self) -> &G {
         &self.gateway
+    }
+
+    pub(crate) fn negotiated_limits(&self, operation: &str) -> Option<ToolLimits> {
+        self.catalog
+            .negotiated_capabilities()?
+            .available(operation)
+            .map(|operation| operation.limits)
+    }
+
+    pub(crate) fn with_dispatch_operation<R>(
+        &mut self,
+        operation: &str,
+        callback: impl FnOnce(&mut Self) -> R,
+    ) -> R {
+        let previous = self.dispatch_operation.replace(operation.to_owned());
+        let result = callback(self);
+        self.dispatch_operation = previous;
+        result
+    }
+
+    pub(crate) fn forward_gateway(
+        &mut self,
+        request: GatewayRequest,
+    ) -> Result<GatewayResponse, GatewayError> {
+        let limits = self
+            .dispatch_operation
+            .as_deref()
+            .and_then(|operation| self.negotiated_limits(operation));
+        if limits.is_some_and(|limits| {
+            request
+                .body
+                .as_ref()
+                .is_some_and(|body| body.to_json().len() > limits.max_request_bytes)
+        }) {
+            return Err(GatewayError::ResponseTooLarge);
+        }
+        let response = self.gateway.forward(request)?;
+        if limits.is_some_and(|limits| response.body.to_json().len() > limits.max_response_bytes) {
+            return Err(GatewayError::ResponseTooLarge);
+        }
+        Ok(response)
     }
 
     pub(crate) fn gateway_session_id(&self) -> Option<&str> {
@@ -144,112 +205,12 @@ impl<G: GatewayAdapter> McpServer<G> {
     pub(crate) fn native_peer_id(&self) -> Option<&str> {
         self.native_peer_id.as_deref()
     }
-
-    fn dispatch(&mut self, request: RpcRequest) -> RpcResponse {
-        match request.method.as_str() {
-            "initialize" => self.initialize(request),
-            "tools/list" => self.tools_list(request),
-            "tools/call" => crate::mapping::tools_call(self, request),
-            method => RpcResponse::failure(
-                Some(request.id),
-                RpcError::new(METHOD_NOT_FOUND, unsupported_method(method)),
-            ),
-        }
-    }
-
-    fn initialize(&self, request: RpcRequest) -> RpcResponse {
-        let Some(params) = request.params.as_object() else {
-            return RpcResponse::failure(
-                Some(request.id),
-                RpcError::new(INVALID_PARAMS, "initialize params must be an object"),
-            );
-        };
-        if !matches!(
-            params
-                .get("protocolVersion")
-                .and_then(JsonValue::as_string),
-            Some(value) if !value.is_empty()
-        ) {
-            return RpcResponse::failure(
-                Some(request.id),
-                RpcError::new(
-                    INVALID_PARAMS,
-                    "initialize requires a non-empty protocolVersion",
-                ),
-            );
-        }
-        if params
-            .get("capabilities")
-            .and_then(JsonValue::as_object)
-            .is_none()
-        {
-            return RpcResponse::failure(
-                Some(request.id),
-                RpcError::new(INVALID_PARAMS, "initialize capabilities must be an object"),
-            );
-        }
-        let Some(client_info) = params.get("clientInfo").and_then(JsonValue::as_object) else {
-            return RpcResponse::failure(
-                Some(request.id),
-                RpcError::new(INVALID_PARAMS, "initialize clientInfo must be an object"),
-            );
-        };
-        let client_info_is_valid = matches!(
-            client_info.get("name").and_then(JsonValue::as_string),
-            Some(value) if !value.is_empty()
-        ) && matches!(
-            client_info.get("version").and_then(JsonValue::as_string),
-            Some(value) if !value.is_empty()
-        );
-        if !client_info_is_valid {
-            return RpcResponse::failure(
-                Some(request.id),
-                RpcError::new(
-                    INVALID_PARAMS,
-                    "initialize clientInfo requires non-empty name and version",
-                ),
-            );
-        }
-        let result = JsonValue::object([
-            (
-                "protocolVersion".to_owned(),
-                JsonValue::string(MCP_PROTOCOL_VERSION),
-            ),
-            ("capabilities".to_owned(), self.catalog.capabilities_json()),
-            (
-                "serverInfo".to_owned(),
-                JsonValue::object([
-                    ("name".to_owned(), JsonValue::string(SERVER_NAME)),
-                    ("version".to_owned(), JsonValue::string(SERVER_VERSION)),
-                ]),
-            ),
-        ]);
-        RpcResponse::success(request.id, result)
-    }
-
-    fn tools_list(&self, request: RpcRequest) -> RpcResponse {
-        if request.params.as_object().is_none() {
-            return RpcResponse::failure(
-                Some(request.id),
-                RpcError::new(INVALID_PARAMS, "tools/list params must be an object"),
-            );
-        }
-        RpcResponse::success(request.id, self.catalog.to_json())
-    }
 }
 
-fn frame_error(error: FrameError) -> RpcError {
-    match error {
-        FrameError::TooLarge => RpcError::new(PARSE_ERROR, "MCP frame exceeds the byte limit"),
-        FrameError::MultipleLines => {
-            RpcError::new(PARSE_ERROR, "MCP frame must contain one JSON value")
-        }
-        FrameError::InvalidJson => RpcError::new(PARSE_ERROR, "MCP frame is not valid JSON"),
-        FrameError::InvalidRequest => RpcError::new(-32600, "MCP request shape is invalid"),
-    }
-}
-
-fn unsupported_method(method: &str) -> String {
-    let method: String = method.chars().take(64).collect();
-    format!("capability or method is not supported: {method}")
+fn catalog_authority_scope(catalog: &ToolCatalog) -> CapabilityScope {
+    catalog
+        .negotiated_capabilities()
+        .map_or(CapabilityScope::ALL, |composition| {
+            composition.caller_scope()
+        })
 }

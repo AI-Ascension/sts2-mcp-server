@@ -126,6 +126,10 @@ impl RpcResponse {
         }
     }
 
+    pub(crate) fn result(&self) -> Option<&JsonValue> {
+        self.result.as_ref()
+    }
+
     pub(crate) fn to_json(&self) -> String {
         let mut response = BTreeMap::new();
         response.insert("jsonrpc".to_owned(), JsonValue::string("2.0"));

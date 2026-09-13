@@ -57,6 +57,7 @@ pub(super) fn build(read: bool, mutate: bool) -> super::ToolCatalog {
         revision: String::from(REVISION),
         capabilities: CapabilityCatalog::default(),
         tools,
+        composition: None,
     }
 }
 

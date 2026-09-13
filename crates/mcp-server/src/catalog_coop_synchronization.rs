@@ -62,5 +62,6 @@ pub(super) fn build() -> super::ToolCatalog {
                 (String::from("properties"), JsonValue::object(properties)),
             ]),
         }],
+        composition: None,
     }
 }

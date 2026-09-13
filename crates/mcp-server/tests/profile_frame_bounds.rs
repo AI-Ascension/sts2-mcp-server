@@ -35,8 +35,8 @@ fn padded_frame(total_bytes: usize) -> String {
     frame
 }
 
-fn profiles() -> [(&'static str, ToolCatalog, usize); 6] {
-    [
+fn profiles() -> Result<[(&'static str, ToolCatalog, usize); 7], String> {
+    Ok([
         ("poc-v1-mcp", ToolCatalog::default(), LEGACY_MAX_FRAME_BYTES),
         (
             "runtime-v1-mcp",
@@ -63,21 +63,49 @@ fn profiles() -> [(&'static str, ToolCatalog, usize); 6] {
             ToolCatalog::game_information_query_v1(),
             MAX_FRAME_BYTES,
         ),
-    ]
+        (
+            "negotiated-composition-v1-mcp",
+            {
+                let profiles = [
+                    ToolCatalog::runtime_map_v1(),
+                    ToolCatalog::game_information_query_v1(),
+                ];
+                let gateway = sts2_mcp_server::CapabilityLayer::from_catalogs(
+                    sts2_mcp_server::CapabilityOwner::Gateway,
+                    &profiles,
+                )
+                .map_err(|error| error.to_string())?;
+                let producer = sts2_mcp_server::CapabilityLayer::from_catalogs(
+                    sts2_mcp_server::CapabilityOwner::Producer,
+                    &profiles,
+                )
+                .map_err(|error| error.to_string())?;
+                ToolCatalog::compose_profiles(
+                    &profiles,
+                    gateway,
+                    producer,
+                    sts2_mcp_server::CapabilityScope::ALL,
+                )
+                .map_err(|error| error.to_string())?
+            },
+            MAX_FRAME_BYTES,
+        ),
+    ])
 }
 
 #[test]
-fn frame_limits_are_profile_scoped() {
+fn frame_limits_are_profile_scoped() -> Result<(), String> {
     assert_eq!(MAX_FRAME_BYTES, 256 * 1024);
-    for (revision, catalog, limit) in profiles() {
+    for (revision, catalog, limit) in profiles()? {
         assert_eq!(catalog.revision, revision);
         assert_eq!(catalog.max_frame_bytes(), limit, "{revision}");
     }
+    Ok(())
 }
 
 #[test]
-fn every_profile_accepts_a_frame_at_its_limit_and_rejects_one_byte_more() {
-    for (revision, catalog, limit) in profiles() {
+fn every_profile_accepts_a_frame_at_its_limit_and_rejects_one_byte_more() -> Result<(), String> {
+    for (revision, catalog, limit) in profiles()? {
         let mut server = McpServer::with_catalog(CountingGateway { requests: 0 }, catalog);
 
         let accepted = server.handle_frame(&padded_frame(limit));
@@ -96,6 +124,7 @@ fn every_profile_accepts_a_frame_at_its_limit_and_rejects_one_byte_more() {
         );
         assert_eq!(server.gateway().requests, 0, "{revision}");
     }
+    Ok(())
 }
 
 #[test]

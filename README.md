@@ -59,6 +59,17 @@ content reaches MCP. The artifact is pinned to merged `sts2-protocol/main` commi
 live snapshots, and host compatibility remain unverified; see
 [ADR 0020](docs/decisions/0020-game-information-query-profile.md).
 
+The opt-in `negotiated-composition-v1` profile combines the existing runtime-map gameplay/map
+catalog with the game-information lookup catalog after negotiating unique operation names,
+revision compatibility, producer/gateway/MCP/caller scope intersection, and bounded per-tool
+limits. It adds the local read-only `sts2.capabilities` discovery tool; unavailable features carry
+machine-readable reasons instead of being silently enabled. Producer restart, content reload,
+permission, and tool-set revision events invalidate tracked snapshots, queue the MCP
+`notifications/tools/list_changed` signal, and require reinitialization before forwarding calls.
+The profile is a source/component composition seam; dynamic producer capability discovery, gateway
+readiness, host extraction, and live snapshot freshness remain unverified. See
+[ADR 0021](docs/decisions/0021-negotiated-composition-profile.md).
+
 The additive `save-profile-v1-mcp` profile is selected with
 `STS2_RUNTIME_PROFILE=save-profile-v1`. It exposes five bounded tools:
 `sts2.save_profile_list`, `sts2.save_profile_current`, `sts2.save_profile_select`,

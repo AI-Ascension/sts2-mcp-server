@@ -27,6 +27,12 @@ pub use catalog::CHECKPOINT_REFERENCE_TOOL;
 pub use catalog::COOP_RECEIPT_QUERY_TOOL;
 pub use catalog::COOP_SYNCHRONIZATION_TOOL;
 pub use catalog::{
+    CAPABILITY_DISCOVERY_TOOL, CapabilityGroup, CapabilityLayer, CapabilityOffer, CapabilityOwner,
+    CapabilityScope, NEGOTIATED_COMPOSITION_REVISION, NEGOTIATION_STALE_CODE,
+    NegotiatedCapabilitySet, NegotiatedOperation, NegotiationError, NegotiationRequest, ToolLimits,
+    UnavailableCapability, UnavailableReason,
+};
+pub use catalog::{
     COOP_NATIVE_ACTION_TOOL, COOP_NATIVE_EFFECT_TOOL, COOP_NATIVE_OBSERVATION_TOOL,
     COOP_NATIVE_RECOVER_TOOL, COOP_NATIVE_REJOIN_TOOL, COOP_NATIVE_VOTE_TOOL,
 };
@@ -128,7 +134,10 @@ pub use protocol_artifact_seeded_run::{
     verify_seeded_run_artifact,
 };
 pub use receipt_query_json::canonical_coop_receipt_query;
-pub use server::{MCP_PROTOCOL_VERSION, McpServer, SERVER_NAME, SERVER_VERSION};
+pub use server::{
+    MCP_PROTOCOL_VERSION, McpServer, SERVER_NAME, SERVER_VERSION, SessionEvent,
+    SessionRefreshReason, SessionUpdate,
+};
 pub use transport::{FrameCodec, FrameError, MAX_FRAME_BYTES};
 
 mod checkpoint_reference;

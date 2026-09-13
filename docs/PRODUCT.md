@@ -100,6 +100,17 @@ main `34f68b18` (schema `376845b0…`). No specialized producer query is adverti
 owner registers one through the accepted protocol capability set. The deterministic fake/loopback
 evidence does not establish gateway #52, game-mod extraction, or host compatibility.
 
+## `negotiated-composition-v1-mcp` profile
+
+ADR 0021 defines the opt-in composition profile selected with
+`STS2_RUNTIME_PROFILE=negotiated-composition-v1`. It advertises the surviving Runtime-v3
+gameplay/map and game-information operations after unique-name, revision, producer-support,
+scope, and limit negotiation. `sts2.capabilities` is an MCP-local read-only discovery call;
+unsupported operations remain visible as bounded unavailable reasons and are not forwarded.
+Lifecycle events invalidate tracked snapshots and require catalog refresh before forwarding.
+The source/component and copied-artifact checks do not establish producer discovery, gateway
+readiness, host extraction, live snapshot freshness, provider execution, or end-to-end acceptance.
+
 ## `save-profile-v1-mcp` profile
 
 ADR 0025 defines the additive save-profile consumer selected with

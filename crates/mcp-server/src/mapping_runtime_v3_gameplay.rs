@@ -239,7 +239,7 @@ fn forward<G: GatewayAdapter>(
     expected_kind: &str,
     mutation: bool,
 ) -> RpcResponse {
-    match server.gateway.forward(request) {
+    match server.forward_gateway(request) {
         Ok(response)
             if mutation
                 && crate::projection::project_runtime_v3_gateway_body(

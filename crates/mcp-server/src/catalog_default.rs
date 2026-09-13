@@ -133,6 +133,7 @@ impl Default for ToolCatalog {
                     input_schema: action_schema,
                 },
             ],
+            composition: None,
         }
     }
 }
