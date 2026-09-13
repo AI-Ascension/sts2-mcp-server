@@ -10,6 +10,7 @@ mod protocol;
 mod protocol_artifact;
 mod protocol_artifact_coop_native;
 mod protocol_artifact_coop_receipt_query;
+mod protocol_artifact_game_information;
 #[path = "protocol_artifact_runtime_v2_hash.rs"]
 mod protocol_artifact_hash;
 mod protocol_artifact_runtime_map;
@@ -36,6 +37,11 @@ pub use catalog::{
 };
 pub use catalog::{EXPERT_ACTION_TOOL, EXPERT_RECONCILE_TOOL, EXPERT_STATE_TOOL};
 pub use catalog::{EXPERT_REST_ACTION_TOOL, EXPERT_REST_RECONCILE_TOOL};
+pub use catalog::{
+    GAME_INFORMATION_AVAILABILITY_TOOL, GAME_INFORMATION_CAPABILITIES_TOOL,
+    GAME_INFORMATION_DETAIL_TOOL, GAME_INFORMATION_GET_TOOL, GAME_INFORMATION_LIST_TOOL,
+    GAME_INFORMATION_SEARCH_TOOL,
+};
 pub use catalog::{RECONCILE_SEEDED_RUN_TOOL, START_SEEDED_RUN_TOOL};
 pub use catalog_reobserve::catalog_reobserve_body;
 pub use gateway::{
@@ -63,6 +69,14 @@ pub use protocol_artifact_coop_receipt_query::{
     COOP_RECEIPT_QUERY_MAX_GENERATION, COOP_RECEIPT_QUERY_PROTOCOL_VERSION,
     COOP_RECEIPT_QUERY_SCHEMA_DIGEST, COOP_RECEIPT_QUERY_SCHEMA_SOURCE,
     CoopReceiptQueryArtifactError, verify_coop_receipt_query_artifact,
+};
+pub use protocol_artifact_game_information::{
+    GAME_INFORMATION_ARTIFACT, GAME_INFORMATION_GENERATOR, GAME_INFORMATION_MAX_CURSOR_BYTES,
+    GAME_INFORMATION_MAX_MESSAGE_BYTES, GAME_INFORMATION_MAX_PAGE_BYTES,
+    GAME_INFORMATION_MAX_PAGE_ITEMS, GAME_INFORMATION_MAX_TEXT_BYTES,
+    GAME_INFORMATION_PROTOCOL_SOURCE_COMMIT, GAME_INFORMATION_PROTOCOL_VERSION,
+    GAME_INFORMATION_SCHEMA_DIGEST, GAME_INFORMATION_SCHEMA_SOURCE, GameInformationArtifactError,
+    verify_game_information_artifact,
 };
 pub use protocol_artifact_runtime_map::{
     RUNTIME_MAP_V1_ARTIFACT, RUNTIME_MAP_V1_GENERATOR, RUNTIME_MAP_V1_MAX_BINDINGS,

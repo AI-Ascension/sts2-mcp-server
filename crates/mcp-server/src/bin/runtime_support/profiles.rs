@@ -2,11 +2,12 @@
 
 use sts2_mcp_server::{
     ToolCatalog, verify_coop_native_artifact, verify_coop_receipt_query_artifact,
-    verify_runtime_v4_expert_rest_action_artifact,
+    verify_game_information_artifact, verify_runtime_v4_expert_rest_action_artifact,
 };
 
 use super::http::{
-    LEGACY_MAX_RESPONSE_BYTES, MAP_MAX_RESPONSE_BYTES, RUNTIME_V3_MAX_RESPONSE_BYTES,
+    GAME_INFORMATION_MAX_RESPONSE_BYTES, LEGACY_MAX_RESPONSE_BYTES, MAP_MAX_RESPONSE_BYTES,
+    RUNTIME_V3_MAX_RESPONSE_BYTES,
 };
 
 /// One selected executable profile: its tool catalog and the gateway response
@@ -101,15 +102,24 @@ pub(crate) fn profile_for_name(profile: Option<&str>) -> Result<RuntimeProfile, 
                 requires_coop_native_peer_binding: true,
             })
         }
+        "game-information-query-v1" => Ok(RuntimeProfile {
+            catalog: {
+                verify_game_information_artifact()
+                    .map_err(|error| format!("game-information artifact is invalid: {error}"))?;
+                ToolCatalog::game_information_query_v1()
+            },
+            max_response_bytes: GAME_INFORMATION_MAX_RESPONSE_BYTES,
+            requires_coop_native_peer_binding: false,
+        }),
         value => Err(format!(
-            "STS2_RUNTIME_PROFILE must be runtime-v1, runtime-v2, runtime-v3-gameplay, runtime-v4-expert, runtime-v4-expert-rest-action, runtime-map-v1, coop-synchronization-v1, coop-receipt-query-v1, seeded-run-v1, coop-native-v1, or checkpoint-reference-v1, got {value}"
+            "STS2_RUNTIME_PROFILE must be runtime-v1, runtime-v2, runtime-v3-gameplay, runtime-v4-expert, runtime-v4-expert-rest-action, runtime-map-v1, coop-synchronization-v1, coop-receipt-query-v1, seeded-run-v1, coop-native-v1, checkpoint-reference-v1, or game-information-query-v1, got {value}"
         )),
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::super::http::RUNTIME_V3_MAX_RESPONSE_BYTES;
+    use super::super::http::{GAME_INFORMATION_MAX_RESPONSE_BYTES, RUNTIME_V3_MAX_RESPONSE_BYTES};
     use super::profile_for_name;
 
     #[test]
@@ -127,6 +137,18 @@ mod tests {
         assert_eq!(profile.catalog.revision, "coop-native-v1-mcp");
         assert_eq!(profile.max_response_bytes, RUNTIME_V3_MAX_RESPONSE_BYTES);
         assert!(profile.requires_coop_native_peer_binding);
+        Ok(())
+    }
+
+    #[test]
+    fn game_information_profile_verifies_and_selects_its_catalog() -> Result<(), String> {
+        let profile = profile_for_name(Some("game-information-query-v1"))?;
+        assert_eq!(profile.catalog.revision, "game-information-query-v1-mcp");
+        assert_eq!(
+            profile.max_response_bytes,
+            GAME_INFORMATION_MAX_RESPONSE_BYTES
+        );
+        assert!(!profile.requires_coop_native_peer_binding);
         Ok(())
     }
 }

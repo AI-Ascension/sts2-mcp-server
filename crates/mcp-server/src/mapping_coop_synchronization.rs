@@ -73,6 +73,7 @@ fn gateway_error(error: GatewayError) -> &'static str {
         GatewayError::Unavailable => "co-op gateway is unavailable or not configured",
         GatewayError::Timeout => "co-op synchronization timed out",
         GatewayError::MalformedResponse => "co-op gateway response was malformed",
+        GatewayError::ResponseTooLarge => "co-op gateway response exceeded its byte limit",
         GatewayError::Rejected => "co-op gateway rejected synchronization",
     }
 }

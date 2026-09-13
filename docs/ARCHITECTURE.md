@@ -220,6 +220,25 @@ relationships, and keeps graph, host-action, and opaque action-option identities
 profiles and their bounds remain unchanged. This source/component adapter does not prove host map
 freshness, visualizer rendering, or navigation effects.
 
+## Game-information query profile
+
+ADR 0020 adds the additive `game-information-query-v1-mcp` profile, selected only with
+`STS2_RUNTIME_PROFILE=game-information-query-v1`. It advertises six read-only tools for
+capabilities, static list/search/get, live detail, and static/live availability. Static queries
+bind content manifest, locale, and visibility scope; live queries additionally bind an instance,
+run/epoch, coherent snapshot, and parent observation. Definition references and live
+instance references remain distinct.
+
+The MCP adapter maps capabilities to bodyless `GET /v1/instances/{id}/game-information/capabilities`
+and every query to `POST /v1/instances/{id}/game-information/query` with the pinned
+`game-information-query-v1` envelope. It validates strict input, provenance/digest, response
+identity, requested fields and per-field availability, canonical byte accounting, ordering,
+pagination, cursor fences, generation and the 262 KiB message bound. The artifact is pinned to
+merged protocol main `34f68b18` (schema `376845b0…`). Unsupported producer kinds or feature-owner
+specializations are not advertised.
+Gateway #52 and game-mod extraction are external integration gates; this source/fake lane does not
+claim host readiness or live snapshot support.
+
 ## Runtime-v4 expert REST-action profile
 
 The additive `runtime-v4-expert-rest-action` profile is selected with

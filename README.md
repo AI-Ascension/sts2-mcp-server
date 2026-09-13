@@ -48,6 +48,17 @@ catalog, tool argument, envelope, or response projection, and injects it only as
 adapter necessarily reads that credential from trusted runtime configuration for this header step;
 it is not protocol-visible or model-facing identity.
 
+The additive `game-information-query-v1` profile is selected with
+`STS2_RUNTIME_PROFILE=game-information-query-v1`. It exposes six bounded read-only tools for
+capabilities, static definition list/search/get, live detail, and availability. Calls map only to the
+fixed gateway capabilities GET and query POST routes and consume the pinned
+`game-information-query-v1` artifact. Definitions and live instance references remain distinct;
+field availability, snapshot/cursor fences, provenance, and result limits are validated before
+content reaches MCP. The artifact is pinned to merged `sts2-protocol/main` commit
+`34f68b182c09472c3a0573ff478e17e6ed53c91f` (schema `376845b0…`). Gateway #52, game-mod extraction,
+live snapshots, and host compatibility remain unverified; see
+[ADR 0020](docs/decisions/0020-game-information-query-profile.md).
+
 ## Owner and consumers
 
 `sts2-mcp-server` owns the external MCP process boundary: framing, server identity and capabilities,
@@ -93,7 +104,7 @@ directory run:
 
 ```bash
 cargo metadata --locked --no-deps --format-version 1
-for profile in poc-v1 runtime-v1 runtime-v2 runtime-v3-gameplay runtime-v4-expert runtime-v4-expert-action runtime-v4-expert-rest-action runtime-map-v1 coop-synchronization-v1 coop-receipt-query-v1 seeded-run-v1 coop-native-v1; do
+for profile in poc-v1 runtime-v1 runtime-v2 runtime-v3-gameplay runtime-v4-expert runtime-v4-expert-action runtime-v4-expert-rest-action runtime-map-v1 coop-synchronization-v1 coop-receipt-query-v1 seeded-run-v1 coop-native-v1 game-information-query-v1; do
   (cd "protocol-artifact/$profile" && sha256sum -c SHA256SUMS)
 done
 cargo test --locked --package sts2-mcp-server --test artifact

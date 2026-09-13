@@ -20,6 +20,8 @@ mod coop_native;
 mod coop_receipt_query;
 #[path = "mapping_coop_synchronization.rs"]
 mod coop_synchronization;
+#[path = "mapping_game_information.rs"]
+mod game_information;
 #[path = "mapping_helpers.rs"]
 mod helpers;
 #[path = "mapping_response.rs"]
@@ -42,13 +44,17 @@ mod seeded_run;
 pub(crate) use helpers::safe_segment;
 use helpers::{
     forward, gateway_error_result, has_only_arguments, headers, invalid_params, non_empty_string,
-    nonnegative_integer, poc_action_request, request_context, safe_header_value, tool_result,
+    nonnegative_integer, poc_action_request, request_context, safe_header_value, tool_error_result,
+    tool_error_result_with_metadata, tool_result,
 };
 
 pub(crate) fn tools_call<G: GatewayAdapter>(
     server: &mut McpServer<G>,
     request: RpcRequest,
 ) -> RpcResponse {
+    if server.catalog.is_game_information() {
+        return game_information::tools_call(server, request);
+    }
     if server.catalog.is_coop_native() {
         return coop_native::tools_call(server, request);
     }

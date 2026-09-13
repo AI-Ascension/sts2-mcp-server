@@ -80,6 +80,7 @@ fn gateway_error(id: RequestId, error: GatewayError) -> RpcResponse {
         GatewayError::Unavailable => "native co-op gateway is unavailable",
         GatewayError::Timeout => "native co-op operation outcome is unknown after timeout",
         GatewayError::MalformedResponse => "native co-op gateway response was malformed",
+        GatewayError::ResponseTooLarge => "native co-op gateway response exceeded its byte limit",
         GatewayError::Rejected => "native co-op gateway rejected the operation",
     };
     crate::mapping::tool_result(id, message, true)

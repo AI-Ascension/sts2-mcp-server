@@ -17,7 +17,7 @@ Run from this target root:
 
 ```bash
 cargo metadata --locked --offline --no-deps --format-version 1
-for profile in poc-v1 runtime-v1 runtime-v2 runtime-v3-gameplay runtime-v4-expert runtime-v4-expert-action runtime-v4-expert-rest-action runtime-map-v1 coop-synchronization-v1 coop-receipt-query-v1 seeded-run-v1 coop-native-v1; do
+for profile in poc-v1 runtime-v1 runtime-v2 runtime-v3-gameplay runtime-v4-expert runtime-v4-expert-action runtime-v4-expert-rest-action runtime-map-v1 coop-synchronization-v1 coop-receipt-query-v1 seeded-run-v1 coop-native-v1 game-information-query-v1; do
   (cd "protocol-artifact/$profile" && sha256sum --check SHA256SUMS)
 done
 cargo test --locked --offline --package sts2-mcp-server --test artifact
@@ -225,6 +225,18 @@ metadata before forwarding. The copied artifact manifest, schema, conformance ca
 These are source/component and artifact-integrity checks. They do not start a native run, establish
 host seed readback, prove profile/save isolation or gameplay, or provide deployment and release
 evidence.
+
+## Game-information query checks
+
+`game_information_query.rs` verifies the six strict descriptors, closed schemas against valid
+arguments, read-only annotations, pinned artifact/checksums, exact capabilities/query routes,
+static two-page cursor continuation, live snapshot detail, Unicode text and byte bounds, complete
+definition identity, canonical unavailable-page accounting, structured stale/transport/projection
+errors, foreign and oversized input rejection, and malformed read-only response rejection with a
+fake gateway. Executable profile/binding tests verify explicit authority, the fixed capabilities
+route, and a distinct structured size error for an oversized HTTP body across the loopback HTTP
+adapter. These are synthetic source/component checks; gateway #52, producer capability negotiation,
+game-mod extraction, and host snapshot freshness remain external gates.
 
 ## Runtime-v4 expert REST-action checks
 

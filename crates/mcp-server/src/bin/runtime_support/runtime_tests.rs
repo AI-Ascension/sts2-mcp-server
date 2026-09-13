@@ -49,6 +49,11 @@ fn gateway_configuration_rejects_dns_remote_zero_port_and_unsafe_tokens() {
     assert!(safe_token("token-safe_123.=/+"));
 }
 
+#[test]
+fn oversized_http_responses_have_a_distinct_gateway_error() {
+    assert_eq!(map_io(ReadError::Oversized), GatewayError::ResponseTooLarge);
+}
+
 fn request(body: JsonValue) -> GatewayRequest {
     GatewayRequest {
         method: GatewayMethod::Post,
@@ -87,6 +92,7 @@ fn runtime_profile_bounds_are_scoped_to_the_semantic_profile() -> Result<(), Str
         (Some("runtime-v2"), 16 * 1024, 64 * 1024),
         (Some("runtime-v3-gameplay"), 256 * 1024, 128 * 1024),
         (Some("runtime-map-v1"), 256 * 1024, 256 * 1024),
+        (Some("game-information-query-v1"), 256 * 1024, 256 * 1024),
     ] {
         let profile = profile_for_name(name)?;
         assert_eq!(profile.catalog.max_frame_bytes(), frame, "{name:?}");

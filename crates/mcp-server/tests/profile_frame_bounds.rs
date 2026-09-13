@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 
 //! The MCP frame limit is a profile property: the poc, runtime-v1, and runtime-v2
-//! profiles keep their historical 16 KiB limit, and only the Runtime-v3 semantic
-//! profile accepts frames up to the 256 KiB ceiling. Oversized frames are rejected
-//! before any gateway access.
+//! profiles keep their historical 16 KiB limit, and semantic/read-only profiles
+//! accept frames up to the 256 KiB ceiling. Oversized frames are rejected before
+//! any gateway access.
 
 use sts2_mcp_server::{
     GatewayAdapter, GatewayError, GatewayRequest, GatewayResponse, MAX_FRAME_BYTES, McpServer,
@@ -35,7 +35,7 @@ fn padded_frame(total_bytes: usize) -> String {
     frame
 }
 
-fn profiles() -> [(&'static str, ToolCatalog, usize); 5] {
+fn profiles() -> [(&'static str, ToolCatalog, usize); 6] {
     [
         ("poc-v1-mcp", ToolCatalog::default(), LEGACY_MAX_FRAME_BYTES),
         (
@@ -56,6 +56,11 @@ fn profiles() -> [(&'static str, ToolCatalog, usize); 5] {
         (
             "runtime-map-v1-mcp",
             ToolCatalog::runtime_map_v1(),
+            MAX_FRAME_BYTES,
+        ),
+        (
+            "game-information-query-v1-mcp",
+            ToolCatalog::game_information_query_v1(),
             MAX_FRAME_BYTES,
         ),
     ]

@@ -12,6 +12,8 @@ pub(super) const LEGACY_MAX_RESPONSE_BYTES: usize = 64 * 1024;
 pub(super) const RUNTIME_V3_MAX_RESPONSE_BYTES: usize = 128 * 1024;
 /// Gateway response body limit for the bounded Runtime-map-v1 profile.
 pub(super) const MAP_MAX_RESPONSE_BYTES: usize = 256 * 1024;
+/// Gateway response body limit for game-information-query-v1 envelopes.
+pub(super) const GAME_INFORMATION_MAX_RESPONSE_BYTES: usize = 256 * 1024;
 
 pub(super) struct HttpResponse {
     pub(super) status: u16,
