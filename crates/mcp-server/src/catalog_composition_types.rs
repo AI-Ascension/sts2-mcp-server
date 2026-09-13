@@ -186,6 +186,33 @@ impl UnavailableReason {
     }
 }
 
+/// Authority identity attached to a gateway or producer capability layer.
+///
+/// The epoch fences capability evidence across restart/reload events while the
+/// digest distinguishes two offers observed at the same epoch.  A digest is an
+/// opaque owner-issued identity; the MCP boundary only validates that it is a
+/// bounded transport-safe value and compares it byte-for-byte.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct CapabilityAuthority {
+    pub epoch: u64,
+    pub digest: String,
+}
+
+impl CapabilityAuthority {
+    pub fn new(epoch: u64, digest: impl Into<String>) -> Result<Self, NegotiationError> {
+        let digest = digest.into();
+        if digest.is_empty()
+            || digest.len() > 128
+            || !digest.bytes().all(|byte| {
+                byte.is_ascii_alphanumeric() || matches!(byte, b'.' | b'_' | b':' | b'-')
+            })
+        {
+            return Err(NegotiationError::InvalidAuthorityDigest(digest));
+        }
+        Ok(Self { epoch, digest })
+    }
+}
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct NegotiatedOperation {
     pub operation: String,
@@ -208,6 +235,8 @@ pub struct UnavailableCapability {
 pub struct NegotiatedCapabilitySet {
     pub revision: String,
     pub(crate) caller_scope: CapabilityScope,
+    pub(crate) gateway_authority: CapabilityAuthority,
+    pub(crate) producer_authority: CapabilityAuthority,
     pub(crate) operations: BTreeMap<String, NegotiatedOperation>,
     pub(crate) unavailable: BTreeMap<String, UnavailableCapability>,
 }
@@ -236,6 +265,14 @@ impl NegotiatedCapabilitySet {
     pub fn caller_scope(&self) -> CapabilityScope {
         self.caller_scope
     }
+
+    pub fn gateway_authority(&self) -> &CapabilityAuthority {
+        &self.gateway_authority
+    }
+
+    pub fn producer_authority(&self) -> &CapabilityAuthority {
+        &self.producer_authority
+    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -243,6 +280,8 @@ pub enum NegotiationError {
     InvalidOperation(String),
     InvalidRevision(String),
     InvalidLimits(String),
+    InvalidAuthorityDigest(String),
+    UntrustedCapabilityLayer(CapabilityOwner),
     DuplicateOperation(String),
     RevisionConflict {
         operation: String,
@@ -262,6 +301,16 @@ impl fmt::Display for NegotiationError {
                 write!(formatter, "invalid capability revision {revision}")
             }
             Self::InvalidLimits(operation) => write!(formatter, "invalid limits for {operation}"),
+            Self::InvalidAuthorityDigest(digest) => {
+                write!(formatter, "invalid capability authority digest {digest}")
+            }
+            Self::UntrustedCapabilityLayer(owner) => {
+                write!(
+                    formatter,
+                    "{} capability layer lacks injected authority",
+                    owner.as_str()
+                )
+            }
             Self::DuplicateOperation(operation) => {
                 write!(formatter, "duplicate capability operation {operation}")
             }

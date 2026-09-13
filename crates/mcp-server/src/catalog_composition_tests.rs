@@ -10,8 +10,10 @@ fn composition_layers(
     profiles: &[ToolCatalog],
 ) -> Result<(CapabilityLayer, CapabilityLayer), NegotiationError> {
     Ok((
-        CapabilityLayer::from_catalogs(CapabilityOwner::Gateway, profiles)?,
-        CapabilityLayer::from_catalogs(CapabilityOwner::Producer, profiles)?,
+        CapabilityLayer::from_catalogs(CapabilityOwner::Gateway, profiles)?
+            .with_injected_authority(1, "gateway-test")?,
+        CapabilityLayer::from_catalogs(CapabilityOwner::Producer, profiles)?
+            .with_injected_authority(1, "producer-test")?,
     ))
 }
 
@@ -26,6 +28,13 @@ fn composes_gameplay_map_and_lookup_tools_with_local_discovery() -> Result<(), N
         ToolCatalog::compose_profiles(&profiles, gateway, producer, CapabilityScope::ALL)?;
 
     assert_eq!(catalog.revision, NEGOTIATED_COMPOSITION_REVISION);
+    let composition = catalog
+        .composition()
+        .ok_or(NegotiationError::NoCompatibleOperations)?;
+    assert_eq!(composition.gateway_authority().epoch, 1);
+    assert_eq!(composition.gateway_authority().digest, "gateway-test");
+    assert_eq!(composition.producer_authority().epoch, 1);
+    assert_eq!(composition.producer_authority().digest, "producer-test");
     assert!(catalog.tools().iter().all(|tool| {
         catalog
             .tools()
@@ -88,8 +97,10 @@ fn missing_producer_feature_is_reported_without_shadowing_remaining_tools()
         ToolCatalog::runtime_map_v1(),
         ToolCatalog::game_information(),
     ];
-    let gateway = CapabilityLayer::from_catalogs(CapabilityOwner::Gateway, &profiles)?;
-    let producer = CapabilityLayer::from_catalog_for(CapabilityOwner::Producer, &profiles[0])?;
+    let gateway = CapabilityLayer::from_catalogs(CapabilityOwner::Gateway, &profiles)?
+        .with_injected_authority(1, "gateway-test")?;
+    let producer = CapabilityLayer::from_catalog_for(CapabilityOwner::Producer, &profiles[0])?
+        .with_injected_authority(1, "producer-test")?;
     let catalog =
         ToolCatalog::compose_profiles(&profiles, gateway, producer, CapabilityScope::ALL)?;
 
@@ -118,6 +129,23 @@ fn missing_producer_feature_is_reported_without_shadowing_remaining_tools()
     Ok(())
 }
 
+#[test]
+fn synthetic_external_layers_require_an_explicit_authority_binding() -> Result<(), NegotiationError>
+{
+    let profiles = [
+        ToolCatalog::runtime_map_v1(),
+        ToolCatalog::game_information(),
+    ];
+    let gateway = CapabilityLayer::from_catalogs(CapabilityOwner::Gateway, &profiles)?;
+    let producer = CapabilityLayer::from_catalogs(CapabilityOwner::Producer, &profiles)?;
+    assert!(matches!(
+        ToolCatalog::compose_profiles(&profiles, gateway, producer, CapabilityScope::ALL),
+        Err(NegotiationError::UntrustedCapabilityLayer(
+            CapabilityOwner::Gateway
+        ))
+    ));
+    Ok(())
+}
 #[test]
 fn revision_conflict_fails_negotiation() -> Result<(), NegotiationError> {
     let mcp = CapabilityLayer::new(CapabilityOwner::Mcp, "mcp-v1").with_offer(
@@ -198,4 +226,17 @@ fn scope_and_limits_are_intersected() -> Result<(), NegotiationError> {
     assert_eq!(operation.effective_scope, CapabilityScope::READ);
     assert_eq!(operation.limits, ToolLimits::bounded(16, 64, 128, 8));
     Ok(())
+}
+
+#[test]
+fn unavailable_offer_preserves_its_declared_required_scope() {
+    let offer = CapabilityOffer::unavailable_with_scope(
+        "example.mutate",
+        "example-v1-mcp",
+        CapabilityGroup::GameplayActions,
+        CapabilityScope::MUTATE,
+        UnavailableReason::ProducerUnsupported,
+    );
+    assert_eq!(offer.required_scope, CapabilityScope::MUTATE);
+    assert!(!offer.supported);
 }

@@ -19,7 +19,8 @@ pub(crate) use json::composition_metadata;
 pub(crate) use negotiation::compose_profiles;
 pub use offers::{CapabilityLayer, CapabilityOffer, NegotiationRequest};
 pub use types::{
-    CAPABILITY_DISCOVERY_TOOL, CapabilityGroup, CapabilityOwner, CapabilityScope,
-    NEGOTIATED_COMPOSITION_REVISION, NEGOTIATION_STALE_CODE, NegotiatedCapabilitySet,
-    NegotiatedOperation, NegotiationError, ToolLimits, UnavailableCapability, UnavailableReason,
+    CAPABILITY_DISCOVERY_TOOL, CapabilityAuthority, CapabilityGroup, CapabilityOwner,
+    CapabilityScope, NEGOTIATED_COMPOSITION_REVISION, NEGOTIATION_STALE_CODE,
+    NegotiatedCapabilitySet, NegotiatedOperation, NegotiationError, ToolLimits,
+    UnavailableCapability, UnavailableReason,
 };

@@ -43,6 +43,31 @@ impl NegotiatedCapabilitySet {
         }
         JsonValue::object([
             ("revision".into(), JsonValue::string(self.revision.clone())),
+            (
+                "authority".into(),
+                JsonValue::object([
+                    (
+                        "gateway".into(),
+                        JsonValue::object([
+                            ("epoch".into(), number_u64(self.gateway_authority.epoch)),
+                            (
+                                "digest".into(),
+                                JsonValue::string(self.gateway_authority.digest.clone()),
+                            ),
+                        ]),
+                    ),
+                    (
+                        "producer".into(),
+                        JsonValue::object([
+                            ("epoch".into(), number_u64(self.producer_authority.epoch)),
+                            (
+                                "digest".into(),
+                                JsonValue::string(self.producer_authority.digest.clone()),
+                            ),
+                        ]),
+                    ),
+                ]),
+            ),
             ("features".into(), JsonValue::Object(groups)),
             (
                 "capability_discovery".into(),
@@ -72,5 +97,9 @@ pub(crate) fn composition_metadata(set: &NegotiatedCapabilitySet) -> JsonValue {
 }
 
 fn number(value: usize) -> JsonValue {
+    JsonValue::Number(i64::try_from(value).unwrap_or(i64::MAX))
+}
+
+fn number_u64(value: u64) -> JsonValue {
     JsonValue::Number(i64::try_from(value).unwrap_or(i64::MAX))
 }

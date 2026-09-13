@@ -47,6 +47,12 @@ pub struct McpServer<G> {
     pub(crate) dispatch_operation: Option<String>,
     pub(crate) pending_revision: Option<String>,
     pub(crate) authority_scope: CapabilityScope,
+    pub(crate) gateway_authority_epoch: u64,
+    pub(crate) producer_authority_epoch: u64,
+    pub(crate) gateway_authority_digest: Option<String>,
+    pub(crate) producer_authority_digest: Option<String>,
+    pub(crate) stale_gateway_authority_digest: Option<String>,
+    pub(crate) stale_producer_authority_digest: Option<String>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -78,11 +84,23 @@ impl<G: GatewayAdapter> McpServer<G> {
             dispatch_operation: None,
             pending_revision: None,
             authority_scope: CapabilityScope::ALL,
+            gateway_authority_epoch: 0,
+            producer_authority_epoch: 0,
+            gateway_authority_digest: None,
+            producer_authority_digest: None,
+            stale_gateway_authority_digest: None,
+            stale_producer_authority_digest: None,
         }
     }
 
     pub fn with_catalog(gateway: G, catalog: ToolCatalog) -> Self {
         let authority_scope = catalog_authority_scope(&catalog);
+        let (
+            gateway_authority_epoch,
+            producer_authority_epoch,
+            gateway_authority_digest,
+            producer_authority_digest,
+        ) = catalog_authority_binding(&catalog);
         Self {
             gateway,
             catalog,
@@ -101,6 +119,12 @@ impl<G: GatewayAdapter> McpServer<G> {
             dispatch_operation: None,
             pending_revision: None,
             authority_scope,
+            gateway_authority_epoch,
+            producer_authority_epoch,
+            gateway_authority_digest,
+            producer_authority_digest,
+            stale_gateway_authority_digest: None,
+            stale_producer_authority_digest: None,
         }
     }
 
@@ -117,6 +141,12 @@ impl<G: GatewayAdapter> McpServer<G> {
         mcp_session_id: impl Into<String>,
     ) -> Self {
         let authority_scope = catalog_authority_scope(&catalog);
+        let (
+            gateway_authority_epoch,
+            producer_authority_epoch,
+            gateway_authority_digest,
+            producer_authority_digest,
+        ) = catalog_authority_binding(&catalog);
         Self {
             gateway,
             catalog,
@@ -135,6 +165,12 @@ impl<G: GatewayAdapter> McpServer<G> {
             dispatch_operation: None,
             pending_revision: None,
             authority_scope,
+            gateway_authority_epoch,
+            producer_authority_epoch,
+            gateway_authority_digest,
+            producer_authority_digest,
+            stale_gateway_authority_digest: None,
+            stale_producer_authority_digest: None,
         }
     }
 
@@ -213,4 +249,16 @@ fn catalog_authority_scope(catalog: &ToolCatalog) -> CapabilityScope {
         .map_or(CapabilityScope::ALL, |composition| {
             composition.caller_scope()
         })
+}
+
+fn catalog_authority_binding(catalog: &ToolCatalog) -> (u64, u64, Option<String>, Option<String>) {
+    let Some(composition) = catalog.negotiated_capabilities() else {
+        return (0, 0, None, None);
+    };
+    (
+        composition.gateway_authority().epoch,
+        composition.producer_authority().epoch,
+        Some(composition.gateway_authority().digest.clone()),
+        Some(composition.producer_authority().digest.clone()),
+    )
 }

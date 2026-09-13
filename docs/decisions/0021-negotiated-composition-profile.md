@@ -33,6 +33,12 @@ constructors and catalogs are unchanged. The composed dispatcher routes gameplay
 the existing Runtime-v3 and Runtime-map adapters and routes lookups to the existing
 game-information adapter; no second gameplay adapter or arbitrary downstream route is introduced.
 
+Gateway and producer layers carry an owner-issued capability authority epoch and opaque digest.
+Catalog-derived external layers are synthetic and cannot participate in negotiation until a caller
+explicitly injects that authority evidence (the same boundary used by deterministic doubles).
+Refresh validation binds both authority identities to the composed catalog and rejects a catalog
+whose evidence was invalidated by a restart, content reload, or tool-set revision event.
+
 Producer restart, content reload, permission changes, and tool-set revision changes advance the MCP
 session epoch, invalidate tracked snapshot references, require a fresh negotiated catalog, and queue
 `notifications/tools/list_changed`. Calls that would forward while refresh is required, or that

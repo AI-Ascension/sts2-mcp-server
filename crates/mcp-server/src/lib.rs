@@ -27,10 +27,10 @@ pub use catalog::CHECKPOINT_REFERENCE_TOOL;
 pub use catalog::COOP_RECEIPT_QUERY_TOOL;
 pub use catalog::COOP_SYNCHRONIZATION_TOOL;
 pub use catalog::{
-    CAPABILITY_DISCOVERY_TOOL, CapabilityGroup, CapabilityLayer, CapabilityOffer, CapabilityOwner,
-    CapabilityScope, NEGOTIATED_COMPOSITION_REVISION, NEGOTIATION_STALE_CODE,
-    NegotiatedCapabilitySet, NegotiatedOperation, NegotiationError, NegotiationRequest, ToolLimits,
-    UnavailableCapability, UnavailableReason,
+    CAPABILITY_DISCOVERY_TOOL, CapabilityAuthority, CapabilityGroup, CapabilityLayer,
+    CapabilityOffer, CapabilityOwner, CapabilityScope, NEGOTIATED_COMPOSITION_REVISION,
+    NEGOTIATION_STALE_CODE, NegotiatedCapabilitySet, NegotiatedOperation, NegotiationError,
+    NegotiationRequest, ToolLimits, UnavailableCapability, UnavailableReason,
 };
 pub use catalog::{
     COOP_NATIVE_ACTION_TOOL, COOP_NATIVE_EFFECT_TOOL, COOP_NATIVE_OBSERVATION_TOOL,

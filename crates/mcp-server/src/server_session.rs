@@ -8,6 +8,8 @@ use crate::json::JsonValue;
 use crate::protocol::{RpcError, RpcRequest, RpcResponse};
 
 use super::McpServer;
+#[path = "server_session_authority.rs"]
+mod authority;
 #[path = "server_session_support.rs"]
 mod support;
 use support::{
@@ -99,6 +101,7 @@ impl<G> McpServer<G> {
             .ok_or_else(|| String::from("MCP session epoch exhausted"))?;
         self.refresh_required = Some(reason.clone());
         self.pending_revision = pending_revision;
+        authority::advance_authority_epoch(self, &reason)?;
         if let Some(scope) = pending_scope {
             self.authority_scope = scope;
         }
@@ -133,6 +136,14 @@ impl<G> McpServer<G> {
         self.refresh_required = None;
         self.pending_revision = None;
         self.authority_scope = authority_scope;
+        let composition = self
+            .catalog
+            .negotiated_capabilities()
+            .ok_or_else(|| String::from("refreshed catalog lost negotiation evidence"))?;
+        self.gateway_authority_digest = Some(composition.gateway_authority().digest.clone());
+        self.producer_authority_digest = Some(composition.producer_authority().digest.clone());
+        self.stale_gateway_authority_digest = None;
+        self.stale_producer_authority_digest = None;
         self.session_epoch = self
             .session_epoch
             .checked_add(1)
@@ -304,6 +315,6 @@ impl<G> McpServer<G> {
                 "refreshed catalog does not satisfy the changed tool-set revision",
             ));
         }
-        Ok(())
+        authority::validate_refresh_authority(self, composition)
     }
 }

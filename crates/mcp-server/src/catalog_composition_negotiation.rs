@@ -4,7 +4,7 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use super::offers::{CapabilityLayer, CapabilityOffer, NegotiationRequest};
 use super::types::{
-    CAPABILITY_DISCOVERY_TOOL, CapabilityScope, NEGOTIATED_COMPOSITION_REVISION,
+    CAPABILITY_DISCOVERY_TOOL, CapabilityOwner, CapabilityScope, NEGOTIATED_COMPOSITION_REVISION,
     NegotiatedCapabilitySet, NegotiatedOperation, NegotiationError, UnavailableCapability,
     UnavailableReason,
 };
@@ -89,6 +89,16 @@ fn merge_profiles(profiles: &[ToolCatalog]) -> Result<ToolCatalog, NegotiationEr
 }
 
 fn negotiate(request: &NegotiationRequest) -> Result<NegotiatedCapabilitySet, NegotiationError> {
+    if request.gateway.synthetic {
+        return Err(NegotiationError::UntrustedCapabilityLayer(
+            CapabilityOwner::Gateway,
+        ));
+    }
+    if request.producer.synthetic {
+        return Err(NegotiationError::UntrustedCapabilityLayer(
+            CapabilityOwner::Producer,
+        ));
+    }
     let mut operations = BTreeMap::new();
     let mut unavailable = BTreeMap::new();
     for mcp_offer in request.mcp.operations() {
@@ -219,6 +229,8 @@ fn negotiate(request: &NegotiationRequest) -> Result<NegotiatedCapabilitySet, Ne
     Ok(NegotiatedCapabilitySet {
         revision: NEGOTIATED_COMPOSITION_REVISION.to_owned(),
         caller_scope: request.caller_scope,
+        gateway_authority: request.gateway.authority.clone(),
+        producer_authority: request.producer.authority.clone(),
         operations,
         unavailable,
     })

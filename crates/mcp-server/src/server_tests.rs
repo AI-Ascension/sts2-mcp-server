@@ -30,13 +30,27 @@ fn composed_catalog() -> Result<ToolCatalog, String> {
 }
 
 fn composed_catalog_with_scope(scope: CapabilityScope) -> Result<ToolCatalog, String> {
+    composed_catalog_with_authority(scope, 1, 1, "gateway-test", "producer-test")
+}
+
+fn composed_catalog_with_authority(
+    scope: CapabilityScope,
+    gateway_epoch: u64,
+    producer_epoch: u64,
+    gateway_digest: &str,
+    producer_digest: &str,
+) -> Result<ToolCatalog, String> {
     let profiles = [
         ToolCatalog::runtime_map_v1(),
         ToolCatalog::game_information(),
     ];
     let gateway = CapabilityLayer::from_catalogs(CapabilityOwner::Gateway, &profiles)
+        .map_err(|error| error.to_string())?
+        .with_injected_authority(gateway_epoch, gateway_digest)
         .map_err(|error| error.to_string())?;
     let producer = CapabilityLayer::from_catalogs(CapabilityOwner::Producer, &profiles)
+        .map_err(|error| error.to_string())?
+        .with_injected_authority(producer_epoch, producer_digest)
         .map_err(|error| error.to_string())?;
     ToolCatalog::compose_profiles(&profiles, gateway, producer, scope)
         .map_err(|error| error.to_string())
@@ -86,13 +100,38 @@ fn lifecycle_event_invalidates_snapshots_and_blocks_forwarding_until_refresh() -
     assert!(blocked.contains("\"code\":-32009"));
     assert_eq!(server.gateway().requests, 0);
 
-    server.refresh_composed_catalog(catalog)?;
+    assert!(server.refresh_composed_catalog(catalog.clone()).is_err());
+    server.refresh_composed_catalog(composed_catalog_with_authority(
+        CapabilityScope::ALL,
+        1,
+        2,
+        "gateway-test",
+        "producer-after-restart",
+    )?)?;
     assert!(!server.refresh_required());
     let stale_snapshot = server.handle_frame(
         "{\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"tools/call\",\"params\":{\"name\":\"sts2.game_information_detail\",\"arguments\":{\"snapshot_ref\":{\"snapshot_id\":\"snapshot-1\"}}}}",
     );
     assert!(stale_snapshot.contains("\"code\":-32009"));
     assert_eq!(server.gateway().requests, 0);
+    Ok(())
+}
+
+#[test]
+fn repeated_lifecycle_events_keep_invalidated_authority_digests_fenced() -> Result<(), String> {
+    let catalog = composed_catalog()?;
+    let mut server = super::McpServer::with_catalog(CountingGateway::default(), catalog);
+    server.apply_session_event(SessionEvent::ProducerRestart)?;
+    server.apply_session_event(SessionEvent::ContentReload)?;
+
+    let stale_digest = composed_catalog_with_authority(
+        CapabilityScope::ALL,
+        1,
+        3,
+        "gateway-test",
+        "producer-test",
+    )?;
+    assert!(server.refresh_composed_catalog(stale_digest).is_err());
     Ok(())
 }
 

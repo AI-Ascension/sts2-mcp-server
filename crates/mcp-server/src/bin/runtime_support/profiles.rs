@@ -119,9 +119,10 @@ pub(crate) fn profile_for_name(profile: Option<&str>) -> Result<RuntimeProfile, 
             requires_coop_native_peer_binding: false,
         }),
         "negotiated-composition-v1" => {
-            // This standalone entry point has no trusted gateway/producer
-            // capability exchange. Unknown support and caller authority stay
-            // unavailable instead of being inferred from MCP catalogs.
+            // This standalone entry point does not yet receive injected
+            // owner-issued gateway/producer evidence. Unknown support and
+            // caller authority stay unavailable instead of being inferred
+            // from MCP catalogs.
             let gateway = CapabilityLayer::new(CapabilityOwner::Gateway, "unverified-gateway");
             let producer = CapabilityLayer::new(CapabilityOwner::Producer, "unverified-producer");
             profile_for_negotiation(gateway, producer, CapabilityScope::NONE)
@@ -249,8 +250,12 @@ mod tests {
             ToolCatalog::game_information(),
         ];
         let gateway = CapabilityLayer::from_catalogs(CapabilityOwner::Gateway, &profiles)
+            .map_err(|error| error.to_string())?
+            .with_injected_authority(1, "gateway-test")
             .map_err(|error| error.to_string())?;
         let producer = CapabilityLayer::from_catalog_for(CapabilityOwner::Producer, &profiles[0])
+            .map_err(|error| error.to_string())?
+            .with_injected_authority(1, "producer-test")
             .map_err(|error| error.to_string())?;
         let profile = profile_for_negotiation(gateway, producer, CapabilityScope::READ)?;
         assert!(

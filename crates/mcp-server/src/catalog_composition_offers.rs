@@ -3,8 +3,8 @@
 use std::collections::BTreeMap;
 
 use super::types::{
-    CapabilityGroup, CapabilityOwner, CapabilityScope, NegotiationError, ToolLimits,
-    UnavailableReason,
+    CapabilityAuthority, CapabilityGroup, CapabilityOwner, CapabilityScope, NegotiationError,
+    ToolLimits, UnavailableReason,
 };
 use crate::catalog::ToolCatalog;
 
@@ -46,12 +46,22 @@ impl CapabilityOffer {
         group: CapabilityGroup,
         reason: UnavailableReason,
     ) -> Self {
+        Self::unavailable_with_scope(operation, revision, group, CapabilityScope::NONE, reason)
+    }
+
+    pub fn unavailable_with_scope(
+        operation: impl Into<String>,
+        revision: impl Into<String>,
+        group: CapabilityGroup,
+        required_scope: CapabilityScope,
+        reason: UnavailableReason,
+    ) -> Self {
         Self {
             operation: operation.into(),
             revision: revision.into(),
             group,
             scope: CapabilityScope::NONE,
-            required_scope: CapabilityScope::READ,
+            required_scope,
             limits: ToolLimits::bounded(1, 1, 1, 1),
             supported: false,
             unavailable_reason: Some(reason),
@@ -97,16 +107,46 @@ impl CapabilityOffer {
 pub struct CapabilityLayer {
     pub owner: CapabilityOwner,
     pub revision: String,
+    pub(crate) authority: CapabilityAuthority,
+    pub(crate) synthetic: bool,
     pub(crate) offers: BTreeMap<String, CapabilityOffer>,
 }
 
 impl CapabilityLayer {
     pub fn new(owner: CapabilityOwner, revision: impl Into<String>) -> Self {
+        let revision = revision.into();
         Self {
             owner,
-            revision: revision.into(),
+            authority: CapabilityAuthority {
+                epoch: 0,
+                digest: format!("layer:{revision}"),
+            },
+            synthetic: false,
+            revision,
             offers: BTreeMap::new(),
         }
+    }
+
+    /// Attach an owner-issued epoch/digest to a layer generated from a local
+    /// catalog.  This is the explicit injection boundary for deterministic
+    /// doubles and for callers that have fetched authoritative capability
+    /// evidence from their owner.
+    pub fn with_injected_authority(
+        mut self,
+        epoch: u64,
+        digest: impl Into<String>,
+    ) -> Result<Self, NegotiationError> {
+        self.authority = CapabilityAuthority::new(epoch, digest)?;
+        self.synthetic = false;
+        Ok(self)
+    }
+
+    pub fn authority(&self) -> &CapabilityAuthority {
+        &self.authority
+    }
+
+    pub fn is_synthetic(&self) -> bool {
+        self.synthetic
     }
 
     pub fn insert(&mut self, offer: CapabilityOffer) -> Result<(), NegotiationError> {
@@ -149,14 +189,18 @@ impl CapabilityLayer {
         owner: CapabilityOwner,
         catalogs: &[ToolCatalog],
     ) -> Result<Self, NegotiationError> {
-        super::profile::layer_from_catalogs(owner, catalogs)
+        let mut layer = super::profile::layer_from_catalogs(owner, catalogs)?;
+        layer.synthetic = owner != CapabilityOwner::Mcp;
+        Ok(layer)
     }
 
     pub fn from_catalog_for(
         owner: CapabilityOwner,
         catalog: &ToolCatalog,
     ) -> Result<Self, NegotiationError> {
-        super::profile::layer_from_catalog(owner, catalog)
+        let mut layer = super::profile::layer_from_catalog(owner, catalog)?;
+        layer.synthetic = owner != CapabilityOwner::Mcp;
+        Ok(layer)
     }
 
     pub fn mirrored(

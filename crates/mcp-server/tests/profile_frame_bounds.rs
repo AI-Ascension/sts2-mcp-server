@@ -74,11 +74,15 @@ fn profiles() -> Result<[(&'static str, ToolCatalog, usize); 7], String> {
                     sts2_mcp_server::CapabilityOwner::Gateway,
                     &profiles,
                 )
+                .map_err(|error| error.to_string())?
+                .with_injected_authority(1, "gateway-test")
                 .map_err(|error| error.to_string())?;
                 let producer = sts2_mcp_server::CapabilityLayer::from_catalogs(
                     sts2_mcp_server::CapabilityOwner::Producer,
                     &profiles,
                 )
+                .map_err(|error| error.to_string())?
+                .with_injected_authority(1, "producer-test")
                 .map_err(|error| error.to_string())?;
                 ToolCatalog::compose_profiles(
                     &profiles,

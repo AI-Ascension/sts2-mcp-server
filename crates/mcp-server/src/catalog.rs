@@ -83,10 +83,10 @@ pub const GAME_INFORMATION_GET_TOOL: &str = game_information::GET_TOOL;
 pub const GAME_INFORMATION_DETAIL_TOOL: &str = game_information::DETAIL_TOOL;
 pub const GAME_INFORMATION_AVAILABILITY_TOOL: &str = game_information::AVAILABILITY_TOOL;
 pub use composition::{
-    CAPABILITY_DISCOVERY_TOOL, CapabilityGroup, CapabilityLayer, CapabilityOffer, CapabilityOwner,
-    CapabilityScope, NEGOTIATED_COMPOSITION_REVISION, NEGOTIATION_STALE_CODE,
-    NegotiatedCapabilitySet, NegotiatedOperation, NegotiationError, NegotiationRequest, ToolLimits,
-    UnavailableCapability, UnavailableReason,
+    CAPABILITY_DISCOVERY_TOOL, CapabilityAuthority, CapabilityGroup, CapabilityLayer,
+    CapabilityOffer, CapabilityOwner, CapabilityScope, NEGOTIATED_COMPOSITION_REVISION,
+    NEGOTIATION_STALE_CODE, NegotiatedCapabilitySet, NegotiatedOperation, NegotiationError,
+    NegotiationRequest, ToolLimits, UnavailableCapability, UnavailableReason,
 };
 pub(crate) const MAX_IDENTIFIER_BYTES: usize = 128;
 const INSTANCE_ID_PATTERN: &str = "^[A-Za-z0-9_-]{1,128}$";
