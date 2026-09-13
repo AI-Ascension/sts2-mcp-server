@@ -404,3 +404,121 @@ fn lost_mutation_response_preserves_operation_identity_and_reconciles_once() {
         "/v1/instances/instance-1/save-profile/operations/select-unknown"
     );
 }
+
+#[test]
+fn malformed_mutation_response_becomes_unknown_with_reconciliation_metadata() {
+    let mut malformed = result("select-malformed", "select", "settled");
+    if let JsonValue::Object(object) = &mut malformed {
+        object.remove("baseline");
+    }
+    let mut server = McpServer::with_catalog(
+        FakeGateway::new([Ok(GatewayResponse {
+            status: 200,
+            body: malformed,
+        })]),
+        ToolCatalog::save_profile_v1(),
+    );
+
+    let output = wire(&server.handle_frame(&frame(
+        "select-malformed",
+        SAVE_PROFILE_SELECT_TOOL,
+        select_arguments("slot-2"),
+    )));
+
+    assert_eq!(output["result"]["isError"], true);
+    assert_eq!(
+        output["result"]["structuredContent"]["error"]["code"],
+        "save_profile_unknown_after_malformed_response"
+    );
+    let body: serde_json::Value = serde_json::from_str(
+        output["result"]["content"][0]["text"]
+            .as_str()
+            .expect("unknown result text"),
+    )
+    .expect("unknown result body");
+    assert_eq!(body["status"], "unknown");
+    assert_eq!(body["operation_id"], "select-malformed");
+    assert_eq!(body["guidance"]["code"], "save_profile_reconcile_required");
+    assert_eq!(server.gateway().requests.len(), 1);
+}
+
+#[test]
+fn oversized_mutation_projection_becomes_unknown_with_reconciliation_metadata() {
+    let mut oversized = result("select-oversized", "select", "rejected");
+    if let JsonValue::Object(object) = &mut oversized {
+        object.insert(
+            String::from("downstream"),
+            JsonValue::string("x".repeat(SAVE_PROFILE_MAX_BODY_BYTES)),
+        );
+    }
+    let mut server = McpServer::with_catalog(
+        FakeGateway::new([Ok(GatewayResponse {
+            status: 200,
+            body: oversized,
+        })]),
+        ToolCatalog::save_profile_v1(),
+    );
+
+    let output = wire(&server.handle_frame(&frame(
+        "select-oversized",
+        SAVE_PROFILE_SELECT_TOOL,
+        select_arguments("slot-2"),
+    )));
+
+    assert_eq!(output["result"]["isError"], true);
+    assert_eq!(
+        output["result"]["structuredContent"]["error"]["code"],
+        "save_profile_unknown_after_oversized_response"
+    );
+    let body: serde_json::Value = serde_json::from_str(
+        output["result"]["content"][0]["text"]
+            .as_str()
+            .expect("unknown result text"),
+    )
+    .expect("unknown result body");
+    assert_eq!(body["status"], "unknown");
+    assert_eq!(body["operation_id"], "select-oversized");
+    assert_eq!(body["guidance"]["code"], "save_profile_reconcile_required");
+    assert_eq!(server.gateway().requests.len(), 1);
+}
+
+#[test]
+fn disposable_creation_with_different_request_ids_is_not_idempotent() {
+    let mut server = McpServer::with_catalog(
+        FakeGateway::new([
+            Ok(GatewayResponse {
+                status: 200,
+                body: result("create-1", "createdisposable", "settled"),
+            }),
+            Ok(GatewayResponse {
+                status: 200,
+                body: result("create-2", "createdisposable", "settled"),
+            }),
+        ]),
+        ToolCatalog::save_profile_v1(),
+    );
+    let listed =
+        wire(&server.handle_frame(r#"{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}"#));
+    let create = listed["result"]["tools"]
+        .as_array()
+        .expect("tool array")
+        .iter()
+        .find(|tool| tool["name"] == SAVE_PROFILE_CREATE_DISPOSABLE_TOOL)
+        .expect("create-disposable descriptor");
+    assert_eq!(create["annotations"]["idempotentHint"], false);
+
+    for id in ["create-1", "create-2"] {
+        let output =
+            wire(&server.handle_frame(&frame(id, SAVE_PROFILE_CREATE_DISPOSABLE_TOOL, context())));
+        assert_eq!(output["result"]["isError"], false, "{output}");
+    }
+
+    let requests = &server.gateway().requests;
+    assert_eq!(requests.len(), 2);
+    assert_eq!(requests[0].path, requests[1].path);
+    assert_eq!(requests[0].body, requests[1].body);
+    assert_ne!(
+        requests[0].correlation.mcp_request_id,
+        requests[1].correlation.mcp_request_id
+    );
+}

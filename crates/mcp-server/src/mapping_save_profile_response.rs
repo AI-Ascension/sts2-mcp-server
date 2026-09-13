@@ -8,6 +8,8 @@ use crate::json::JsonValue;
 
 use super::{CallKind, Context};
 
+#[path = "mapping_save_profile_response_downstream.rs"]
+mod downstream;
 #[path = "mapping_save_profile_response_validation.rs"]
 mod validation;
 
@@ -44,21 +46,50 @@ const STATUSES: [&str; 8] = [
     "created",
 ];
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum NormalizeError {
+    Malformed(&'static str),
+    ResponseTooLarge,
+}
+
+impl NormalizeError {
+    const fn gateway_error(self) -> GatewayError {
+        match self {
+            Self::Malformed(_) => GatewayError::MalformedResponse,
+            Self::ResponseTooLarge => GatewayError::ResponseTooLarge,
+        }
+    }
+}
+
+impl From<&'static str> for NormalizeError {
+    fn from(message: &'static str) -> Self {
+        Self::Malformed(message)
+    }
+}
+
 pub(super) fn gateway_success(
     context: Context,
     response: GatewayResponse,
 ) -> crate::protocol::RpcResponse {
     let body = match normalize(&context, &response) {
         Ok(body) => body,
-        Err(_) if context.kind.is_mutation() => {
-            return unknown_result(context, GatewayError::MalformedResponse);
+        Err(error) if context.kind.is_mutation() => {
+            return unknown_result(context, error.gateway_error());
         }
-        Err(message) => {
+        Err(NormalizeError::Malformed(message)) => {
             return super::super::tool_error_result(
                 context.request_id,
                 "save_profile_malformed_response",
                 "malformed_response",
                 message,
+            );
+        }
+        Err(NormalizeError::ResponseTooLarge) => {
+            return super::super::tool_error_result(
+                context.request_id,
+                "save_profile_response_too_large",
+                "size",
+                "save-profile response exceeded the byte limit",
             );
         }
     };
@@ -144,7 +175,7 @@ pub(super) fn unknown_result(
     )
 }
 
-fn normalize(context: &Context, response: &GatewayResponse) -> Result<JsonValue, &'static str> {
+fn normalize(context: &Context, response: &GatewayResponse) -> Result<JsonValue, NormalizeError> {
     let object = response
         .body
         .as_object()
@@ -154,33 +185,33 @@ fn normalize(context: &Context, response: &GatewayResponse) -> Result<JsonValue,
     }
     validation::validate_fields(object)?;
     if object.get("contract").and_then(JsonValue::as_string) != Some(SAVE_PROFILE_CONTRACT) {
-        return Err("save-profile response contract is unsupported");
+        return Err("save-profile response contract is unsupported".into());
     }
     if let Some(revision) = object.get("schema_revision")
         && revision.as_string() != Some(SAVE_PROFILE_CONTRACT)
     {
-        return Err("save-profile response schema revision is unsupported");
+        return Err("save-profile response schema revision is unsupported".into());
     }
     let operation_id = object
         .get("operation_id")
         .and_then(JsonValue::as_string)
         .ok_or("save-profile response operation_id is missing")?;
     if operation_id != context.operation_id || !validation::safe_operation_id(operation_id) {
-        return Err("save-profile response operation identity does not match");
+        return Err("save-profile response operation identity does not match".into());
     }
     let status = object
         .get("status")
         .and_then(JsonValue::as_string)
         .ok_or("save-profile response status is missing")?;
     if !STATUSES.contains(&status) {
-        return Err("save-profile response status is unsupported");
+        return Err("save-profile response status is unsupported".into());
     }
     validation::validate_route(object.get("route"), context.kind, status)?;
     validation::validate_identity_echo(object, context)?;
     validation::validate_optional_profile(object.get("profile_id"))?;
     validation::validate_optional_profile(object.get("save_profile_id"))?;
     if object.get("profile_id").is_some() && object.get("save_profile_id").is_some() {
-        return Err("save-profile response contains duplicate profile identities");
+        return Err("save-profile response contains duplicate profile identities".into());
     }
     validation::validate_baseline(object.get("baseline"))?;
     validation::validate_user_data(object.get("user_data"), context)?;
@@ -189,22 +220,33 @@ fn normalize(context: &Context, response: &GatewayResponse) -> Result<JsonValue,
     if let Some(downstream) = object.get("downstream")
         && downstream.to_json().len() > SAVE_PROFILE_MAX_BODY_BYTES
     {
-        return Err("save-profile downstream content exceeds the byte limit");
+        return Err(NormalizeError::ResponseTooLarge);
+    }
+    let projected_downstream = object
+        .get("downstream")
+        .map(|value| downstream::project(value, context))
+        .transpose()?;
+    let mut projected = object.clone();
+    if let Some(value) = projected_downstream {
+        if value.to_json().len() > SAVE_PROFILE_MAX_BODY_BYTES {
+            return Err(NormalizeError::ResponseTooLarge);
+        }
+        projected.insert(String::from("downstream"), value);
     }
     validation::validate_result_requirements(object, context, status)?;
-    Ok(response.body.clone())
+    Ok(JsonValue::Object(projected))
 }
 
 fn normalize_error(
     context: &Context,
     status: u16,
     object: &BTreeMap<String, JsonValue>,
-) -> Result<JsonValue, &'static str> {
+) -> Result<JsonValue, NormalizeError> {
     if object
         .keys()
         .any(|key| !["error_code", "retryable", "retry_after_ms"].contains(&key.as_str()))
     {
-        return Err("save-profile error response has unsupported fields");
+        return Err("save-profile error response has unsupported fields".into());
     }
     let code = object
         .get("error_code")
@@ -213,14 +255,14 @@ fn normalize_error(
     validation::validate_error_string(code)?;
     if object.get("retryable").is_some() && object.get("retryable") != Some(&JsonValue::Bool(true))
     {
-        return Err("save-profile retryable guidance is invalid");
+        return Err("save-profile retryable guidance is invalid".into());
     }
     if let Some(JsonValue::Number(value)) = object.get("retry_after_ms") {
         if !(0..=60_000).contains(value) {
-            return Err("save-profile retry guidance is outside the bound");
+            return Err("save-profile retry guidance is outside the bound".into());
         }
     } else if object.get("retry_after_ms").is_some() {
-        return Err("save-profile retry guidance is invalid");
+        return Err("save-profile retry guidance is invalid".into());
     }
     let wire_status = match status {
         408 | 502 | 503 | 504 => "unknown",
