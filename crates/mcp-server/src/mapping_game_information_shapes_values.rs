@@ -12,6 +12,7 @@ const MAX_TEXT: usize = 1_024;
 pub(super) fn validate_item(
     value: &JsonValue,
     binding: &JsonValue,
+    target_definition: &JsonValue,
     entity_kind: Option<&JsonValue>,
     mode: &str,
 ) -> Result<(), &'static str> {
@@ -27,6 +28,7 @@ pub(super) fn validate_item(
         .ok_or("item definition is not an object")?;
     if definition_object.get("content_manifest_id") != binding_object.get("content_manifest_id")
         || definition_object.get("entity_kind") != entity_kind
+        || (target_definition != &JsonValue::Null && target_definition != &definition)
     {
         return Err("item definition reference is foreign to the query");
     }

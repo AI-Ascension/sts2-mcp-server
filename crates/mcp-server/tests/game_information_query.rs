@@ -18,6 +18,9 @@ mod errors;
 #[path = "support/game_information_query_extra.rs"]
 mod extra;
 
+#[path = "support/game_information_query_regressions.rs"]
+mod regressions;
+
 struct FakeGateway {
     requests: Vec<GatewayRequest>,
     responses: VecDeque<Result<GatewayResponse, GatewayError>>,

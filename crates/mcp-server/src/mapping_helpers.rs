@@ -25,19 +25,68 @@ pub(super) fn forward<G: GatewayAdapter>(
 }
 
 pub(super) fn gateway_error_result(id: RequestId, error: GatewayError) -> RpcResponse {
-    let (code, message) = match error {
-        GatewayError::Unauthorized => (-32001, "gateway authorization failed"),
-        GatewayError::Forbidden => (-32007, "gateway scope authorization failed"),
-        GatewayError::NotFound => (-32004, "gateway target was not found"),
-        GatewayError::Unavailable => (-32003, "gateway is unavailable"),
-        GatewayError::Timeout => (-32008, "gateway request timed out"),
-        GatewayError::MalformedResponse => (-32002, "gateway returned an invalid response"),
-        GatewayError::Rejected => (-32005, "gateway rejected the request"),
+    let (mcp_code, code, category, message) = match error {
+        GatewayError::Unauthorized => (
+            -32001,
+            "gateway_unauthorized",
+            "denied",
+            "gateway authorization failed",
+        ),
+        GatewayError::Forbidden => (
+            -32007,
+            "gateway_forbidden",
+            "denied",
+            "gateway scope authorization failed",
+        ),
+        GatewayError::NotFound => (
+            -32004,
+            "gateway_not_found",
+            "missing",
+            "gateway target was not found",
+        ),
+        GatewayError::Unavailable => (
+            -32003,
+            "gateway_unavailable",
+            "transport",
+            "gateway is unavailable",
+        ),
+        GatewayError::Timeout => (
+            -32008,
+            "gateway_timeout",
+            "transport",
+            "gateway request timed out",
+        ),
+        GatewayError::MalformedResponse => (
+            -32002,
+            "gateway_malformed_response",
+            "malformed_response",
+            "gateway returned an invalid response",
+        ),
+        GatewayError::ResponseTooLarge => (
+            -32006,
+            "gateway_response_too_large",
+            "size",
+            "gateway response exceeded the byte limit",
+        ),
+        GatewayError::Rejected => (
+            -32005,
+            "gateway_rejected",
+            "invalid_input",
+            "gateway rejected the request",
+        ),
     };
-    tool_result(id, format!("gateway error {code}: {message}"), true)
+    tool_error_result_with_metadata(
+        id,
+        code,
+        category,
+        format!("gateway error {mcp_code}: {message}"),
+        Some(mcp_code),
+        None,
+    )
 }
 
 pub(super) fn tool_result(id: RequestId, text: impl Into<String>, is_error: bool) -> RpcResponse {
+    let text = text.into();
     RpcResponse::success(
         id,
         JsonValue::object([
@@ -49,6 +98,65 @@ pub(super) fn tool_result(id: RequestId, text: impl Into<String>, is_error: bool
                 ])]),
             ),
             ("isError".to_owned(), JsonValue::Bool(is_error)),
+        ]),
+    )
+}
+
+/// Returns a tool error with a machine-readable error object in
+/// MCP `structuredContent`, while retaining the bounded text content for
+/// clients that only consume the textual channel.
+pub(super) fn tool_error_result(
+    id: RequestId,
+    code: impl Into<String>,
+    category: &'static str,
+    text: impl Into<String>,
+) -> RpcResponse {
+    tool_error_result_with_metadata(id, code, category, text, None, None)
+}
+
+pub(super) fn tool_error_result_with_metadata(
+    id: RequestId,
+    code: impl Into<String>,
+    category: &'static str,
+    text: impl Into<String>,
+    mcp_code: Option<i32>,
+    http_status: Option<u16>,
+) -> RpcResponse {
+    let code = code.into();
+    let text = text.into();
+    RpcResponse::success(
+        id,
+        JsonValue::object([
+            (
+                "content".to_owned(),
+                JsonValue::Array(vec![JsonValue::object([
+                    ("type".to_owned(), JsonValue::string("text")),
+                    ("text".to_owned(), JsonValue::string(text.as_str())),
+                ])]),
+            ),
+            ("isError".to_owned(), JsonValue::Bool(true)),
+            (
+                "structuredContent".to_owned(),
+                JsonValue::object([(
+                    "error".to_owned(),
+                    JsonValue::object([
+                        ("category".to_owned(), JsonValue::string(category)),
+                        ("code".to_owned(), JsonValue::string(code.as_str())),
+                        (
+                            "http_status".to_owned(),
+                            http_status.map_or(JsonValue::Null, |status| {
+                                JsonValue::Number(i64::from(status))
+                            }),
+                        ),
+                        (
+                            "mcp_code".to_owned(),
+                            mcp_code
+                                .map_or(JsonValue::Null, |code| JsonValue::Number(i64::from(code))),
+                        ),
+                        ("message".to_owned(), JsonValue::string(text)),
+                    ]),
+                )]),
+            ),
         ]),
     )
 }

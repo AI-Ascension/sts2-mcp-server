@@ -136,12 +136,10 @@ fn forward_capabilities<G: GatewayAdapter>(
     );
     match server.gateway.forward(request) {
         Ok(response) => match response::project_capabilities(&response.body, &context) {
-            Ok((body, is_error)) => super::tool_result(
-                context.request_id,
-                body.to_json(),
-                is_error || !(200..300).contains(&response.status),
-            ),
-            Err(message) => super::tool_result(context.request_id, message, true),
+            Ok((body, is_error)) => {
+                projected_result(context.request_id, body, is_error, response.status)
+            }
+            Err(message) => projection_error_result(context.request_id, message),
         },
         Err(error) => super::gateway_error_result(context.request_id, error),
     }
@@ -170,14 +168,60 @@ fn forward_query<G: GatewayAdapter>(
     );
     match server.gateway.forward(request) {
         Ok(response) => match response::project_query(&response.body, &context, &query) {
-            Ok((body, is_error)) => super::tool_result(
-                context.request_id,
-                body.to_json(),
-                is_error || !(200..300).contains(&response.status),
-            ),
-            Err(message) => super::tool_result(context.request_id, message, true),
+            Ok((body, is_error)) => {
+                projected_result(context.request_id, body, is_error, response.status)
+            }
+            Err(message) => projection_error_result(context.request_id, message),
         },
         Err(error) => super::gateway_error_result(context.request_id, error),
+    }
+}
+
+fn projected_result(id: RequestId, body: JsonValue, is_error: bool, status: u16) -> RpcResponse {
+    let text = body.to_json();
+    if is_error {
+        if let Some(code) = response::protocol_error_code(&body) {
+            return super::tool_error_result(
+                id,
+                code.to_owned(),
+                response::protocol_error_category(code),
+                text,
+            );
+        }
+        return super::tool_error_result(
+            id,
+            "game_information_malformed_response",
+            "malformed_response",
+            text,
+        );
+    }
+    if !(200..300).contains(&status) {
+        return super::tool_error_result_with_metadata(
+            id,
+            format!("game_information_http_{status}"),
+            status_error_category(status),
+            text,
+            None,
+            Some(status),
+        );
+    }
+    super::tool_result(id, text, false)
+}
+
+fn projection_error_result(id: RequestId, message: &'static str) -> RpcResponse {
+    let (code, category) = response::projection_error_code(message);
+    super::tool_error_result(id, code, category, message)
+}
+
+fn status_error_category(status: u16) -> &'static str {
+    match status {
+        400 | 422 => "invalid_input",
+        401 | 403 => "denied",
+        404 => "missing",
+        409 => "stale",
+        413 => "size",
+        408 | 429 | 500..=599 => "transport",
+        _ => "malformed_response",
     }
 }
 

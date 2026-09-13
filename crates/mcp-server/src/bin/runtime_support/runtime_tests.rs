@@ -49,6 +49,11 @@ fn gateway_configuration_rejects_dns_remote_zero_port_and_unsafe_tokens() {
     assert!(safe_token("token-safe_123.=/+"));
 }
 
+#[test]
+fn oversized_http_responses_have_a_distinct_gateway_error() {
+    assert_eq!(map_io(ReadError::Oversized), GatewayError::ResponseTooLarge);
+}
+
 fn request(body: JsonValue) -> GatewayRequest {
     GatewayRequest {
         method: GatewayMethod::Post,

@@ -59,6 +59,10 @@ pub(super) fn query(required: &[&str]) -> JsonValue {
         (String::from("mode"), enum_values(&["static", "live"])),
     ]);
     let mut allowed = vec![
+        "instance_id",
+        "mcp_session_id",
+        "lease_id",
+        "lease_epoch",
         "content_manifest_id",
         "locale",
         "visibility_scope",

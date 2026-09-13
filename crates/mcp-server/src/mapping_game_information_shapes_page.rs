@@ -2,7 +2,9 @@
 
 use crate::json::JsonValue;
 
-use super::helpers::{cursor_binding_for, validate_accounting, validate_ordering};
+use super::helpers::{
+    EMPTY_ITEMS_PAYLOAD_BYTES, cursor_binding_for, validate_accounting, validate_ordering,
+};
 use super::values::validate_item;
 use super::{enum_value, number};
 
@@ -48,8 +50,19 @@ pub(super) fn validate(
     let binding = query_object
         .get("binding")
         .ok_or("query binding is missing")?;
+    let target_definition = query_object
+        .get("target")
+        .and_then(JsonValue::as_object)
+        .and_then(|target| target.get("definition_ref"))
+        .ok_or("query target definition is missing")?;
     for item in items {
-        validate_item(item, binding, query_object.get("entity_kind"), mode)?;
+        validate_item(
+            item,
+            binding,
+            target_definition,
+            query_object.get("entity_kind"),
+            mode,
+        )?;
     }
     let next_cursor = object.get("next_cursor").ok_or("next cursor is missing")?;
     if let Some(cursor) = next_cursor.as_string() {
@@ -115,7 +128,10 @@ pub(super) fn validate(
                 .is_none_or(|accounting| {
                     accounting.get("item_count") != Some(&JsonValue::Number(0))
                         || accounting.get("item_bytes") != Some(&JsonValue::Number(0))
-                        || accounting.get("payload_bytes") != Some(&JsonValue::Number(0))
+                        // Even an unavailable page has an empty `items` array;
+                        // its canonical UTF-8 payload is therefore `[]` (2 bytes).
+                        || accounting.get("payload_bytes")
+                            != Some(&JsonValue::Number(EMPTY_ITEMS_PAYLOAD_BYTES))
                         || accounting.get("text_bytes") != Some(&JsonValue::Number(0))
                 }))
     {

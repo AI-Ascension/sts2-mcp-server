@@ -228,13 +228,15 @@ evidence.
 
 ## Game-information query checks
 
-`game_information_query.rs` verifies the six strict descriptors, read-only annotations, pinned
-artifact/checksums, exact capabilities/query routes, static two-page cursor continuation, live
-snapshot detail, typed stale/transport errors, foreign and oversized input rejection, and malformed
-read-only response rejection with a fake gateway. Executable profile/binding tests verify explicit
-authority and the fixed capabilities route across the loopback HTTP adapter. These are synthetic
-source/component checks; gateway #52, producer capability negotiation, game-mod extraction, and
-host snapshot freshness remain external gates.
+`game_information_query.rs` verifies the six strict descriptors, closed schemas against valid
+arguments, read-only annotations, pinned artifact/checksums, exact capabilities/query routes,
+static two-page cursor continuation, live snapshot detail, Unicode text and byte bounds, complete
+definition identity, canonical unavailable-page accounting, structured stale/transport/projection
+errors, foreign and oversized input rejection, and malformed read-only response rejection with a
+fake gateway. Executable profile/binding tests verify explicit authority, the fixed capabilities
+route, and a distinct structured size error for an oversized HTTP body across the loopback HTTP
+adapter. These are synthetic source/component checks; gateway #52, producer capability negotiation,
+game-mod extraction, and host snapshot freshness remain external gates.
 
 ## Runtime-v4 expert REST-action checks
 

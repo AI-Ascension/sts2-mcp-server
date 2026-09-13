@@ -4,6 +4,9 @@ use std::collections::BTreeMap;
 
 use crate::json::JsonValue;
 
+/// Canonical compact JSON encoding of an empty `items` array (`[]`).
+pub(super) const EMPTY_ITEMS_PAYLOAD_BYTES: i64 = 2;
+
 pub(super) fn unique(values: &[JsonValue]) -> bool {
     values
         .iter()

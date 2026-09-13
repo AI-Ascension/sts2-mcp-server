@@ -215,6 +215,49 @@ fn game_information_profile_crosses_the_real_http_adapter() -> Result<(), String
     Ok(())
 }
 
+#[test]
+fn oversized_game_information_http_response_is_a_structured_size_error() -> Result<(), String> {
+    let listener = TcpListener::bind("127.0.0.1:0").map_err(|error| error.to_string())?;
+    let mut config = config();
+    config.gateway_address = listener.local_addr().map_err(|error| error.to_string())?;
+    let server_thread = std::thread::spawn(move || {
+        serve_expected_path(
+            listener,
+            200,
+            String::from("{}"),
+            "GET /v1/instances/configured-instance/game-information/capabilities HTTP/1.1",
+        )
+    });
+    let adapter = RuntimeGatewayAdapter::new(config, 1);
+    let mut server = sts2_mcp_server::McpServer::with_catalog_and_sessions(
+        adapter,
+        sts2_mcp_server::ToolCatalog::game_information_query_v1(),
+        "configured-session",
+        "configured-session",
+    );
+    let output = server.handle_frame(
+        r#"{"jsonrpc":"2.0","id":"corr-size","method":"tools/call","params":{"name":"sts2.game_information_capabilities","arguments":{"instance_id":"configured-instance","mcp_session_id":"configured-session","lease_id":"configured-lease","lease_epoch":7}}}"#,
+    );
+    server_thread
+        .join()
+        .map_err(|_| "HTTP fixture thread failed".to_owned())??;
+    let response =
+        serde_json::from_str::<serde_json::Value>(&output).map_err(|error| error.to_string())?;
+    assert_eq!(
+        response["result"]["structuredContent"]["error"]["code"],
+        "gateway_response_too_large"
+    );
+    assert_eq!(
+        response["result"]["structuredContent"]["error"]["category"],
+        "size"
+    );
+    assert_eq!(
+        response["result"]["structuredContent"]["error"]["mcp_code"],
+        -32006
+    );
+    Ok(())
+}
+
 fn serve(listener: TcpListener, status: u16, body: String) -> Result<(), String> {
     serve_request(listener, status, body, None)
 }

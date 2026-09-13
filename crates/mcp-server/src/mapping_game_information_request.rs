@@ -203,9 +203,12 @@ fn valid_identity(value: &str) -> bool {
 }
 
 fn safe_text(value: &str) -> bool {
-    value
-        .bytes()
-        .all(|byte| !(byte < 0x20 || (0x7f..=0x9f).contains(&byte)))
+    value.chars().all(|character| {
+        !matches!(
+            character,
+            '\u{0000}'..='\u{001F}' | '\u{007F}'..='\u{009F}'
+        )
+    })
 }
 
 fn definition_field<'a>(value: &'a JsonValue, key: &str) -> Option<&'a JsonValue> {

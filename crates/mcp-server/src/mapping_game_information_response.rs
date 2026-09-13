@@ -14,6 +14,9 @@ use super::GameInformationContext;
 #[path = "mapping_game_information_shapes.rs"]
 mod shapes;
 
+pub(super) const RESPONSE_TOO_LARGE: &str =
+    "game-information response exceeds the message byte limit";
+
 pub(super) fn project_capabilities(
     body: &JsonValue,
     context: &GameInformationContext,
@@ -159,6 +162,39 @@ fn bounded(value: &JsonValue) -> Result<(), &'static str> {
     if value.to_json().len() <= GAME_INFORMATION_MAX_MESSAGE_BYTES {
         Ok(())
     } else {
-        Err("game-information response exceeds the message byte limit")
+        Err(RESPONSE_TOO_LARGE)
+    }
+}
+
+pub(super) fn projection_error_code(message: &str) -> (&'static str, &'static str) {
+    if message == RESPONSE_TOO_LARGE {
+        ("game_information_response_too_large", "size")
+    } else {
+        ("game_information_malformed_response", "malformed_response")
+    }
+}
+
+pub(super) fn protocol_error_code(body: &JsonValue) -> Option<&str> {
+    body.as_object()?
+        .get("error")?
+        .as_object()?
+        .get("code")?
+        .as_string()
+}
+
+pub(super) fn protocol_error_category(code: &str) -> &'static str {
+    match code {
+        "unknown_kind"
+        | "unsupported_filter"
+        | "unsupported_projection"
+        | "unsupported_version"
+        | "unsupported_field" => "unsupported",
+        "unknown_id" | "missing_capability" => "missing",
+        "denied_scope" | "read_only_violation" => "denied",
+        "stale_snapshot" | "stale_cursor" | "mixed_generation" => "stale",
+        "result_limit_exceeded" => "size",
+        "invalid_identity" | "invalid_bounds" | "ambiguous_id" => "invalid_input",
+        "malformed" => "malformed_response",
+        _ => "malformed_response",
     }
 }

@@ -63,6 +63,12 @@ response; denied, unsupported, missing, stale, size, and transport failures rema
 through typed protocol error codes or sanitized gateway error codes. A timeout/disconnect does not
 retry or claim settlement.
 
+Tool-level failures also carry an MCP `structuredContent.error` object with stable `code` and
+`category` fields, retaining the bounded text projection for compatibility. Gateway failures add
+their numeric MCP code, and HTTP status-derived failures add the status. Projection failures are
+explicitly classified as malformed responses or size failures; an oversized HTTP body is not
+reclassified as malformed.
+
 The executable selects the profile only with
 `STS2_RUNTIME_PROFILE=game-information-query-v1`, verifies the copied artifact, uses a 256 KiB
 MCP/gateway response budget, and rejects foreign or missing authority before opening a connection.

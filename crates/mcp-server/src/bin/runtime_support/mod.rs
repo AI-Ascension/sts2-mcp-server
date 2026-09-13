@@ -257,7 +257,7 @@ fn map_io(error: ReadError) -> GatewayError {
     match error {
         ReadError::Timeout => GatewayError::Timeout,
         ReadError::Malformed => GatewayError::MalformedResponse,
-        ReadError::Oversized => GatewayError::MalformedResponse,
+        ReadError::Oversized => GatewayError::ResponseTooLarge,
         ReadError::Unavailable => GatewayError::Unavailable,
     }
 }

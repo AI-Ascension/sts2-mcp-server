@@ -44,7 +44,8 @@ mod seeded_run;
 pub(crate) use helpers::safe_segment;
 use helpers::{
     forward, gateway_error_result, has_only_arguments, headers, invalid_params, non_empty_string,
-    nonnegative_integer, poc_action_request, request_context, safe_header_value, tool_result,
+    nonnegative_integer, poc_action_request, request_context, safe_header_value, tool_error_result,
+    tool_error_result_with_metadata, tool_result,
 };
 
 pub(crate) fn tools_call<G: GatewayAdapter>(

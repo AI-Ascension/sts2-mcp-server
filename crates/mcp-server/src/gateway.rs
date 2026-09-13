@@ -40,6 +40,7 @@ pub enum GatewayError {
     Unavailable,
     Timeout,
     MalformedResponse,
+    ResponseTooLarge,
     Rejected,
 }
 
