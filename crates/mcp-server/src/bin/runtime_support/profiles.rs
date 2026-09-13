@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: MIT
 
 use sts2_mcp_server::{
-    ToolCatalog, verify_coop_native_artifact, verify_coop_receipt_query_artifact,
-    verify_game_information_artifact, verify_runtime_v4_expert_rest_action_artifact,
+    CapabilityLayer, CapabilityOwner, CapabilityScope, ToolCatalog, verify_coop_native_artifact,
+    verify_coop_receipt_query_artifact, verify_game_information_artifact,
+    verify_runtime_map_artifact, verify_runtime_v4_expert_rest_action_artifact,
 };
 
 use super::http::{
@@ -111,8 +112,30 @@ pub(crate) fn profile_for_name(profile: Option<&str>) -> Result<RuntimeProfile, 
             max_response_bytes: GAME_INFORMATION_MAX_RESPONSE_BYTES,
             requires_coop_native_peer_binding: false,
         }),
+        "negotiated-composition-v1" => {
+            verify_runtime_map_artifact()
+                .map_err(|error| format!("runtime-map artifact is invalid: {error}"))?;
+            verify_game_information_artifact()
+                .map_err(|error| format!("game-information artifact is invalid: {error}"))?;
+            let profiles = [
+                ToolCatalog::runtime_map_v1(),
+                ToolCatalog::game_information(),
+            ];
+            let gateway = CapabilityLayer::from_catalogs(CapabilityOwner::Gateway, &profiles)
+                .map_err(|error| format!("gateway composition layer is invalid: {error}"))?;
+            let producer = CapabilityLayer::from_catalogs(CapabilityOwner::Producer, &profiles)
+                .map_err(|error| format!("producer composition layer is invalid: {error}"))?;
+            let catalog =
+                ToolCatalog::compose_profiles(&profiles, gateway, producer, CapabilityScope::ALL)
+                    .map_err(|error| format!("negotiated composition failed: {error}"))?;
+            Ok(RuntimeProfile {
+                catalog,
+                max_response_bytes: MAP_MAX_RESPONSE_BYTES.max(GAME_INFORMATION_MAX_RESPONSE_BYTES),
+                requires_coop_native_peer_binding: false,
+            })
+        }
         value => Err(format!(
-            "STS2_RUNTIME_PROFILE must be runtime-v1, runtime-v2, runtime-v3-gameplay, runtime-v4-expert, runtime-v4-expert-rest-action, runtime-map-v1, coop-synchronization-v1, coop-receipt-query-v1, seeded-run-v1, coop-native-v1, checkpoint-reference-v1, or game-information-query-v1, got {value}"
+            "STS2_RUNTIME_PROFILE must be runtime-v1, runtime-v2, runtime-v3-gameplay, runtime-v4-expert, runtime-v4-expert-rest-action, runtime-map-v1, coop-synchronization-v1, coop-receipt-query-v1, seeded-run-v1, coop-native-v1, checkpoint-reference-v1, game-information-query-v1, or negotiated-composition-v1, got {value}"
         )),
     }
 }
@@ -147,6 +170,43 @@ mod tests {
         assert_eq!(
             profile.max_response_bytes,
             GAME_INFORMATION_MAX_RESPONSE_BYTES
+        );
+        assert!(!profile.requires_coop_native_peer_binding);
+        Ok(())
+    }
+
+    #[test]
+    fn negotiated_composition_profile_contains_gameplay_map_and_lookup_tools() -> Result<(), String>
+    {
+        let profile = profile_for_name(Some("negotiated-composition-v1"))?;
+        assert_eq!(profile.catalog.revision, "negotiated-composition-v1-mcp");
+        assert!(
+            profile
+                .catalog
+                .tools()
+                .iter()
+                .any(|tool| tool.name == "sts2.observe")
+        );
+        assert!(
+            profile
+                .catalog
+                .tools()
+                .iter()
+                .any(|tool| tool.name == "sts2.map_snapshot")
+        );
+        assert!(
+            profile
+                .catalog
+                .tools()
+                .iter()
+                .any(|tool| tool.name == "sts2.game_information_search")
+        );
+        assert!(
+            profile
+                .catalog
+                .tools()
+                .iter()
+                .any(|tool| tool.name == "sts2.capabilities")
         );
         assert!(!profile.requires_coop_native_peer_binding);
         Ok(())

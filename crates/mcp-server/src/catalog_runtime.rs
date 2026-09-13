@@ -122,5 +122,6 @@ pub(super) fn build() -> super::ToolCatalog {
                 input_schema: action_schema,
             },
         ],
+        composition: None,
     }
 }

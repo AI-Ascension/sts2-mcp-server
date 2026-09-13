@@ -132,6 +132,7 @@ pub(super) fn build() -> super::ToolCatalog {
                 legal_catalog_schema(),
             ),
         ],
+        composition: None,
     }
 }
 

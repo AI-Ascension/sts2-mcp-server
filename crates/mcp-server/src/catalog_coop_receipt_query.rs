@@ -18,6 +18,7 @@ pub(super) fn build() -> super::ToolCatalog {
             ),
             input_schema: input_schema(),
         }],
+        composition: None,
     }
 }
 

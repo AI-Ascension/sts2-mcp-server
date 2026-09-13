@@ -239,6 +239,21 @@ specializations are not advertised.
 Gateway #52 and game-mod extraction are external integration gates; this source/fake lane does not
 claim host readiness or live snapshot support.
 
+## Negotiated composition profile
+
+The opt-in `negotiated-composition-v1-mcp` profile composes the Runtime-v3 gameplay/map catalog
+with the game-information query catalog in one MCP session. Operation names are unique and each
+operation is admitted only when its MCP, gateway, producer, and caller layers agree on a compatible
+revision, supported status, scope, and bounded limits. The resulting catalog explicitly groups
+static reference, live details, gameplay actions, maps, profile reads, and research reads; the
+local `sts2.capabilities` discovery operation is read-only and never forwarded.
+
+Producer restart, content reload, permission changes, and tool-set revision changes invalidate
+tracked snapshot references, advance the session epoch, queue the standard tools-list-changed
+notification, and require a fresh catalog before forwarding. This source/component seam leaves
+producer capability discovery, gateway readiness and instance selection, host extraction, and
+live snapshot freshness to their owning systems.
+
 ## Runtime-v4 expert REST-action profile
 
 The additive `runtime-v4-expert-rest-action` profile is selected with

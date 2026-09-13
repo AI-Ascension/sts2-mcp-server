@@ -52,6 +52,13 @@ pub(crate) fn tools_call<G: GatewayAdapter>(
     server: &mut McpServer<G>,
     request: RpcRequest,
 ) -> RpcResponse {
+    if let Some(response) = server.reject_stale_call(&request) {
+        return response;
+    }
+    server.remember_snapshot_from_params(&request.params);
+    if server.catalog.is_negotiated_composition() {
+        return composed_tools_call(server, request);
+    }
     if server.catalog.is_game_information() {
         return game_information::tools_call(server, request);
     }
@@ -125,6 +132,87 @@ pub(crate) fn tools_call<G: GatewayAdapter>(
             RpcError::new(METHOD_NOT_FOUND, "tool is not in the active catalog"),
         ),
     }
+}
+
+fn composed_tools_call<G: GatewayAdapter>(
+    server: &mut McpServer<G>,
+    request: RpcRequest,
+) -> RpcResponse {
+    let Some(params) = request.params.as_object() else {
+        return RpcResponse::failure(
+            Some(request.id),
+            RpcError::new(INVALID_PARAMS, "tools/call params must be an object"),
+        );
+    };
+    if !has_only_arguments(params, &["name", "arguments"]) {
+        return invalid_params(request.id, "tools/call params contain an unsupported field");
+    }
+    let Some(tool_name) = params.get("name").and_then(JsonValue::as_string) else {
+        return invalid_params(request.id, "tools/call requires a tool name");
+    };
+    if server.catalog.descriptor(tool_name).is_none() {
+        return RpcResponse::failure(
+            Some(request.id),
+            RpcError::new(
+                METHOD_NOT_FOUND,
+                "tool is not in the active negotiated catalog",
+            ),
+        );
+    }
+    if tool_name == crate::catalog::CAPABILITY_DISCOVERY_TOOL {
+        let Some(arguments) = params.get("arguments").and_then(JsonValue::as_object) else {
+            return invalid_params(
+                request.id,
+                "capability discovery arguments must be an object",
+            );
+        };
+        if !arguments.is_empty() {
+            return invalid_params(request.id, "capability discovery does not accept arguments");
+        }
+        let Some(composition) = server.catalog.composition() else {
+            return RpcResponse::failure(
+                Some(request.id),
+                RpcError::new(
+                    METHOD_NOT_FOUND,
+                    "negotiated capability metadata is unavailable",
+                ),
+            );
+        };
+        let mut metadata = composition.to_json();
+        if let JsonValue::Object(object) = &mut metadata {
+            object.insert(
+                "refresh_required".to_owned(),
+                JsonValue::Bool(server.refresh_required()),
+            );
+            object.insert(
+                "session_epoch".to_owned(),
+                JsonValue::Number(i64::try_from(server.session_epoch()).unwrap_or(i64::MAX)),
+            );
+        }
+        return tool_result(request.id, metadata.to_json(), false);
+    }
+    if game_information::is_tool(tool_name) {
+        return game_information::tools_call(server, request);
+    }
+    if matches!(
+        tool_name,
+        crate::catalog::MAP_SNAPSHOT_TOOL
+            | crate::catalog::OBSERVE_TOOL
+            | crate::catalog::LEGAL_ACTIONS_TOOL
+            | crate::catalog::DISPATCH_ACTION_TOOL
+            | crate::catalog::WAIT_FOR_TRANSITION_TOOL
+            | crate::catalog::REOBSERVE_TOOL
+            | crate::catalog::RECOVER_TOOL
+    ) {
+        return runtime_map::tools_call(server, request);
+    }
+    RpcResponse::failure(
+        Some(request.id),
+        RpcError::new(
+            METHOD_NOT_FOUND,
+            "negotiated tool has no bounded gateway mapping",
+        ),
+    )
 }
 
 fn state_call<G: GatewayAdapter>(

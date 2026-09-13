@@ -142,6 +142,7 @@ pub(super) fn build() -> super::ToolCatalog {
                 ]),
             ),
         ],
+        composition: None,
     }
 }
 

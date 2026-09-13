@@ -238,6 +238,19 @@ route, and a distinct structured size error for an oversized HTTP body across th
 adapter. These are synthetic source/component checks; gateway #52, producer capability negotiation,
 game-mod extraction, and host snapshot freshness remain external gates.
 
+## Negotiated composition checks
+
+The composition unit tests combine the Runtime-v3 gameplay/map and game-information catalogs,
+assert unique operation names and explicit feature groups, exercise missing producer support and
+revision conflicts, and verify caller-scope and per-tool limit intersection. Server tests cover
+local `sts2.capabilities` discovery, lifecycle invalidation, list-changed notification queuing,
+session epochs, and pre-forward stale rejection. The executable profile verifies both copied
+source artifacts before advertising the composition.
+
+These checks establish only the MCP source/component seam. They do not prove dynamic producer
+discovery, gateway readiness or instance selection, host extraction, fresh snapshots, provider
+execution, or the cross-repository acceptance path.
+
 ## Runtime-v4 expert REST-action checks
 
 `runtime_v4_expert_rest_action.rs` covers the exact three-tool catalog, fixed state/action/reconcile

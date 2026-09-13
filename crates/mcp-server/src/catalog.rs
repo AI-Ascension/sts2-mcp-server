@@ -5,6 +5,10 @@ use crate::transport::{LEGACY_MAX_FRAME_BYTES, MAX_FRAME_BYTES};
 
 #[path = "catalog_checkpoint_reference.rs"]
 mod checkpoint_reference;
+#[path = "catalog_composition.rs"]
+mod composition;
+#[path = "catalog_composition_api.rs"]
+mod composition_api;
 #[path = "catalog_coop_native.rs"]
 mod coop_native;
 #[path = "catalog_coop_receipt_query.rs"]
@@ -13,6 +17,8 @@ mod coop_receipt_query;
 mod coop_synchronization;
 #[path = "catalog_game_information.rs"]
 mod game_information;
+#[path = "catalog_json.rs"]
+mod json;
 #[path = "catalog_runtime.rs"]
 mod runtime;
 #[path = "catalog_runtime_map.rs"]
@@ -62,6 +68,12 @@ pub const GAME_INFORMATION_SEARCH_TOOL: &str = game_information::SEARCH_TOOL;
 pub const GAME_INFORMATION_GET_TOOL: &str = game_information::GET_TOOL;
 pub const GAME_INFORMATION_DETAIL_TOOL: &str = game_information::DETAIL_TOOL;
 pub const GAME_INFORMATION_AVAILABILITY_TOOL: &str = game_information::AVAILABILITY_TOOL;
+pub use composition::{
+    CAPABILITY_DISCOVERY_TOOL, CapabilityGroup, CapabilityLayer, CapabilityOffer, CapabilityOwner,
+    CapabilityScope, NEGOTIATED_COMPOSITION_REVISION, NEGOTIATION_STALE_CODE,
+    NegotiatedCapabilitySet, NegotiatedOperation, NegotiationError, NegotiationRequest, ToolLimits,
+    UnavailableCapability, UnavailableReason,
+};
 pub(crate) const MAX_IDENTIFIER_BYTES: usize = 128;
 const INSTANCE_ID_PATTERN: &str = "^[A-Za-z0-9_-]{1,128}$";
 const SESSION_ID_PATTERN: &str = "^[A-Za-z0-9_.:/-]{1,128}$";
@@ -101,7 +113,8 @@ impl CapabilityCatalog {
 pub struct ToolCatalog {
     pub revision: String,
     pub capabilities: CapabilityCatalog,
-    tools: Vec<ToolDescriptor>,
+    pub(crate) tools: Vec<ToolDescriptor>,
+    pub(crate) composition: Option<NegotiatedCapabilitySet>,
 }
 
 #[path = "catalog_default.rs"]
@@ -178,6 +191,11 @@ impl ToolCatalog {
         Self::game_information_query_v1()
     }
 
+    /// Returns the descriptors that survived negotiation.
+    pub fn tools(&self) -> &[ToolDescriptor] {
+        &self.tools
+    }
+
     /// Largest MCP frame this profile accepts. The poc, runtime-v1, and runtime-v2
     /// profiles keep their historical 16 KiB limit; additive semantic/read-only
     /// profiles accept frames up to [`MAX_FRAME_BYTES`].
@@ -190,6 +208,7 @@ impl ToolCatalog {
             || self.is_seeded_run()
             || self.is_coop_native()
             || self.is_game_information()
+            || self.is_negotiated_composition()
         {
             MAX_FRAME_BYTES
         } else {
@@ -245,45 +264,15 @@ impl ToolCatalog {
         self.revision == game_information::REVISION
     }
 
-    pub(crate) fn descriptor(&self, name: &str) -> Option<&ToolDescriptor> {
-        self.tools.iter().find(|tool| tool.name == name)
+    pub(crate) fn is_negotiated_composition(&self) -> bool {
+        self.revision == composition::NEGOTIATED_COMPOSITION_REVISION
     }
 
-    pub(crate) fn to_json(&self) -> JsonValue {
-        let tools = self
-            .tools
-            .iter()
-            .map(|tool| {
-                let mut descriptor = JsonValue::object([
-                    ("name".to_owned(), JsonValue::string(tool.name.as_str())),
-                    (
-                        "description".to_owned(),
-                        JsonValue::string(tool.description.as_str()),
-                    ),
-                    ("inputSchema".to_owned(), tool.input_schema.clone()),
-                ]);
-                if game_information::is_tool(&tool.name)
-                    && let JsonValue::Object(object) = &mut descriptor
-                {
-                    object.insert(
-                        String::from("annotations"),
-                        JsonValue::object([
-                            ("readOnlyHint".to_owned(), JsonValue::Bool(true)),
-                            ("destructiveHint".to_owned(), JsonValue::Bool(false)),
-                            ("idempotentHint".to_owned(), JsonValue::Bool(true)),
-                            ("openWorldHint".to_owned(), JsonValue::Bool(false)),
-                        ]),
-                    );
-                }
-                descriptor
-            })
-            .collect();
-        JsonValue::object([
-            ("tools".to_owned(), JsonValue::Array(tools)),
-            (
-                "revision".to_owned(),
-                JsonValue::string(self.revision.as_str()),
-            ),
-        ])
+    pub(crate) fn composition(&self) -> Option<&NegotiatedCapabilitySet> {
+        self.composition.as_ref()
+    }
+
+    pub(crate) fn descriptor(&self, name: &str) -> Option<&ToolDescriptor> {
+        self.tools.iter().find(|tool| tool.name == name)
     }
 }

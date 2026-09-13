@@ -57,6 +57,7 @@ pub(super) fn build() -> super::ToolCatalog {
                 input_schema: context_schema(&["recovery_kind"], &["operation_id"]),
             },
         ],
+        composition: None,
     }
 }
 

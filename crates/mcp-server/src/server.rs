@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::{BTreeMap, BTreeSet, VecDeque};
 
 use crate::catalog::ToolCatalog;
 use crate::gateway::GatewayAdapter;
@@ -20,6 +20,9 @@ pub(crate) use runtime_v4_expert_rest_action::{
 #[path = "server_runtime_v4_expert_rest_action_capacity.rs"]
 mod runtime_v4_expert_rest_action_capacity;
 pub(crate) use runtime_v4_expert_rest_action_capacity::REST_ACTION_SELECTOR_CAPACITY_ERROR;
+#[path = "server_session.rs"]
+mod session;
+pub use session::{SessionEvent, SessionRefreshReason, SessionUpdate};
 
 #[cfg(test)]
 #[path = "server_tests.rs"]
@@ -38,6 +41,11 @@ pub struct McpServer<G> {
     pub(crate) rest_action_selections: BTreeMap<RestActionSelectionKey, RestActionSelectionContext>,
     pub(crate) rest_action_operations: BTreeMap<String, RestActionOperationContext>,
     pub(crate) rest_action_selector_reservations: BTreeSet<String>,
+    pub(crate) session_epoch: u64,
+    pub(crate) refresh_required: Option<SessionRefreshReason>,
+    pub(crate) active_snapshots: BTreeSet<String>,
+    pub(crate) invalidated_snapshots: BTreeSet<String>,
+    pub(crate) notifications: VecDeque<String>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -60,6 +68,11 @@ impl<G: GatewayAdapter> McpServer<G> {
             rest_action_selections: BTreeMap::new(),
             rest_action_operations: BTreeMap::new(),
             rest_action_selector_reservations: BTreeSet::new(),
+            session_epoch: 0,
+            refresh_required: None,
+            active_snapshots: BTreeSet::new(),
+            invalidated_snapshots: BTreeSet::new(),
+            notifications: VecDeque::new(),
         }
     }
 
@@ -73,6 +86,11 @@ impl<G: GatewayAdapter> McpServer<G> {
             rest_action_selections: BTreeMap::new(),
             rest_action_operations: BTreeMap::new(),
             rest_action_selector_reservations: BTreeSet::new(),
+            session_epoch: 0,
+            refresh_required: None,
+            active_snapshots: BTreeSet::new(),
+            invalidated_snapshots: BTreeSet::new(),
+            notifications: VecDeque::new(),
         }
     }
 
@@ -97,6 +115,11 @@ impl<G: GatewayAdapter> McpServer<G> {
             rest_action_selections: BTreeMap::new(),
             rest_action_operations: BTreeMap::new(),
             rest_action_selector_reservations: BTreeSet::new(),
+            session_epoch: 0,
+            refresh_required: None,
+            active_snapshots: BTreeSet::new(),
+            invalidated_snapshots: BTreeSet::new(),
+            notifications: VecDeque::new(),
         }
     }
 
@@ -210,15 +233,21 @@ impl<G: GatewayAdapter> McpServer<G> {
                 ),
             );
         }
-        let result = JsonValue::object([
+        let mut capabilities = self.catalog.capabilities.to_json();
+        if self.catalog.is_negotiated_composition()
+            && let JsonValue::Object(object) = &mut capabilities
+        {
+            object.insert(
+                String::from("tools"),
+                JsonValue::object([("listChanged".into(), JsonValue::Bool(true))]),
+            );
+        }
+        let mut result = JsonValue::object([
             (
                 "protocolVersion".to_owned(),
                 JsonValue::string(MCP_PROTOCOL_VERSION),
             ),
-            (
-                "capabilities".to_owned(),
-                self.catalog.capabilities.to_json(),
-            ),
+            ("capabilities".to_owned(), capabilities),
             (
                 "serverInfo".to_owned(),
                 JsonValue::object([
@@ -227,6 +256,20 @@ impl<G: GatewayAdapter> McpServer<G> {
                 ]),
             ),
         ]);
+        if self.catalog.is_negotiated_composition()
+            && let JsonValue::Object(object) = &mut result
+            && let Some(composition) = self.catalog.composition()
+        {
+            object.insert(String::from("composition"), composition.to_json());
+            object.insert(
+                String::from("refresh_required"),
+                JsonValue::Bool(self.refresh_required()),
+            );
+            object.insert(
+                String::from("session_epoch"),
+                JsonValue::Number(i64::try_from(self.session_epoch).unwrap_or(i64::MAX)),
+            );
+        }
         RpcResponse::success(request.id, result)
     }
 
@@ -237,7 +280,20 @@ impl<G: GatewayAdapter> McpServer<G> {
                 RpcError::new(INVALID_PARAMS, "tools/list params must be an object"),
             );
         }
-        RpcResponse::success(request.id, self.catalog.to_json())
+        let mut result = self.catalog.to_json();
+        if self.catalog.is_negotiated_composition()
+            && let JsonValue::Object(object) = &mut result
+        {
+            object.insert(
+                String::from("refresh_required"),
+                JsonValue::Bool(self.refresh_required()),
+            );
+            object.insert(
+                String::from("session_epoch"),
+                JsonValue::Number(i64::try_from(self.session_epoch).unwrap_or(i64::MAX)),
+            );
+        }
+        RpcResponse::success(request.id, result)
     }
 }
 

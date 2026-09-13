@@ -41,6 +41,7 @@ pub(super) fn build() -> super::ToolCatalog {
                 input_schema: reconcile_schema,
             },
         ],
+        composition: None,
     }
 }
 
