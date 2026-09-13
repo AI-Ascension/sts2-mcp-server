@@ -1,0 +1,87 @@
+// SPDX-License-Identifier: MIT
+
+use super::RuntimeConfig;
+use sts2_mcp_server::{
+    GAME_INFORMATION_PROTOCOL_VERSION, GAME_INFORMATION_SCHEMA_DIGEST, GatewayError, JsonValue,
+};
+
+pub(crate) fn validate(
+    config: &RuntimeConfig,
+    body: &JsonValue,
+    correlation: &str,
+    kind: &str,
+) -> Result<(), GatewayError> {
+    if matches!(kind, "capabilities_response" | "game_information_response") {
+        return game_information(config, body, correlation, kind);
+    }
+    let JsonValue::Object(object) = body else {
+        return Err(GatewayError::MalformedResponse);
+    };
+    for (name, expected) in [
+        ("instance_id", config.instance_id.as_str()),
+        ("session_id", config.session_id.as_str()),
+        ("lease_id", config.lease_id.as_str()),
+        ("correlation_id", correlation),
+        ("kind", kind),
+    ] {
+        if name == "kind" && kind == "checkpoint_reference_response" {
+            super::checkpoint_reference::response(config, body)?;
+            continue;
+        }
+        if object.get(name) != Some(&JsonValue::string(expected)) {
+            return Err(GatewayError::MalformedResponse);
+        }
+    }
+    if object.get("lease_epoch") != Some(&JsonValue::Number(config.lease_epoch)) {
+        return Err(GatewayError::MalformedResponse);
+    }
+    Ok(())
+}
+
+fn game_information(
+    config: &RuntimeConfig,
+    body: &JsonValue,
+    correlation: &str,
+    expected: &str,
+) -> Result<(), GatewayError> {
+    let JsonValue::Object(object) = body else {
+        return Err(GatewayError::MalformedResponse);
+    };
+    if object.get("protocol_version") != Some(&JsonValue::string(GAME_INFORMATION_PROTOCOL_VERSION))
+        || object.get("schema_digest") != Some(&JsonValue::string(GAME_INFORMATION_SCHEMA_DIGEST))
+        || object.get("correlation_id") != Some(&JsonValue::string(correlation))
+    {
+        return Err(GatewayError::MalformedResponse);
+    }
+    let Some(JsonValue::String(response_kind)) = object.get("kind") else {
+        return Err(GatewayError::MalformedResponse);
+    };
+    if (expected == "capabilities_response"
+        && !matches!(
+            response_kind.as_str(),
+            "capabilities_response" | "error_response"
+        ))
+        || (expected == "game_information_response"
+            && !matches!(response_kind.as_str(), "query_response" | "error_response"))
+    {
+        return Err(GatewayError::MalformedResponse);
+    }
+    if expected == "game_information_response" && response_kind == "query_response" {
+        let Some(JsonValue::Object(query)) = object.get("query") else {
+            return Err(GatewayError::MalformedResponse);
+        };
+        let Some(JsonValue::Object(binding)) = query.get("binding") else {
+            return Err(GatewayError::MalformedResponse);
+        };
+        if binding.get("mode") == Some(&JsonValue::string("live")) {
+            let Some(JsonValue::Object(instance)) = binding.get("instance_ref") else {
+                return Err(GatewayError::MalformedResponse);
+            };
+            if instance.get("instance_id") != Some(&JsonValue::string(config.instance_id.as_str()))
+            {
+                return Err(GatewayError::MalformedResponse);
+            }
+        }
+    }
+    Ok(())
+}

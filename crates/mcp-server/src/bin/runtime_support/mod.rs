@@ -15,11 +15,11 @@ pub(crate) use profiles::profile_from_environment;
 
 use sts2_mcp_server::{
     COOP_NATIVE_PROTOCOL_VERSION, COOP_NATIVE_SCHEMA_DIGEST, COOP_RECEIPT_QUERY_PROTOCOL_VERSION,
-    GatewayAdapter, GatewayError, GatewayRequest, GatewayResponse, JsonValue,
-    RUNTIME_MAP_V1_PROTOCOL_VERSION, RUNTIME_V2_PROTOCOL_VERSION,
-    RUNTIME_V3_GAMEPLAY_PROTOCOL_VERSION, RUNTIME_V4_EXPERT_ACTION_PROTOCOL_VERSION,
-    RUNTIME_V4_EXPERT_REST_ACTION_PROTOCOL_VERSION, SEEDED_RUN_PROTOCOL_VERSION,
-    SEEDED_RUN_SCHEMA_DIGEST,
+    GAME_INFORMATION_PROTOCOL_VERSION, GAME_INFORMATION_SCHEMA_DIGEST, GatewayAdapter,
+    GatewayError, GatewayRequest, GatewayResponse, JsonValue, RUNTIME_MAP_V1_PROTOCOL_VERSION,
+    RUNTIME_V2_PROTOCOL_VERSION, RUNTIME_V3_GAMEPLAY_PROTOCOL_VERSION,
+    RUNTIME_V4_EXPERT_ACTION_PROTOCOL_VERSION, RUNTIME_V4_EXPERT_REST_ACTION_PROTOCOL_VERSION,
+    SEEDED_RUN_PROTOCOL_VERSION, SEEDED_RUN_SCHEMA_DIGEST,
 };
 
 const MAX_BODY_BYTES: usize = 16 * 1024;
@@ -155,6 +155,10 @@ impl RuntimeGatewayAdapter {
             object.get("protocol_version"),
             Some(JsonValue::String(value)) if value == SEEDED_RUN_PROTOCOL_VERSION
         );
+        let is_game_information = matches!(
+            object.get("protocol_version"),
+            Some(JsonValue::String(value)) if value == GAME_INFORMATION_PROTOCOL_VERSION
+        );
         if is_runtime_v2
             || is_runtime_v3
             || is_runtime_v4_action
@@ -181,6 +185,13 @@ impl RuntimeGatewayAdapter {
             if is_coop_native
                 && object.get("schema_digest")
                     != Some(&JsonValue::string(COOP_NATIVE_SCHEMA_DIGEST))
+            {
+                return Err(GatewayError::Rejected);
+            }
+        } else if is_game_information {
+            if object.get("schema_digest")
+                != Some(&JsonValue::string(GAME_INFORMATION_SCHEMA_DIGEST))
+                || object.get("kind") != Some(&JsonValue::string("query_request"))
             {
                 return Err(GatewayError::Rejected);
             }

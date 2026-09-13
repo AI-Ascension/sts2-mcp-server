@@ -20,6 +20,8 @@ mod coop_native;
 mod coop_receipt_query;
 #[path = "mapping_coop_synchronization.rs"]
 mod coop_synchronization;
+#[path = "mapping_game_information.rs"]
+mod game_information;
 #[path = "mapping_helpers.rs"]
 mod helpers;
 #[path = "mapping_response.rs"]
@@ -49,6 +51,9 @@ pub(crate) fn tools_call<G: GatewayAdapter>(
     server: &mut McpServer<G>,
     request: RpcRequest,
 ) -> RpcResponse {
+    if server.catalog.is_game_information() {
+        return game_information::tools_call(server, request);
+    }
     if server.catalog.is_coop_native() {
         return coop_native::tools_call(server, request);
     }

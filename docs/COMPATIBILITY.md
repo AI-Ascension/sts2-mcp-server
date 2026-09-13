@@ -61,6 +61,7 @@ host to a supported compatibility row.
 | `seeded-run-v1-mcp` | `POST /v2/instances/{id}/seeded-run`, `GET /v2/instances/{id}/seeded-operations/{operation_id}` | Seeded catalog, fixed-route mapping, context/identity validation, source-only settlement projection, and copied-artifact checks at MCP `b5a9262f1c76da76ea6f84fca0f1ee821ff67001` | Source/component behavior confirmed; native seed settlement, profile/save isolation, gameplay, provider execution, deployment, and release unverified |
 | `coop-receipt-query-v1-mcp` | `POST /v1/instances/{id}/coop/receipt-query` | Proposed-artifact checksum/schema tests, canonical-wire mapping tests, and read-only projection checks | Additive proposed-unadmitted profile; no admitted consumers or native producer/host/provider/deployment/release compatibility |
 | `coop-native-v1-mcp` | `GET /v1/instances/{id}/coop/native/observation`, fixed POST `legal-catalog`, `action`, `vote`, `rejoin`, and `recover` routes | Seven-tool catalog, copied-artifact checks, fixed-route mapping, closed-envelope validation, and receipt/effect/observation relation tests | Source/component consumer confirmed at schema digest `2f3bc99e…`; live two-peer host settlement, provider execution, deployment, and release compatibility unverified |
+| `game-information-query-v1-mcp` | `GET /v1/instances/{id}/game-information/capabilities`, `POST /v1/instances/{id}/game-information/query` | Six-tool catalog, pinned protocol artifact/checksums, fake-gateway mapping, executable binding/profile and loopback capabilities tests | Source/component seam confirmed at merged protocol main `34f68b18` (schema `376845b0…`); gateway #52, producer capability negotiation, live snapshots, host extraction, provider, deployment, and release remain unverified |
 
 For `coop-native-v1-mcp`, configured instance, MCP-session, gateway-session, lease, and correlation
 identities remain header/path bounded at 128 bytes. Operation, peer, action, proposal, and vote-choice
@@ -157,8 +158,8 @@ catalog, so the Runtime-v3 addition changes no bound that a legacy consumer sees
 | Bound | poc-v1, runtime-v1, runtime-v2 | runtime-v3-gameplay | Evidence |
 | --- | --- | --- | --- |
 | MCP frame (stdin line and library decode) | 16 KiB | 256 KiB | `tests/profile_frame_bounds.rs`: every profile accepts a frame at its limit and rejects one byte more with `-32700` before any gateway access (`confirmed`) |
-| Gateway response body (executable HTTP) | 64 KiB | 128 KiB | `http_tests.rs::response_body_budget_is_profile_scoped`, `runtime_tests.rs::runtime_profile_bounds_are_scoped_to_the_semantic_profile` (`confirmed`) |
-| Projected tool content | 16 KiB | 128 KiB | `mapping_response.rs` pins the constants and the Runtime-v3 oversized-receipt regression exercises the 128 KiB path (`confirmed` for the values; no synthetic legacy envelope exceeds 16 KiB) |
+| Gateway response body (executable HTTP) | 64 KiB | 128 KiB | `http_tests.rs::response_body_budget_is_profile_scoped`, `runtime_tests.rs::runtime_profile_bounds_are_scoped_to_the_semantic_profile` (`confirmed`); game-information is 256 KiB |
+| Projected tool content | 16 KiB | 128 KiB | `mapping_response.rs` pins the constants and the Runtime-v3 oversized-receipt regression exercises the 128 KiB path (`confirmed` for the values; no synthetic legacy envelope exceeds 16 KiB); game-information is 256 KiB |
 | Gateway request body | 16 KiB | 16 KiB | unchanged (`confirmed` by source) |
 | HTTP header block | 8 KiB | 8 KiB | unchanged (`confirmed`, loopback test) |
 

@@ -11,6 +11,8 @@ mod coop_native;
 mod coop_receipt_query;
 #[path = "catalog_coop_synchronization.rs"]
 mod coop_synchronization;
+#[path = "catalog_game_information.rs"]
+mod game_information;
 #[path = "catalog_runtime.rs"]
 mod runtime;
 #[path = "catalog_runtime_map.rs"]
@@ -54,6 +56,12 @@ pub const EXPERT_REST_RECONCILE_TOOL: &str =
     runtime_v4_expert_rest_action::EXPERT_REST_RECONCILE_TOOL;
 pub const START_SEEDED_RUN_TOOL: &str = seeded_run::START_SEEDED_RUN_TOOL;
 pub const RECONCILE_SEEDED_RUN_TOOL: &str = seeded_run::RECONCILE_SEEDED_RUN_TOOL;
+pub const GAME_INFORMATION_CAPABILITIES_TOOL: &str = game_information::CAPABILITIES_TOOL;
+pub const GAME_INFORMATION_LIST_TOOL: &str = game_information::LIST_TOOL;
+pub const GAME_INFORMATION_SEARCH_TOOL: &str = game_information::SEARCH_TOOL;
+pub const GAME_INFORMATION_GET_TOOL: &str = game_information::GET_TOOL;
+pub const GAME_INFORMATION_DETAIL_TOOL: &str = game_information::DETAIL_TOOL;
+pub const GAME_INFORMATION_AVAILABILITY_TOOL: &str = game_information::AVAILABILITY_TOOL;
 pub(crate) const MAX_IDENTIFIER_BYTES: usize = 128;
 const INSTANCE_ID_PATTERN: &str = "^[A-Za-z0-9_-]{1,128}$";
 const SESSION_ID_PATTERN: &str = "^[A-Za-z0-9_.:/-]{1,128}$";
@@ -160,9 +168,19 @@ impl ToolCatalog {
         coop_native::build()
     }
 
+    #[must_use]
+    pub fn game_information_query_v1() -> Self {
+        game_information::build()
+    }
+
+    #[must_use]
+    pub fn game_information() -> Self {
+        Self::game_information_query_v1()
+    }
+
     /// Largest MCP frame this profile accepts. The poc, runtime-v1, and runtime-v2
-    /// profiles keep their historical 16 KiB limit; only the Runtime-v3 semantic
-    /// profile accepts frames up to [`MAX_FRAME_BYTES`].
+    /// profiles keep their historical 16 KiB limit; additive semantic/read-only
+    /// profiles accept frames up to [`MAX_FRAME_BYTES`].
     #[must_use]
     pub fn max_frame_bytes(&self) -> usize {
         if self.is_runtime_v3_gameplay()
@@ -171,6 +189,7 @@ impl ToolCatalog {
             || self.is_runtime_map_v1()
             || self.is_seeded_run()
             || self.is_coop_native()
+            || self.is_game_information()
         {
             MAX_FRAME_BYTES
         } else {
@@ -222,6 +241,10 @@ impl ToolCatalog {
         self.revision == coop_native::REVISION
     }
 
+    pub(crate) fn is_game_information(&self) -> bool {
+        self.revision == game_information::REVISION
+    }
+
     pub(crate) fn descriptor(&self, name: &str) -> Option<&ToolDescriptor> {
         self.tools.iter().find(|tool| tool.name == name)
     }
@@ -231,14 +254,28 @@ impl ToolCatalog {
             .tools
             .iter()
             .map(|tool| {
-                JsonValue::object([
+                let mut descriptor = JsonValue::object([
                     ("name".to_owned(), JsonValue::string(tool.name.as_str())),
                     (
                         "description".to_owned(),
                         JsonValue::string(tool.description.as_str()),
                     ),
                     ("inputSchema".to_owned(), tool.input_schema.clone()),
-                ])
+                ]);
+                if game_information::is_tool(&tool.name)
+                    && let JsonValue::Object(object) = &mut descriptor
+                {
+                    object.insert(
+                        String::from("annotations"),
+                        JsonValue::object([
+                            ("readOnlyHint".to_owned(), JsonValue::Bool(true)),
+                            ("destructiveHint".to_owned(), JsonValue::Bool(false)),
+                            ("idempotentHint".to_owned(), JsonValue::Bool(true)),
+                            ("openWorldHint".to_owned(), JsonValue::Bool(false)),
+                        ]),
+                    );
+                }
+                descriptor
             })
             .collect();
         JsonValue::object([

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-use super::http::MAP_MAX_RESPONSE_BYTES;
+use super::http::{GAME_INFORMATION_MAX_RESPONSE_BYTES, MAP_MAX_RESPONSE_BYTES};
 use super::*;
 use std::io::{BufRead, Read, Write};
 use std::net::TcpListener;
@@ -176,6 +176,42 @@ fn map_profile_rejects_foreign_authority_before_outbound_capture() -> Result<(),
             "foreign map authority opened a gateway connection"
         );
     }
+    Ok(())
+}
+
+#[test]
+fn game_information_profile_crosses_the_real_http_adapter() -> Result<(), String> {
+    let listener = TcpListener::bind("127.0.0.1:0").map_err(|error| error.to_string())?;
+    let mut config = config();
+    config.gateway_address = listener.local_addr().map_err(|error| error.to_string())?;
+    let body = include_str!(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../protocol-artifact/game-information-query-v1/golden/capabilities-response.json"
+    ))
+    .replace("\"corr-capabilities\"", "\"corr-http\"");
+    let server_thread = std::thread::spawn(move || {
+        serve_expected_path(
+            listener,
+            200,
+            body,
+            "GET /v1/instances/configured-instance/game-information/capabilities HTTP/1.1",
+        )
+    });
+    let adapter = RuntimeGatewayAdapter::new(config, GAME_INFORMATION_MAX_RESPONSE_BYTES);
+    let mut server = sts2_mcp_server::McpServer::with_catalog_and_sessions(
+        adapter,
+        sts2_mcp_server::ToolCatalog::game_information_query_v1(),
+        "configured-session",
+        "configured-session",
+    );
+    let output = server.handle_frame(
+        r#"{"jsonrpc":"2.0","id":"corr-http","method":"tools/call","params":{"name":"sts2.game_information_capabilities","arguments":{"instance_id":"configured-instance","mcp_session_id":"configured-session","lease_id":"configured-lease","lease_epoch":7}}}"#,
+    );
+    server_thread
+        .join()
+        .map_err(|_| "HTTP fixture thread failed".to_owned())??;
+    assert!(output.contains("\"isError\":false"), "{output}");
+    assert!(output.contains("game-information-query-v1"), "{output}");
     Ok(())
 }
 

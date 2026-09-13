@@ -5,8 +5,9 @@ use std::net::TcpStream;
 use std::time::{Duration, Instant};
 
 use sts2_mcp_server::{
-    COOP_NATIVE_PROTOCOL_VERSION, COOP_RECEIPT_QUERY_PROTOCOL_VERSION, GatewayError, GatewayMethod,
-    GatewayRequest, GatewayResponse, JsonValue, RUNTIME_V3_GAMEPLAY_PROTOCOL_VERSION,
+    COOP_NATIVE_PROTOCOL_VERSION, COOP_RECEIPT_QUERY_PROTOCOL_VERSION,
+    GAME_INFORMATION_PROTOCOL_VERSION, GatewayError, GatewayMethod, GatewayRequest,
+    GatewayResponse, JsonValue, RUNTIME_V3_GAMEPLAY_PROTOCOL_VERSION,
     RUNTIME_V4_EXPERT_ACTION_PROTOCOL_VERSION, RUNTIME_V4_EXPERT_REST_ACTION_PROTOCOL_VERSION,
     SEEDED_RUN_PROTOCOL_VERSION, parse_json,
 };
@@ -105,7 +106,8 @@ pub(super) fn classify(response: GatewayResponse) -> Result<GatewayResponse, Gat
                         || object.get("protocol_version") == Some(&JsonValue::string(RUNTIME_V4_EXPERT_REST_ACTION_PROTOCOL_VERSION))
                         || object.get("protocol_version") == Some(&JsonValue::string(COOP_RECEIPT_QUERY_PROTOCOL_VERSION))
                         || object.get("protocol_version") == Some(&JsonValue::string(COOP_NATIVE_PROTOCOL_VERSION))
-                        || object.get("protocol_version") == Some(&JsonValue::string(SEEDED_RUN_PROTOCOL_VERSION))) =>
+                        || object.get("protocol_version") == Some(&JsonValue::string(SEEDED_RUN_PROTOCOL_VERSION))
+                        || object.get("protocol_version") == Some(&JsonValue::string(GAME_INFORMATION_PROTOCOL_VERSION))) =>
         {
             // The semantic projection validates the full envelope before surfacing it.
             // A received host uncertainty receipt is not a transport disconnect.
@@ -115,7 +117,9 @@ pub(super) fn classify(response: GatewayResponse) -> Result<GatewayResponse, Gat
         404 if is_runtime_result(&body)
             && matches!(&body, JsonValue::Object(object)
                     if object.get("protocol_version")
-                        == Some(&JsonValue::string(RUNTIME_V4_EXPERT_REST_ACTION_PROTOCOL_VERSION))) =>
+                        == Some(&JsonValue::string(RUNTIME_V4_EXPERT_REST_ACTION_PROTOCOL_VERSION))
+                        || object.get("protocol_version")
+                            == Some(&JsonValue::string(GAME_INFORMATION_PROTOCOL_VERSION))) =>
         {
             Ok(GatewayResponse { status, body })
         }

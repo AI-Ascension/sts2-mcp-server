@@ -2,41 +2,19 @@
 
 use super::{RuntimeConfig, safe_header_value};
 use sts2_mcp_server::{
-    COOP_NATIVE_PROTOCOL_VERSION, COOP_RECEIPT_QUERY_PROTOCOL_VERSION, GatewayError, GatewayMethod,
+    COOP_NATIVE_PROTOCOL_VERSION, COOP_RECEIPT_QUERY_PROTOCOL_VERSION,
+    GAME_INFORMATION_PROTOCOL_VERSION, GAME_INFORMATION_SCHEMA_DIGEST, GatewayError, GatewayMethod,
     GatewayRequest, JsonValue, RUNTIME_V4_EXPERT_REST_ACTION_PROTOCOL_VERSION,
 };
 
 #[path = "binding_native_peer.rs"]
 mod native_peer;
-
-pub(super) fn is_runtime_result(body: &JsonValue) -> bool {
-    matches!(
-        body,
-        JsonValue::Object(object)
-            if matches!(
-                object.get("kind"),
-                Some(JsonValue::String(kind))
-                    if matches!(
-                        kind.as_str(),
-                        "state_response"
-                            | "action_response"
-                            | "reconcile_response"
-                            | "legal_actions_response"
-                            | "dispatch_action_response"
-                            | "wait_response"
-                            | "reobserve_response"
-                            | "recover_response"
-                            | "snapshot_response"
-                            | "receipt_query_response"
-                            | "start_response"
-                            | "observation"
-                            | "legal_catalog_response"
-                            | "effect_response"
-                            | "recovery_response"
-                    )
-            )
-    )
-}
+#[path = "binding_response.rs"]
+mod response;
+pub(super) use response::validate as response;
+#[path = "binding_result.rs"]
+mod result;
+pub(super) use result::is_runtime_result;
 
 pub(super) fn admit(config: &RuntimeConfig, request: &GatewayRequest) -> Result<(), GatewayError> {
     if request.correlation.mcp_session_id != config.mcp_session_id
@@ -103,10 +81,14 @@ pub(super) fn admit(config: &RuntimeConfig, request: &GatewayRequest) -> Result<
         && !request.path.ends_with("/coop/synchronization")
         && !request.path.ends_with("/coop/receipt-query")
         && !request.path.ends_with("/map-snapshot")
-        && !request.path.ends_with("/checkpoint-reference");
+        && !request.path.ends_with("/checkpoint-reference")
+        && !request.path.ends_with("/game-information/capabilities")
+        && !request.path.ends_with("/game-information/query");
     if !is_legacy_v1_injection {
         // MCP correlation sessions are a separate namespace; only explicit gateway
         // authority headers/body fields are compared with configured gateway identity.
+        let game_information_route = request.path.ends_with("/game-information/capabilities")
+            || request.path.ends_with("/game-information/query");
         for (name, expected) in [
             ("x-sts2-instance-id", config.instance_id.as_str()),
             ("x-sts2-session-id", config.session_id.as_str()),
@@ -115,7 +97,9 @@ pub(super) fn admit(config: &RuntimeConfig, request: &GatewayRequest) -> Result<
         ] {
             let supplied = request.headers.get(name);
             if supplied.is_some_and(|value| value != expected)
-                || (request.body.is_none() && supplied.is_none() && !adapter_injected_v4_authority)
+                || (supplied.is_none()
+                    && (request.body.is_none() || game_information_route)
+                    && !adapter_injected_v4_authority)
             {
                 return Err(GatewayError::Rejected);
             }
@@ -184,6 +168,16 @@ pub(super) fn response_kind(
                 (GatewayMethod::Get, "state") => Some("state_response"),
                 (GatewayMethod::Get, "map-snapshot") if version == "v1" => {
                     Some("snapshot_response")
+                }
+                (GatewayMethod::Get, "game-information/capabilities")
+                    if version == "v1" && request.body.is_none() =>
+                {
+                    Some("capabilities_response")
+                }
+                (GatewayMethod::Post, "game-information/query")
+                    if version == "v1" && is_game_information_body(request) =>
+                {
+                    Some("game_information_response")
                 }
                 (GatewayMethod::Post, "action") => Some("action_response"),
                 (GatewayMethod::Post, "coop/receipt-query")
@@ -266,6 +260,21 @@ fn is_native_body(request: &GatewayRequest) -> bool {
     })
 }
 
+fn is_game_information_body(request: &GatewayRequest) -> bool {
+    request.body.as_ref().is_some_and(|body| {
+        matches!(
+            body,
+            JsonValue::Object(object)
+                if object.get("protocol_version")
+                    == Some(&JsonValue::string(GAME_INFORMATION_PROTOCOL_VERSION))
+                    && object.get("schema_digest")
+                        == Some(&JsonValue::string(GAME_INFORMATION_SCHEMA_DIGEST))
+                    && object.get("kind")
+                        == Some(&JsonValue::string("query_request"))
+        )
+    })
+}
+
 fn safe_operation_id(value: &str) -> bool {
     !value.is_empty()
         && value.len() <= 128
@@ -274,36 +283,6 @@ fn safe_operation_id(value: &str) -> bool {
         && value
             .bytes()
             .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'-' | b'_' | b'.' | b':'))
-}
-
-pub(super) fn response(
-    config: &RuntimeConfig,
-    body: &JsonValue,
-    correlation: &str,
-    kind: &str,
-) -> Result<(), GatewayError> {
-    let JsonValue::Object(object) = body else {
-        return Err(GatewayError::MalformedResponse);
-    };
-    for (name, expected) in [
-        ("instance_id", config.instance_id.as_str()),
-        ("session_id", config.session_id.as_str()),
-        ("lease_id", config.lease_id.as_str()),
-        ("correlation_id", correlation),
-        ("kind", kind),
-    ] {
-        if name == "kind" && kind == "checkpoint_reference_response" {
-            checkpoint_reference::response(config, body)?;
-            continue;
-        }
-        if object.get(name) != Some(&JsonValue::string(expected)) {
-            return Err(GatewayError::MalformedResponse);
-        }
-    }
-    if object.get("lease_epoch") != Some(&JsonValue::Number(config.lease_epoch)) {
-        return Err(GatewayError::MalformedResponse);
-    }
-    Ok(())
 }
 
 #[path = "binding_checkpoint_reference.rs"]

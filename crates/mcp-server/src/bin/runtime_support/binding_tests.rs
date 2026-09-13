@@ -356,3 +356,40 @@ fn v4_bodyless_reads_allow_the_http_adapter_to_inject_gateway_authority() {
     assert_eq!(admit(&config(), &request), Ok(()));
     assert_eq!(response_kind(&config(), &request), Some("action_response"));
 }
+
+#[test]
+fn game_information_routes_are_fixed_and_require_explicit_authority() {
+    let mut capabilities = request();
+    capabilities.path = String::from("/v1/instances/instance/game-information/capabilities");
+    capabilities.body = None;
+    assert_eq!(
+        response_kind(&config(), &capabilities),
+        Some("capabilities_response")
+    );
+    assert_eq!(admit(&config(), &capabilities), Ok(()));
+    capabilities.path = String::from("/v1/instances/instance/game-information/other");
+    assert_eq!(response_kind(&config(), &capabilities), None);
+    assert_eq!(admit(&config(), &capabilities), Err(GatewayError::Rejected));
+
+    let mut query = request();
+    query.method = GatewayMethod::Post;
+    query.path = String::from("/v1/instances/instance/game-information/query");
+    query.body = Some(JsonValue::object([
+        (
+            String::from("protocol_version"),
+            JsonValue::string(sts2_mcp_server::GAME_INFORMATION_PROTOCOL_VERSION),
+        ),
+        (
+            String::from("schema_digest"),
+            JsonValue::string(sts2_mcp_server::GAME_INFORMATION_SCHEMA_DIGEST),
+        ),
+        (String::from("kind"), JsonValue::string("query_request")),
+    ]));
+    assert_eq!(
+        response_kind(&config(), &query),
+        Some("game_information_response")
+    );
+    assert_eq!(admit(&config(), &query), Ok(()));
+    query.headers.remove("x-sts2-lease-id");
+    assert_eq!(admit(&config(), &query), Err(GatewayError::Rejected));
+}

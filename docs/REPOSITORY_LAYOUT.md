@@ -60,6 +60,16 @@ crates/mcp-server/src/mapping_runtime_map.rs  fixed route and argument mapping
 crates/mcp-server/src/projection_runtime_map* complete graph/result validation
 ```
 
+## Game-information query additions
+
+```text
+protocol-artifact/game-information-query-v1/  pinned manifest, schema, goldens, and checksums
+schemas/game-information-query-v1.schema.json source-path schema companion
+conformance/cases/game-information-query-v1.json implementation-neutral consumer case
+crates/mcp-server/src/catalog_game_information.rs strict six-tool descriptors
+crates/mcp-server/src/mapping_game_information*.rs typed fixed-route request/response seam
+```
+
 The protocol owner remains responsible for the neutral model and conformance meaning. MCP owns
 framing, catalog selection, session binding, fixed gateway mapping, and safe projection; it does
 not import game-mod or visualizer implementation.

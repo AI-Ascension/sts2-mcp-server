@@ -3,7 +3,7 @@
 use crate::json;
 use crate::protocol::{RpcRequest, RpcResponse};
 
-/// Absolute MCP frame ceiling; only the Runtime-v3 semantic profile accepts frames this large.
+/// Absolute MCP frame ceiling; additive semantic/read-only profiles may accept frames this large.
 pub const MAX_FRAME_BYTES: usize = 256 * 1024;
 /// Historical frame limit kept by the poc, runtime-v1, and runtime-v2 profiles.
 pub(crate) const LEGACY_MAX_FRAME_BYTES: usize = 16 * 1024;

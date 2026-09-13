@@ -1,0 +1,17 @@
+{
+  "base_fixture": "artifacts/game-information-query-v1/golden/live-detail-response.json",
+  "context": "live",
+  "expected_error": "malformed",
+  "id": "GIQ-INVALID-ZERO-VS-MISSING",
+  "mutations": [
+    {
+      "path": "/result/page/items/0/fields/0/availability",
+      "value": "missing"
+    },
+    {
+      "path": "/result/page/items/0/fields/0/value",
+      "value": 0
+    }
+  ],
+  "schema_valid": false
+}
