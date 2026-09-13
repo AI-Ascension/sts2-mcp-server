@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-use sts2_mcp_server::JsonValue;
+use sts2_mcp_server::{JsonValue, SAVE_PROFILE_CONTRACT};
 
 pub(crate) fn is_runtime_result(body: &JsonValue) -> bool {
     matches!(
@@ -31,5 +31,15 @@ pub(crate) fn is_runtime_result(body: &JsonValue) -> bool {
                             | "error_response"
                     )
             )
+            || object.get("contract") == Some(&JsonValue::string(SAVE_PROFILE_CONTRACT))
+    )
+}
+
+pub(crate) fn is_save_profile_result(body: &JsonValue) -> bool {
+    matches!(
+        body,
+        JsonValue::Object(object)
+            if object.get("contract") == Some(&JsonValue::string(SAVE_PROFILE_CONTRACT))
+                || object.get("error_code").is_some()
     )
 }

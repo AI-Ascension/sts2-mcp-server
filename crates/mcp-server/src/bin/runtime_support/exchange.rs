@@ -12,9 +12,9 @@ use sts2_mcp_server::{
     SEEDED_RUN_PROTOCOL_VERSION, parse_json,
 };
 
+use super::RuntimeConfig;
 use super::binding::is_runtime_result;
 use super::http::{self, ReadError, read_response, write_request};
-use super::{RuntimeConfig, map_io};
 
 pub(super) fn exchange(
     config: &RuntimeConfig,
@@ -56,6 +56,15 @@ pub(super) fn exchange(
         status: response.status,
         body,
     })
+}
+
+pub(super) fn map_io(error: ReadError) -> GatewayError {
+    match error {
+        ReadError::Timeout => GatewayError::Timeout,
+        ReadError::Malformed => GatewayError::MalformedResponse,
+        ReadError::Oversized => GatewayError::ResponseTooLarge,
+        ReadError::Unavailable => GatewayError::Unavailable,
+    }
 }
 
 fn request_headers(

@@ -215,10 +215,7 @@ impl<G: GatewayAdapter> McpServer<G> {
                 "protocolVersion".to_owned(),
                 JsonValue::string(MCP_PROTOCOL_VERSION),
             ),
-            (
-                "capabilities".to_owned(),
-                self.catalog.capabilities.to_json(),
-            ),
+            ("capabilities".to_owned(), self.catalog.capabilities_json()),
             (
                 "serverInfo".to_owned(),
                 JsonValue::object([

@@ -3,6 +3,7 @@
 use super::RuntimeConfig;
 use sts2_mcp_server::{
     GAME_INFORMATION_PROTOCOL_VERSION, GAME_INFORMATION_SCHEMA_DIGEST, GatewayError, JsonValue,
+    SAVE_PROFILE_CONTRACT,
 };
 
 pub(crate) fn validate(
@@ -13,6 +14,9 @@ pub(crate) fn validate(
 ) -> Result<(), GatewayError> {
     if matches!(kind, "capabilities_response" | "game_information_response") {
         return game_information(config, body, correlation, kind);
+    }
+    if kind == "save_profile_response" {
+        return save_profile(body, config, correlation);
     }
     let JsonValue::Object(object) = body else {
         return Err(GatewayError::MalformedResponse);
@@ -33,6 +37,43 @@ pub(crate) fn validate(
         }
     }
     if object.get("lease_epoch") != Some(&JsonValue::Number(config.lease_epoch)) {
+        return Err(GatewayError::MalformedResponse);
+    }
+    Ok(())
+}
+
+fn save_profile(
+    body: &JsonValue,
+    config: &RuntimeConfig,
+    correlation: &str,
+) -> Result<(), GatewayError> {
+    let JsonValue::Object(object) = body else {
+        return Err(GatewayError::MalformedResponse);
+    };
+    if let Some(contract) = object.get("contract") {
+        if contract != &JsonValue::string(SAVE_PROFILE_CONTRACT) {
+            return Err(GatewayError::MalformedResponse);
+        }
+    } else if !matches!(object.get("error_code"), Some(JsonValue::String(_))) {
+        return Err(GatewayError::MalformedResponse);
+    }
+    for (field, expected) in [
+        ("instance_id", config.instance_id.as_str()),
+        ("caller_id", config.caller_id.as_str()),
+        ("session_id", config.session_id.as_str()),
+        ("mcp_session_id", config.mcp_session_id.as_str()),
+        ("lease_id", config.lease_id.as_str()),
+        ("correlation_id", correlation),
+    ] {
+        if let Some(value) = object.get(field)
+            && value != &JsonValue::string(expected)
+        {
+            return Err(GatewayError::MalformedResponse);
+        }
+    }
+    if let Some(epoch) = object.get("lease_epoch")
+        && epoch != &JsonValue::Number(config.lease_epoch)
+    {
         return Err(GatewayError::MalformedResponse);
     }
     Ok(())

@@ -99,3 +99,20 @@ provenance, and typed error validation remain at the MCP boundary. It consumes m
 main `34f68b18` (schema `376845b0…`). No specialized producer query is advertised until a feature
 owner registers one through the accepted protocol capability set. The deterministic fake/loopback
 evidence does not establish gateway #52, game-mod extraction, or host compatibility.
+
+## `save-profile-v1-mcp` profile
+
+ADR 0025 defines the additive save-profile consumer selected with
+`STS2_RUNTIME_PROFILE=save-profile-v1`. It exposes bounded list/current/status reads plus explicit
+select and create-disposable mutations. Calls map only to the five gateway-owned fixed routes, with
+empty bodies for reads/create and exactly `profile_id` plus a two-field baseline for selection.
+Instance, session, lease, epoch, profile, baseline, operation, response, and user-data identities are
+typed and bounded; unknown fields, foreign targets, stale baselines, and unsupported revisions fail
+closed.
+
+The executable is capability-gated by `STS2_SAVE_PROFILE_CAPABILITY`: absent/`unsupported` advertises
+no save-profile tools, `read` advertises only passive reads, and `read-write` advertises all five.
+The status/receipt tool reconciles the original operation identity and never repeats a mutation.
+Gateway owns allocation, authorization, leases, ledger state, and forwarding; game-mod owns save-slot
+meaning and host effects. Gateway PR #53 is the source/component dependency. Launch-profile wiring,
+game-mod readback, host settlement, and integrated readiness remain unverified.

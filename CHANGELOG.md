@@ -5,6 +5,15 @@ exists.
 
 ## Unreleased
 
+- Add the additive `save-profile-v1-mcp` consumer profile with bounded list/current/select/
+  create-disposable/status tools mapped to the fixed `gateway-save-profile-v1` routes. Capability
+  publication is fail-closed (`unsupported`, `read`, or `read-write`), read-only and mutation
+  descriptors remain separate, and selection baselines, authority identities, response statuses,
+  and 16 KiB bodies are validated. Lost mutation responses retain their operation identity as
+  `unknown` and reconcile through one status GET without replay. Fake-gateway and executable
+  binding checks are source/component evidence; gateway PR #53 is merged, while launch-profile
+  wiring, game-mod save-slot readback, host settlement, and integrated readiness remain unverified.
+
 - Add opt-in checkpoint-reference-v1 profile and the authorized sts2.checkpoint_reference
   read tool. Closed, bounded projection rejects foreign authority and hidden data; missing
   producers remain unavailable without capture or restore claims.

@@ -73,3 +73,17 @@ crates/mcp-server/src/mapping_game_information*.rs typed fixed-route request/res
 The protocol owner remains responsible for the neutral model and conformance meaning. MCP owns
 framing, catalog selection, session binding, fixed gateway mapping, and safe projection; it does
 not import game-mod or visualizer implementation.
+
+## Save-profile additions
+
+```text
+crates/mcp-server/src/catalog_save_profile.rs             additive five-tool catalog and schemas
+crates/mcp-server/src/mapping_save_profile.rs             fixed gateway route/body mapping
+crates/mcp-server/src/mapping_save_profile_response*.rs   bounded receipt/error validation
+crates/mcp-server/tests/save_profile_mapping.rs           fake-gateway and negative consumer conformance
+docs/decisions/0025-save-profile-mcp-tools.md             owner/compatibility decision
+```
+
+`gateway-save-profile-v1` remains a gateway-local contract; no game-mod implementation, save path,
+launch command, or copied host logic is stored here. The executable profile is capability-gated and
+unsupported owners advertise no usable save-profile descriptors.
