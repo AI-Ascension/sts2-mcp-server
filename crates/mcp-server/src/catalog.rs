@@ -281,12 +281,13 @@ impl ToolCatalog {
                 {
                     let read_only = game_information::is_tool(&tool.name)
                         || save_profile::is_read_tool(&tool.name);
+                    let idempotent = !save_profile::is_mutation_tool(&tool.name);
                     object.insert(
                         String::from("annotations"),
                         JsonValue::object([
                             ("readOnlyHint".to_owned(), JsonValue::Bool(read_only)),
                             ("destructiveHint".to_owned(), JsonValue::Bool(false)),
-                            ("idempotentHint".to_owned(), JsonValue::Bool(true)),
+                            ("idempotentHint".to_owned(), JsonValue::Bool(idempotent)),
                             ("openWorldHint".to_owned(), JsonValue::Bool(false)),
                         ]),
                     );

@@ -36,7 +36,11 @@ fn golden_catalog_and_initialize_gate_read_and_mutation_capabilities() {
     for tool in tools {
         assert_eq!(tool["inputSchema"]["additionalProperties"], false);
         assert_eq!(tool["annotations"]["destructiveHint"], false);
-        assert_eq!(tool["annotations"]["idempotentHint"], true);
+        let name = tool["name"].as_str().expect("tool name");
+        assert_eq!(
+            tool["annotations"]["idempotentHint"],
+            name != SAVE_PROFILE_SELECT_TOOL && name != SAVE_PROFILE_CREATE_DISPOSABLE_TOOL
+        );
         assert_eq!(tool["annotations"]["openWorldHint"], false);
     }
     assert_eq!(tools[0]["annotations"]["readOnlyHint"], true);

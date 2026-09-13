@@ -50,6 +50,9 @@ pub(super) fn gateway_success(
 ) -> crate::protocol::RpcResponse {
     let body = match normalize(&context, &response) {
         Ok(body) => body,
+        Err(_) if context.kind.is_mutation() => {
+            return unknown_result(context, GatewayError::MalformedResponse);
+        }
         Err(message) => {
             return super::super::tool_error_result(
                 context.request_id,
@@ -61,6 +64,9 @@ pub(super) fn gateway_success(
     };
     let encoded = body.to_json();
     if encoded.len() > SAVE_PROFILE_MAX_BODY_BYTES {
+        if context.kind.is_mutation() {
+            return unknown_result(context, GatewayError::ResponseTooLarge);
+        }
         return super::super::tool_error_result(
             context.request_id,
             "save_profile_response_too_large",

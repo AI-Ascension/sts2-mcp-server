@@ -3,8 +3,10 @@
 use std::collections::VecDeque;
 
 use sts2_mcp_server::{
-    GatewayAdapter, GatewayError, GatewayRequest, GatewayResponse, JsonValue,
-    SAVE_PROFILE_CONTRACT, SAVE_PROFILE_LAUNCH_PROFILE_CONTRACT,
+    GatewayAdapter, GatewayError, GatewayRequest, GatewayResponse, JsonValue, McpServer,
+    SAVE_PROFILE_CONTRACT, SAVE_PROFILE_CREATE_DISPOSABLE_TOOL,
+    SAVE_PROFILE_LAUNCH_PROFILE_CONTRACT, SAVE_PROFILE_MAX_BODY_BYTES, SAVE_PROFILE_SELECT_TOOL,
+    ToolCatalog,
 };
 
 const DIGEST: &str = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
@@ -145,4 +147,92 @@ pub fn result(operation_id: &str, route: &str, status: &str) -> JsonValue {
 
 pub fn wire(output: &str) -> serde_json::Value {
     serde_json::from_str(output).expect("MCP response JSON")
+}
+
+#[test]
+fn malformed_mutation_response_becomes_unknown_with_reconciliation_metadata() {
+    let mut malformed = result("select-malformed", "select", "settled");
+    if let JsonValue::Object(object) = &mut malformed {
+        object.remove("baseline");
+    }
+    let mut server = McpServer::with_catalog(
+        FakeGateway::new([Ok(GatewayResponse {
+            status: 200,
+            body: malformed,
+        })]),
+        ToolCatalog::save_profile_v1(),
+    );
+
+    let output = wire(&server.handle_frame(&frame(
+        "select-malformed",
+        SAVE_PROFILE_SELECT_TOOL,
+        select_arguments("slot-2"),
+    )));
+
+    assert_eq!(output["result"]["isError"], true);
+    assert_eq!(
+        output["result"]["structuredContent"]["error"]["code"],
+        "save_profile_unknown_after_malformed_response"
+    );
+    assert!(output.to_string().contains("select-malformed"));
+    assert!(
+        output
+            .to_string()
+            .contains("save_profile_reconcile_required")
+    );
+    assert_eq!(server.gateway().requests.len(), 1);
+}
+
+#[test]
+fn oversized_mutation_projection_becomes_unknown_with_reconciliation_metadata() {
+    let mut oversized = result("select-oversized", "select", "rejected");
+    if let JsonValue::Object(object) = &mut oversized {
+        object.insert(
+            String::from("downstream"),
+            JsonValue::string("x".repeat(SAVE_PROFILE_MAX_BODY_BYTES - 64)),
+        );
+    }
+    let mut server = McpServer::with_catalog(
+        FakeGateway::new([Ok(GatewayResponse {
+            status: 200,
+            body: oversized,
+        })]),
+        ToolCatalog::save_profile_v1(),
+    );
+
+    let output = wire(&server.handle_frame(&frame(
+        "select-oversized",
+        SAVE_PROFILE_SELECT_TOOL,
+        select_arguments("slot-2"),
+    )));
+
+    assert_eq!(output["result"]["isError"], true);
+    assert_eq!(
+        output["result"]["structuredContent"]["error"]["code"],
+        "save_profile_unknown_after_oversized_response"
+    );
+    assert!(output.to_string().contains("select-oversized"));
+    assert!(
+        output
+            .to_string()
+            .contains("save_profile_reconcile_required")
+    );
+    assert_eq!(server.gateway().requests.len(), 1);
+}
+
+#[test]
+fn mutation_tools_are_not_advertised_as_idempotent() {
+    let mut server = McpServer::with_catalog(FakeGateway::new([]), ToolCatalog::save_profile_v1());
+    let listed =
+        wire(&server.handle_frame(r#"{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}"#));
+
+    for tool in listed["result"]["tools"].as_array().expect("tool array") {
+        let name = tool["name"].as_str().expect("tool name");
+        let expected =
+            name != SAVE_PROFILE_SELECT_TOOL && name != SAVE_PROFILE_CREATE_DISPOSABLE_TOOL;
+        assert_eq!(
+            tool["annotations"]["idempotentHint"], expected,
+            "unexpected idempotency annotation for {name}"
+        );
+    }
 }
