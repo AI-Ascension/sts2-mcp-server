@@ -67,16 +67,21 @@ fn merge_profiles(profiles: &[ToolCatalog]) -> Result<ToolCatalog, NegotiationEr
             if !profile_names.insert(tool.name.clone()) {
                 return Err(NegotiationError::DuplicateOperation(tool.name.clone()));
             }
+            // Deduplicate on both the descriptor and the source operation
+            // revision. The merged catalog later rebuilds offers from the
+            // composition revision, so a conflicting per-operation source
+            // revision would otherwise be silently discarded.
+            let revision = super::profile::operation_revision(&tool.name, &profile.revision);
             if let Some((previous, previous_revision)) = tools.get(&tool.name) {
-                if previous != tool {
+                if previous != tool || *previous_revision != revision {
                     return Err(NegotiationError::RevisionConflict {
                         operation: tool.name.clone(),
                         left: previous_revision.clone(),
-                        right: profile.revision.clone(),
+                        right: revision,
                     });
                 }
             } else {
-                tools.insert(tool.name.clone(), (tool.clone(), profile.revision.clone()));
+                tools.insert(tool.name.clone(), (tool.clone(), revision));
             }
         }
     }

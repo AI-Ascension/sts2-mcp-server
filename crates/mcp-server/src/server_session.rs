@@ -98,7 +98,10 @@ impl<G> McpServer<G> {
             .checked_add(1)
             .ok_or_else(|| String::from("MCP session epoch exhausted"))?;
         self.refresh_required = Some(reason.clone());
-        self.pending_revision = pending_revision;
+        // Retain an outstanding revision constraint until a compliant refresh.
+        if pending_revision.is_some() {
+            self.pending_revision = pending_revision;
+        }
         if let Some(scope) = pending_scope {
             self.authority_scope = scope;
         }
@@ -182,7 +185,7 @@ impl<G> McpServer<G> {
         }
         if self.snapshot_tracking_exhausted
             || self.refresh_required.is_some()
-            || self.request_has_invalidated_snapshot(request)
+            || self.request_has_stale_snapshot(request)
         {
             return Some(RpcResponse::failure(
                 Some(request.id.clone()),
@@ -195,12 +198,20 @@ impl<G> McpServer<G> {
         None
     }
 
-    fn request_has_invalidated_snapshot(&self, request: &RpcRequest) -> bool {
+    /// Admits a snapshot reference only when registered in the current session.
+    fn request_has_stale_snapshot(&self, request: &RpcRequest) -> bool {
         let mut references = Vec::new();
         collect_snapshot_ids(&request.params, &mut references).is_ok()
-            && references
-                .iter()
-                .any(|snapshot_id| self.snapshot_is_invalidated(snapshot_id))
+            && references.iter().any(|snapshot_id| {
+                !self.active_snapshots.contains(snapshot_id)
+                    || self.snapshot_is_invalidated(snapshot_id)
+            })
+    }
+
+    /// Validates request snapshot identities without mutating tracking state.
+    pub(crate) fn validate_snapshot_params(params: &JsonValue) -> Result<(), &'static str> {
+        let mut references = Vec::new();
+        collect_snapshot_ids(params, &mut references)
     }
 
     pub(crate) fn remember_snapshot_from_params(

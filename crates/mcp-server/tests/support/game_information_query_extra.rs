@@ -10,6 +10,9 @@ fn malformed_inputs_and_responses_fail_closed_without_mutation() {
         FakeGateway::new([Err(GatewayError::Unavailable)]),
         ToolCatalog::game_information_query_v1(),
     );
+    server
+        .register_snapshot_reference("snapshot-42")
+        .expect("session registers the live snapshot it observed");
     let mut unknown = static_arguments(None);
     if let JsonValue::Object(object) = &mut unknown {
         object.insert(String::from("unexpected"), JsonValue::Bool(true));
@@ -46,6 +49,9 @@ fn unsupported_fields_and_live_fences_fail_before_gateway() {
         FakeGateway::new([]),
         ToolCatalog::game_information_query_v1(),
     );
+    server
+        .register_snapshot_reference("snapshot-42")
+        .expect("session registers the live snapshot it observed");
     let mut duplicate_fields = static_arguments(None);
     if let JsonValue::Object(object) = &mut duplicate_fields {
         object.insert(

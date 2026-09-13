@@ -199,3 +199,19 @@ fn scope_and_limits_are_intersected() -> Result<(), NegotiationError> {
     assert_eq!(operation.limits, ToolLimits::bounded(16, 64, 128, 8));
     Ok(())
 }
+
+#[test]
+fn duplicate_descriptors_with_conflicting_source_revisions_fail_negotiation()
+-> Result<(), NegotiationError> {
+    let mut gameplay_v999 = ToolCatalog::runtime_v3_gameplay();
+    gameplay_v999.revision = String::from("runtime-v999-gameplay-mcp");
+    let profiles = [ToolCatalog::runtime_v3_gameplay(), gameplay_v999];
+    let gateway = CapabilityLayer::from_catalog_for(CapabilityOwner::Gateway, &profiles[0])?;
+    let producer = CapabilityLayer::from_catalog_for(CapabilityOwner::Producer, &profiles[0])?;
+
+    assert!(matches!(
+        ToolCatalog::compose_profiles(&profiles, gateway, producer, CapabilityScope::ALL),
+        Err(NegotiationError::RevisionConflict { .. })
+    ));
+    Ok(())
+}

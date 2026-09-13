@@ -257,3 +257,76 @@ fn composed_initialize_and_list_publish_scope_limits_and_epoch() -> Result<(), S
     assert!(listed.contains("\"research_reads\""));
     Ok(())
 }
+
+#[test]
+fn untracked_snapshot_references_fail_closed_until_registered() -> Result<(), String> {
+    let catalog = composed_catalog()?;
+    let mut server = super::McpServer::with_catalog(CountingGateway::default(), catalog.clone());
+    server.register_snapshot_reference("snapshot-1")?;
+    server.apply_session_event(SessionEvent::ProducerRestart)?;
+    server.refresh_composed_catalog(catalog)?;
+
+    let untracked = server.handle_frame(
+        "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"tools/call\",\"params\":{\"name\":\"sts2.game_information_detail\",\"arguments\":{\"snapshot_ref\":{\"snapshot_id\":\"snapshot-untracked\"}}}}",
+    );
+    assert!(untracked.contains("\"code\":-32009"), "{untracked}");
+    assert_eq!(server.gateway().requests, 0);
+
+    server.register_snapshot_reference("snapshot-2")?;
+    let tracked = server.handle_frame(
+        "{\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"tools/call\",\"params\":{\"name\":\"sts2.game_information_detail\",\"arguments\":{\"snapshot_ref\":{\"snapshot_id\":\"snapshot-2\"}}}}",
+    );
+    assert!(tracked.contains("\"code\":-32602"), "{tracked}");
+    assert_eq!(server.gateway().requests, 0);
+
+    // Re-registering a snapshot invalidated by the restart does not revive it.
+    server.register_snapshot_reference("snapshot-1")?;
+    let revived = server.handle_frame(
+        "{\"jsonrpc\":\"2.0\",\"id\":3,\"method\":\"tools/call\",\"params\":{\"name\":\"sts2.game_information_detail\",\"arguments\":{\"snapshot_ref\":{\"snapshot_id\":\"snapshot-1\"}}}}",
+    );
+    assert!(revived.contains("\"code\":-32009"), "{revived}");
+    assert_eq!(server.gateway().requests, 0);
+    Ok(())
+}
+
+#[test]
+fn pending_revision_survives_unrelated_events_until_satisfied() -> Result<(), String> {
+    let catalog = composed_catalog()?;
+    let mut server = super::McpServer::with_catalog(CountingGateway::default(), catalog.clone());
+    server.apply_session_event(SessionEvent::ToolSetRevisionChanged {
+        revision: String::from("never-satisfied-v1-mcp"),
+    })?;
+    server.apply_session_event(SessionEvent::ContentReload)?;
+    assert!(server.refresh_required());
+
+    assert!(server.refresh_composed_catalog(catalog.clone()).is_err());
+    assert!(server.refresh_required());
+
+    server.apply_session_event(SessionEvent::ToolSetRevisionChanged {
+        revision: String::from("runtime-v3-gameplay-mcp"),
+    })?;
+    server.apply_session_event(SessionEvent::ContentReload)?;
+    server.refresh_composed_catalog(catalog)?;
+    assert!(!server.refresh_required());
+    Ok(())
+}
+
+#[test]
+fn rejected_calls_do_not_disable_a_legacy_session() -> Result<(), String> {
+    let mut server =
+        super::McpServer::with_catalog(CountingGateway::default(), ToolCatalog::default());
+    for index in 0..1025 {
+        let frame = format!(
+            "{{\"jsonrpc\":\"2.0\",\"id\":{index},\"method\":\"tools/call\",\"params\":{{\"name\":\"sts2.unknown\",\"arguments\":{{\"snapshot_id\":\"snapshot-{index}\"}}}}}}"
+        );
+        let _ = server.handle_frame(&frame);
+    }
+    let legacy = server.handle_frame(
+        "{\"jsonrpc\":\"2.0\",\"id\":9001,\"method\":\"tools/call\",\"params\":{\"name\":\"get_state\",\"arguments\":{\"instance_id\":\"instance-1\",\"mcp_session_id\":\"session-1\"}}}",
+    );
+    assert!(
+        !legacy.contains("\"code\":-32009"),
+        "legacy session was disabled by rejected calls: {legacy}"
+    );
+    Ok(())
+}

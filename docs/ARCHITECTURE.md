@@ -252,9 +252,11 @@ local `sts2.capabilities` discovery operation is read-only and never forwarded.
 
 Producer restart, content reload, permission changes, and tool-set revision changes invalidate
 tracked snapshot references, advance the session epoch, queue the standard tools-list-changed
-notification, and require a fresh catalog before forwarding. This source/component seam leaves
-producer capability discovery, gateway readiness and instance selection, host extraction, and
-live snapshot freshness to their owning systems.
+notification, and require a fresh catalog before forwarding. Snapshot-dependent calls must reference
+a snapshot registered by the current session; unknown or untracked references fail closed. A pending
+tool-set revision constraint survives unrelated lifecycle events until a compliant refresh satisfies
+it. This source/component seam leaves producer capability discovery, gateway readiness and instance
+selection, host extraction, and live snapshot freshness to their owning systems.
 
 ## Save-profile MCP profile
 
