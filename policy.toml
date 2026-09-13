@@ -20,3 +20,5 @@ markdown_preferred = 500
 markdown_max = 700
 
 [exemptions]
+"crates/mcp-server/src/mapping_save_profile_response.rs" = "Reviewed exact-path size exception: the save-profile response validation module remains cohesive at 327 nonblank lines, within the 400 hard maximum."
+"crates/mcp-server/tests/save_profile_mapping.rs" = "Reviewed exact-path size exception: the save-profile mapping golden and negative tests remain cohesive at 504 nonblank lines, within the 600 hard maximum."

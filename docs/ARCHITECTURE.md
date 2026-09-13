@@ -177,6 +177,8 @@ Byte limits are profile-scoped. The poc, runtime-v1, and runtime-v2 profiles kee
 Runtime-v3 profile accepts 256 KiB frames, 128 KiB bodies, and 128 KiB projected content. The catalog
 owns the frame limit (`ToolCatalog::max_frame_bytes`) and the executable selects the body limit
 together with the catalog, so the Runtime-v3 addition changes no bound a legacy consumer sees.
+The save-profile profile intentionally remains on the historical 16 KiB frame/projected-content and
+64 KiB executable response budgets, with its gateway request body capped at 16 KiB.
 
 ## Read-only co-op synchronization
 
@@ -238,6 +240,39 @@ merged protocol main `34f68b18` (schema `376845b0…`). Unsupported producer kin
 specializations are not advertised.
 Gateway #52 and game-mod extraction are external integration gates; this source/fake lane does not
 claim host readiness or live snapshot support.
+
+## Save-profile MCP profile
+
+ADR 0025 adds the additive `save-profile-v1-mcp` profile, selected with
+`STS2_RUNTIME_PROFILE=save-profile-v1`. It exposes exactly
+`sts2.save_profile_list`, `sts2.save_profile_current`, `sts2.save_profile_select`,
+`sts2.save_profile_create_disposable`, and `sts2.save_profile_status`. The first, second, and last
+are read-only; selection and disposable creation are explicit mutations and are never advertised as
+passive discovery.
+
+The profile maps only the gateway's fixed instance routes:
+`GET /v1/instances/{id}/save-profiles`,
+`GET /v1/instances/{id}/save-profile/current`,
+`POST /v1/instances/{id}/save-profile/select`,
+`POST /v1/instances/{id}/save-profile/create-disposable`, and
+`GET /v1/instances/{id}/save-profile/operations/{operation_id}`. Reads and disposable creation use
+empty bodies; selection forwards exactly a profile identity and a validated baseline. All calls carry
+explicit MCP session, gateway session, instance, lease, and epoch identities. The executable adds its
+configured caller/correlation and bearer authentication; MCP never accepts a downstream path, URL,
+command, profile root, or arbitrary header.
+
+The gateway-local `gateway-save-profile-v1` response is validated for route, operation identity,
+authority echoes, bounded profile/baseline data, gateway-owned disposable user-data provenance, and
+status. `accepted`, `settled`, `rejected`, `unknown`, `blocked`, and `cancelled` outcomes remain
+distinct; provisioning `pending`/`created` outcomes are retained. A timeout or malformed mutation
+response becomes `unknown` with the original MCP operation identity and reconciliation guidance.
+`sts2.save_profile_status` reads that identity and never repeats the mutation.
+
+Capability publication is fail-closed. The executable defaults this profile to unsupported unless
+`STS2_SAVE_PROFILE_CAPABILITY=read` or `read-write` is set (the plural spelling is accepted as an
+alias). Unsupported owners advertise no usable save-profile tools; read-only owners advertise only
+the three reads. The gateway's merged PR #53 is a source/component dependency, while launch-profile
+integration, game-mod save-slot semantics, host effects, and live readiness remain external gates.
 
 ## Runtime-v4 expert REST-action profile
 

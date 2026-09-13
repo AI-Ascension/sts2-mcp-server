@@ -4,7 +4,7 @@
 use super::*;
 use std::collections::BTreeMap;
 use std::net::SocketAddr;
-use sts2_mcp_server::{Correlation, GatewayAdapter, RequestId};
+use sts2_mcp_server::{Correlation, GatewayAdapter, JsonValue, RequestId};
 
 pub(super) fn config() -> RuntimeConfig {
     RuntimeConfig {
