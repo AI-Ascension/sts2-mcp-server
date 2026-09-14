@@ -6,15 +6,177 @@
 
 use serde_json::{Value, json};
 use sts2_mcp_server::{
-    GAME_INFORMATION_DETAIL_TOOL, GAME_INFORMATION_GET_TOOL, GAME_INFORMATION_SEARCH_TOOL,
-    METHOD_NOT_FOUND,
+    Correlation, GAME_INFORMATION_DETAIL_TOOL, GAME_INFORMATION_GET_TOOL,
+    GAME_INFORMATION_SEARCH_TOOL, GatewayAdapter, GatewayError, GatewayMethod, GatewayRequest,
+    METHOD_NOT_FOUND, RequestId, parse_json,
 };
 
-use super::producer::{LIVE_ENTITY_ID, ProducerMode, QUERY_PATH, SyntheticProducer};
+use super::producer::{
+    GATEWAY_SESSION_ID, INSTANCE_ID, LEASE_ID, LIVE_ENTITY_ID, MCP_SESSION_ID, ProducerMode,
+    QUERY_PATH, SyntheticProducer,
+};
+use super::schema;
 use super::{
     assert_tool_error, attempt, base_query, call, get_arguments, live_arguments, request,
     search_arguments, server, tool_envelope,
 };
+
+const GOLDEN_STATIC_REQUEST: &str = include_str!(
+    "../../../../protocol-artifact/game-information-query-v1/golden/static-page-1-request.json"
+);
+const GOLDEN_STATIC_RESPONSE: &str = include_str!(
+    "../../../../protocol-artifact/game-information-query-v1/golden/static-page-1-response.json"
+);
+const GOLDEN_CAPABILITIES_RESPONSE: &str = include_str!(
+    "../../../../protocol-artifact/game-information-query-v1/golden/capabilities-response.json"
+);
+const GOLDEN_ERROR_RESPONSE: &str = include_str!(
+    "../../../../protocol-artifact/game-information-query-v1/golden/error-stale-cursor.json"
+);
+
+fn golden(text: &str) -> Value {
+    serde_json::from_str(text).expect("golden contract JSON is valid")
+}
+
+/// Builds the mapped gateway request one query envelope is delivered on, so the
+/// controls drive the producer's own schema validation through `forward`.
+fn mapped_query_request(body: &Value) -> GatewayRequest {
+    let correlation = body
+        .get("correlation_id")
+        .and_then(Value::as_str)
+        .unwrap_or_default()
+        .to_owned();
+    let mut headers = std::collections::BTreeMap::new();
+    for (name, value) in [
+        ("x-sts2-instance-id", INSTANCE_ID),
+        ("x-sts2-session-id", GATEWAY_SESSION_ID),
+        ("x-sts2-lease-id", LEASE_ID),
+        ("x-sts2-lease-epoch", "7"),
+        ("x-mcp-session-id", MCP_SESSION_ID),
+        ("x-mcp-request-id", correlation.as_str()),
+    ] {
+        headers.insert(String::from(name), String::from(value));
+    }
+    GatewayRequest {
+        method: GatewayMethod::Post,
+        path: String::from(QUERY_PATH),
+        headers,
+        body: Some(parse_json(&body.to_string()).expect("mapped request body is JSON")),
+        correlation: Correlation {
+            mcp_session_id: String::from(MCP_SESSION_ID),
+            mcp_request_id: RequestId::String(correlation),
+        },
+    }
+}
+
+fn without_member(value: &Value, key: &str) -> Value {
+    let mut value = value.clone();
+    value
+        .as_object_mut()
+        .expect("envelope is an object")
+        .remove(key);
+    value
+}
+
+fn with_extra_member(value: &Value, key: &str) -> Value {
+    let mut value = value.clone();
+    value
+        .as_object_mut()
+        .expect("envelope is an object")
+        .insert(String::from(key), json!(true));
+    value
+}
+
+/// The producer independently validates every mapped request against the
+/// pinned schema, so an envelope that drops a required member or grows an
+/// extra root member is refused instead of reaching the query handler.
+#[test]
+fn producer_rejects_malformed_mapped_requests_against_the_pinned_schema() {
+    let mut producer = SyntheticProducer::contract();
+    let conforming = golden(GOLDEN_STATIC_REQUEST);
+
+    let accepted = producer
+        .forward(mapped_query_request(&conforming))
+        .expect("a conforming mapped request is accepted");
+    assert_eq!(accepted.status, 200);
+    assert_eq!(producer.records().len(), 1);
+    assert!(
+        schema::errors(producer.validator(), &conforming).is_empty(),
+        "the pinned request golden must satisfy the pinned schema"
+    );
+    assert!(
+        producer.violations().is_empty(),
+        "a conforming request must not be a violation: {:?}",
+        producer.violations()
+    );
+
+    for (name, malformed) in [
+        (
+            "missing required result member",
+            without_member(&conforming, "result"),
+        ),
+        (
+            "missing required capabilities member",
+            without_member(&conforming, "capabilities"),
+        ),
+        (
+            "missing required error member",
+            without_member(&conforming, "error"),
+        ),
+        (
+            "missing required correlation member",
+            without_member(&conforming, "correlation_id"),
+        ),
+        (
+            "extra root member",
+            with_extra_member(&conforming, "unexpected"),
+        ),
+    ] {
+        let before = producer.violations().len();
+        let refusal = producer.forward(mapped_query_request(&malformed));
+        assert_eq!(refusal, Err(GatewayError::MalformedResponse), "{name}");
+        assert!(
+            producer.violations().len() > before,
+            "{name} did not record a schema violation"
+        );
+    }
+    assert_eq!(
+        producer.records().len(),
+        1,
+        "a schema-invalid request must not be recorded as a processed query"
+    );
+}
+
+/// The same validator proves the response direction: pinned outbound goldens
+/// conform, while dropping a required member or adding an extra root member is
+/// reported instead of silently projected.
+#[test]
+fn producer_rejects_schema_violating_responses_against_the_pinned_schema() {
+    let producer = SyntheticProducer::contract();
+    for (name, response) in [
+        ("capabilities response", GOLDEN_CAPABILITIES_RESPONSE),
+        ("static page response", GOLDEN_STATIC_RESPONSE),
+        ("error response", GOLDEN_ERROR_RESPONSE),
+    ] {
+        let response = golden(response);
+        let errors = schema::errors(producer.validator(), &response);
+        assert!(errors.is_empty(), "{name} is not schema-valid: {errors:?}");
+    }
+
+    let response = golden(GOLDEN_STATIC_RESPONSE);
+    assert!(
+        !schema::errors(producer.validator(), &without_member(&response, "result")).is_empty(),
+        "a response without its required result member must be rejected"
+    );
+    assert!(
+        !schema::errors(
+            producer.validator(),
+            &with_extra_member(&response, "unexpected")
+        )
+        .is_empty(),
+        "a response with an extra root member must be rejected"
+    );
+}
 
 #[test]
 fn malformed_unknown_stale_oversized_and_missing_capability_fail_closed() {

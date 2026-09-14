@@ -22,6 +22,8 @@ mod errors;
 mod page;
 #[path = "game_information_query_e2e/producer.rs"]
 mod producer;
+#[path = "game_information_query_e2e/schema.rs"]
+mod schema;
 #[path = "game_information_query_e2e/sequence.rs"]
 mod sequence;
 

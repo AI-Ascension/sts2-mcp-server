@@ -268,11 +268,13 @@ fn search_get_live_detail_and_next_page_reach_the_synthetic_producer() {
         server.gateway().violations()
     );
 }
-
-/// The issue #51 acceptance sequence in one ordered run: initialize, tools/list,
-/// manifest, search, next page, get, live detail.
+/// The issue #51 acceptance sequence interleaved in one ordered run:
+/// initialize -> tools/list -> manifest -> search -> get -> live detail ->
+/// next page. The continuation cursor from the first page is retained across
+/// the interleaved get and live detail and redeemed only afterwards, and the
+/// final page and downstream request order are asserted explicitly.
 #[test]
-fn full_lookup_sequence_succeeds_in_order() {
+fn interleaved_lookup_sequence_succeeds_in_order() {
     let mut server = server(SyntheticProducer::contract());
     let wire = request(
         &mut server,
@@ -281,7 +283,7 @@ fn full_lookup_sequence_succeeds_in_order() {
         json!({
             "protocolVersion": "2025-06-18",
             "capabilities": {},
-            "clientInfo": {"name": "issue-51-sequence", "version": "1.0.0"},
+            "clientInfo": {"name": "issue-51-interleaved-sequence", "version": "1.0.0"},
         }),
     );
     assert_eq!(wire["result"]["protocolVersion"], "2025-06-18");
@@ -310,53 +312,84 @@ fn full_lookup_sequence_succeeds_in_order() {
         GAME_INFORMATION_SEARCH_TOOL,
         search_arguments(None, "summary"),
     );
-    let page = tool_envelope(&wire)["result"]["page"].clone();
+    let envelope = tool_envelope(&wire);
+    assert_static_query_echo(&envelope["query"], Value::Null);
+    let page = &envelope["result"]["page"];
+    assert_eq!(page["items"].as_array().map(Vec::len), Some(2));
+    assert_eq!(page["final_page"], false);
+    assert_eq!(page["cursor_binding"]["query_kind"], "search");
+    assert_eq!(
+        page["cursor_binding"]["binding"],
+        json!({
+            "content_manifest_id": CONTENT_MANIFEST_ID,
+            "instance_ref": Value::Null,
+            "locale": "en-US",
+            "mode": "static",
+            "snapshot_ref": Value::Null,
+            "visibility_scope": "public",
+        })
+    );
     let cursor = page["next_cursor"]
         .as_str()
         .expect("first page carries a continuation cursor")
         .to_owned();
-    assert_eq!(page["final_page"], false);
 
     let wire = call(
         &mut server,
         "step-5",
-        GAME_INFORMATION_SEARCH_TOOL,
-        search_arguments(Some(&cursor), "summary"),
+        GAME_INFORMATION_GET_TOOL,
+        get_arguments("synthetic:defend"),
     );
-    let page = tool_envelope(&wire)["result"]["page"].clone();
+    let page = &tool_envelope(&wire)["result"]["page"];
     assert_eq!(page["final_page"], true);
     assert_eq!(page["items"].as_array().map(Vec::len), Some(1));
+    assert_eq!(
+        page["items"][0]["definition_ref"]["namespaced_id"],
+        "synthetic:defend"
+    );
 
     let wire = call(
         &mut server,
         "step-6",
-        GAME_INFORMATION_GET_TOOL,
-        get_arguments("synthetic:strike"),
+        GAME_INFORMATION_DETAIL_TOOL,
+        live_arguments("card", LIVE_ENTITY_ID, "synthetic:strike"),
     );
-    let page = tool_envelope(&wire)["result"]["page"].clone();
+    let envelope = tool_envelope(&wire);
+    assert_live_query_echo(&envelope["query"]);
+    assert_eq!(envelope["result"]["result_generation"], SNAPSHOT_GENERATION);
+    assert_live_detail_item(&envelope["result"]["page"]["items"][0]);
+
+    let wire = call(
+        &mut server,
+        "step-7",
+        GAME_INFORMATION_SEARCH_TOOL,
+        search_arguments(Some(&cursor), "summary"),
+    );
+    let envelope = tool_envelope(&wire);
+    assert_static_query_echo(&envelope["query"], json!(cursor));
+    let page = &envelope["result"]["page"];
+    assert_eq!(page["final_page"], true);
+    assert_eq!(page["next_cursor"], Value::Null);
+    assert_eq!(page["cursor_binding"], Value::Null);
+    assert_eq!(page["total_count"], 3);
     assert_eq!(page["items"].as_array().map(Vec::len), Some(1));
     assert_eq!(
         page["items"][0]["definition_ref"]["namespaced_id"],
         "synthetic:strike"
     );
 
-    let wire = call(
-        &mut server,
-        "step-7",
-        GAME_INFORMATION_DETAIL_TOOL,
-        live_arguments("card", LIVE_ENTITY_ID, "synthetic:strike"),
-    );
-    let envelope = tool_envelope(&wire);
-    assert_eq!(envelope["result"]["result_generation"], SNAPSHOT_GENERATION);
-    assert_live_detail_item(&envelope["result"]["page"]["items"][0]);
-
-    let kinds: Vec<&str> = server
-        .gateway()
-        .records()
+    let records = server.gateway().records();
+    let kinds: Vec<&str> = records
         .iter()
         .map(|record| record.query_kind.as_str())
         .collect();
-    assert_eq!(kinds, ["capabilities", "search", "search", "get", "detail"]);
+    assert_eq!(kinds, ["capabilities", "search", "get", "detail", "search"]);
+    assert_eq!(records[0].path, CAPABILITIES_PATH);
+    assert!(records[1].cursor.is_none());
+    assert_eq!(records[4].cursor.as_deref(), Some(cursor.as_str()));
+    for record in &records[1..] {
+        assert_eq!(record.path, QUERY_PATH);
+    }
     assert!(
         server.gateway().violations().is_empty(),
         "{:?}",

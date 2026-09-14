@@ -4,12 +4,13 @@
 //!
 //! The producer is a second, independent implementation of the pinned
 //! `game-information-query-v1` *downstream* contract. It owns a synthetic
-//! content manifest, opaque cursors and one live snapshot, validates every
-//! mapped gateway request against the fixed route mapping, and generates
-//! conforming or deliberately non-conforming responses. It is deterministic
-//! synthetic test code, not a game host, provider, or evidence of native
-//! behavior, and it never touches a network, profile or save.
+//! content manifest, opaque cursors and one live snapshot, checks every mapped
+//! request against the fixed route mapping, and schema-validates every mapped
+//! request and outbound envelope against the pinned contract. It is
+//! deterministic synthetic test code, not a game host, provider, or evidence
+//! of native behavior, and it never touches a network, profile or save.
 
+use jsonschema::Validator;
 use serde_json::Value;
 use sts2_mcp_server::{
     GAME_INFORMATION_MAX_MESSAGE_BYTES, GAME_INFORMATION_PROTOCOL_VERSION,
@@ -71,6 +72,7 @@ pub(crate) struct SyntheticProducer {
     mode: ProducerMode,
     records: Vec<QueryRecord>,
     violations: Vec<String>,
+    validator: Validator,
 }
 
 impl SyntheticProducer {
@@ -83,6 +85,7 @@ impl SyntheticProducer {
             mode,
             records: Vec::new(),
             violations: Vec::new(),
+            validator: super::schema::validator(),
         }
     }
 
@@ -94,7 +97,16 @@ impl SyntheticProducer {
         &self.violations
     }
 
-    fn respond(&self, value: &Value) -> Result<GatewayResponse, GatewayError> {
+    /// The compiled pinned-schema validator, shared with the controls.
+    pub(crate) fn validator(&self) -> &Validator {
+        &self.validator
+    }
+
+    fn respond(&mut self, value: &Value) -> Result<GatewayResponse, GatewayError> {
+        let errors = super::schema::errors(&self.validator, value);
+        if !errors.is_empty() {
+            super::schema::record(&mut self.violations, "producer envelope", &errors);
+        }
         Ok(GatewayResponse {
             status: 200,
             body: to_json_value(value),
@@ -127,6 +139,11 @@ impl SyntheticProducer {
             return Err(GatewayError::Rejected);
         };
         let body = to_serde(body);
+        let errors = super::schema::errors(&self.validator, &body);
+        if !errors.is_empty() {
+            super::schema::record(&mut self.violations, "mapped query request", &errors);
+            return Err(GatewayError::MalformedResponse);
+        }
         let Some(correlation) = json_text(&body, "correlation_id") else {
             self.violations
                 .push(String::from("query envelope has no correlation"));
