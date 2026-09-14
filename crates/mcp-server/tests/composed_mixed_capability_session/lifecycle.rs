@@ -108,23 +108,46 @@ fn producer_restart_invalidates_in_flight_snapshots_without_forwarding() {
 }
 
 #[test]
-fn permission_revocation_narrows_capabilities_and_blocks_before_forwarding() {
+fn permission_revocation_invalidates_snapshots_and_blocks_before_forwarding() {
     let profiles = gameplay_lookup_profiles();
+    // Forwarded calls, in order: the pre-revocation live detail, the recovered
+    // post-refresh live detail, and the still-supported gameplay observe.
     let mut server = McpServer::with_catalog_and_sessions(
-        RecordingGateway::new([ok(state_response("corr-observe-1"))]),
+        RecordingGateway::new([
+            ok(detail_response("corr-detail-1", SNAPSHOT)),
+            ok(detail_response("corr-detail-fresh", FRESH_SNAPSHOT)),
+            ok(state_response("corr-observe-1")),
+        ]),
         composed_catalog(&profiles, CapabilityScope::ALL).expect("full composition"),
         GATEWAY_SESSION,
         MCP_SESSION,
     );
 
-    // Revocation to read-only scope invalidates the mutate capability and blocks
-    // the whole composed session until a compliant refresh.
+    // A live detail lookup is admitted before revocation, so the later rejection
+    // is attributable to the revocation rather than to an unregistered reference.
+    server
+        .register_snapshot_reference(SNAPSHOT)
+        .expect("session admits the observed snapshot");
+    let admitted = wire(&server.handle_frame(&frame(
+        "corr-detail-1",
+        GAME_INFORMATION_DETAIL_TOOL,
+        detail_arguments(SNAPSHOT),
+    )));
+    assert_eq!(admitted["result"]["isError"], false, "{admitted}");
+    assert_eq!(server.gateway().forwarded(), 1);
+    let epoch_before = server.session_epoch();
+
+    // Revocation to read-only scope invalidates the mutate capability, advances
+    // the session epoch, and invalidates every in-flight snapshot reference.
     let update = server
         .apply_session_event(SessionEvent::PermissionsChanged {
             caller_scope: CapabilityScope::READ,
         })
         .expect("revocation applies");
     assert!(update.refresh_required);
+    assert!(update.invalidated_snapshot_count >= 1);
+    assert_eq!(update.session_epoch, epoch_before + 1);
+    assert!(server.snapshot_is_invalidated(SNAPSHOT));
     let blocked = wire(&server.handle_frame(&frame(
         "corr-dispatch",
         DISPATCH_ACTION_TOOL,
@@ -134,7 +157,7 @@ fn permission_revocation_narrows_capabilities_and_blocks_before_forwarding() {
         blocked["error"]["code"], NEGOTIATION_STALE_CODE,
         "{blocked}"
     );
-    assert_eq!(server.gateway().forwarded(), 0, "{STALE}");
+    assert_eq!(server.gateway().forwarded(), 1, "{STALE}");
 
     // A refresh that still claims the revoked scope is refused.
     let overreach = server.refresh_composed_catalog(
@@ -155,6 +178,13 @@ fn permission_revocation_narrows_capabilities_and_blocks_before_forwarding() {
         .refresh_composed_catalog(narrowed)
         .expect("refresh within the revoked scope");
     assert!(!server.refresh_required());
+    // The compliant refresh narrows capability only: it must not revive the
+    // pre-revocation reference, so a regression that preserves it would forward
+    // the stale detail call below instead of failing closed.
+    assert!(
+        server.snapshot_is_invalidated(SNAPSHOT),
+        "the compliant refresh must not revive a pre-revocation snapshot"
+    );
 
     let listed = wire(&server.handle_frame(&tools_list_frame()));
     let names = listed_names(&listed);
@@ -162,6 +192,7 @@ fn permission_revocation_narrows_capabilities_and_blocks_before_forwarding() {
         OBSERVE_TOOL,
         MAP_SNAPSHOT_TOOL,
         GAME_INFORMATION_SEARCH_TOOL,
+        GAME_INFORMATION_DETAIL_TOOL,
     ] {
         assert!(
             names.contains(&tool.to_owned()),
@@ -180,11 +211,36 @@ fn permission_revocation_narrows_capabilities_and_blocks_before_forwarding() {
         JsonValue::object([]),
     )));
     assert_eq!(denied["error"]["code"], METHOD_NOT_FOUND, "{denied}");
-    assert_eq!(server.gateway().forwarded(), 0, "{STALE}");
+    assert_eq!(server.gateway().forwarded(), 1, "{STALE}");
+
+    // A valid detail request that still carries the pre-revocation snapshot is
+    // rejected before the gateway boundary in the refreshed epoch.
+    let stale = wire(&server.handle_frame(&frame(
+        "corr-detail-stale",
+        GAME_INFORMATION_DETAIL_TOOL,
+        detail_arguments(SNAPSHOT),
+    )));
+    assert_eq!(
+        stale["error"]["code"], NEGOTIATION_STALE_CODE,
+        "{STALE}: {stale}"
+    );
+    assert_eq!(server.gateway().forwarded(), 1, "{STALE}");
+
+    // A reference registered in the refreshed epoch is admitted and forwarded.
+    server
+        .register_snapshot_reference(FRESH_SNAPSHOT)
+        .expect("fresh snapshot registers");
+    let recovered = wire(&server.handle_frame(&frame(
+        "corr-detail-fresh",
+        GAME_INFORMATION_DETAIL_TOOL,
+        detail_arguments(FRESH_SNAPSHOT),
+    )));
+    assert_eq!(recovered["result"]["isError"], false, "{recovered}");
+    assert_eq!(server.gateway().forwarded(), 2);
 
     let allowed =
         wire(&server.handle_frame(&frame("corr-observe-1", OBSERVE_TOOL, observe_arguments())));
     assert_eq!(allowed["result"]["isError"], false, "{allowed}");
-    assert_eq!(server.gateway().forwarded(), 1);
+    assert_eq!(server.gateway().forwarded(), 3);
     assert_consistent_identity(&server.gateway().requests);
 }

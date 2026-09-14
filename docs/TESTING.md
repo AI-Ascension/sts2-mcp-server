@@ -245,7 +245,8 @@ The composition unit tests combine the Runtime-v3 gameplay/map and game-informat
 assert unique operation names and explicit feature groups, exercise missing producer support and
 revision conflicts for the gameplay and game-information profiles, and verify caller-scope and
 per-tool limit intersection. Server tests cover local `sts2.capabilities` discovery, lifecycle
-invalidation, list-changed notification queuing, session epochs, pre-forward stale rejection,
+invalidation of registered live references that a compliant catalog refresh must not revive,
+list-changed notification queuing, session epochs, pre-forward stale rejection,
 fail-closed rejection of untracked snapshot references, retention of a pending tool-set revision
 across unrelated events, refusal-shaped responses that must not consume snapshot tracking capacity,
 and admitted calls that still register the live reference they used. Game-information integration
