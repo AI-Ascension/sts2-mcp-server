@@ -43,7 +43,7 @@ fn expert_state_call<G: GatewayAdapter>(
             mcp_request_id: id.clone(),
         },
     };
-    match server.gateway.forward(request) {
+    match server.forward_gateway(request) {
         Ok(response) if (200..300).contains(&response.status) => {
             let Ok(body) =
                 crate::projection::project_runtime_v4_expert_gateway_body(&response.body)

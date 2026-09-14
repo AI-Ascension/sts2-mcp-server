@@ -66,6 +66,23 @@ pub(crate) fn layer_from_catalogs(
     Ok(layer)
 }
 
+/// Canonical operation revision for a game-information operation.
+///
+/// A profile that declares a game-information revision keeps that declaration
+/// as the operation revision, so two profiles that declare different contract
+/// revisions (for example `game-information-query-v1-mcp` and
+/// `game-information-query-v999-mcp`) stay distinguishable to deduplication
+/// and negotiation instead of being silently collapsed onto one supported
+/// revision. The negotiated composition profile and any other owner are
+/// canonicalised onto the supported game-information revision.
+fn game_information_operation_revision(profile_revision: &str) -> String {
+    if profile_revision.starts_with("game-information") {
+        profile_revision.to_owned()
+    } else {
+        "game-information-query-v1-mcp".to_owned()
+    }
+}
+
 fn operation_shape(name: &str) -> Result<(CapabilityGroup, CapabilityScope), NegotiationError> {
     let shape = match name {
         CAPABILITY_DISCOVERY_TOOL => (CapabilityGroup::ProfileReads, CapabilityScope::READ),
@@ -116,7 +133,7 @@ pub(super) fn operation_revision(name: &str, profile_revision: &str) -> String {
         return "runtime-map-v1-mcp".to_owned();
     }
     if name.starts_with("sts2.game_information_") {
-        return "game-information-query-v1-mcp".to_owned();
+        return game_information_operation_revision(profile_revision);
     }
     if matches!(
         name,

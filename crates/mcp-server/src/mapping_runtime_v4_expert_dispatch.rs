@@ -188,7 +188,7 @@ fn expert_action_call<G: GatewayAdapter>(
         operation_id: operation_id.to_owned(),
         action: Some(action.clone()),
     };
-    match server.gateway.forward(request) {
+    match server.forward_gateway(request) {
         Ok(response) => expert_action_response(id, response, binding),
         Err(error) => gateway_error_result(id, error),
     }

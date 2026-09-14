@@ -330,3 +330,33 @@ fn rejected_calls_do_not_disable_a_legacy_session() -> Result<(), String> {
     );
     Ok(())
 }
+
+#[test]
+fn pre_dispatch_refusals_do_not_consume_snapshot_tracking() -> Result<(), String> {
+    let mut server =
+        super::McpServer::with_catalog(CountingGateway::default(), composed_catalog()?);
+    for index in 0..1025 {
+        let frame = format!(
+            "{{\"jsonrpc\":\"2.0\",\"id\":{index},\"method\":\"tools/call\",\"params\":{{\"name\":\"sts2.capabilities\",\"arguments\":{{\"snapshot_id\":\"snapshot-{index}\",\"page_items\":4096}}}}}}"
+        );
+        let refusal = server.handle_frame(&frame);
+        assert!(
+            refusal.contains("negotiated_pagination_limit_exceeded"),
+            "unexpected refusal: {refusal}"
+        );
+    }
+    assert!(
+        server.active_snapshots.is_empty(),
+        "refused calls changed snapshot tracking state"
+    );
+    assert_eq!(server.gateway().requests, 0);
+
+    let ordinary = server.handle_frame(
+        "{\"jsonrpc\":\"2.0\",\"id\":9001,\"method\":\"tools/call\",\"params\":{\"name\":\"sts2.observe\",\"arguments\":{}}}",
+    );
+    assert!(
+        !ordinary.contains("\"code\":-32009"),
+        "refused calls exhausted snapshot tracking: {ordinary}"
+    );
+    Ok(())
+}

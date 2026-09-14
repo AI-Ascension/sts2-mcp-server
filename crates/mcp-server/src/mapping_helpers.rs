@@ -16,7 +16,7 @@ pub(super) fn forward<G: GatewayAdapter>(
     id: RequestId,
     request: GatewayRequest,
 ) -> RpcResponse {
-    match server.gateway.forward(request) {
+    match server.forward_gateway(request) {
         Ok(response) => {
             super::response::gateway_success(id, response, server.catalog.is_runtime_v1())
         }

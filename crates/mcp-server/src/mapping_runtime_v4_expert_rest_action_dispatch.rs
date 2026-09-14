@@ -190,7 +190,7 @@ pub(super) fn expert_rest_action_call<G: GatewayAdapter>(
             "operation_id is already bound to a different Runtime-v4 REST action",
         );
     }
-    match server.gateway.forward(request) {
+    match server.forward_gateway(request) {
         Ok(response) => expert_rest_action_response(server, id, response, binding),
         Err(error) => gateway_error_result(id, error),
     }

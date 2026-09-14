@@ -213,7 +213,7 @@ fn forward<G: GatewayAdapter>(
     context: &RuntimeV2Context,
     expected_kind: &str,
 ) -> RpcResponse {
-    match server.gateway.forward(request) {
+    match server.forward_gateway(request) {
         Ok(response)
             if response.status != 429
                 && crate::projection::project_runtime_v2_gateway_body(

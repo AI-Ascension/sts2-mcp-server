@@ -243,12 +243,15 @@ game-mod extraction, and host snapshot freshness remain external gates.
 
 The composition unit tests combine the Runtime-v3 gameplay/map and game-information catalogs,
 assert unique operation names and explicit feature groups, exercise missing producer support and
-revision conflicts (including identical descriptors with conflicting source revisions), and verify
-caller-scope and per-tool limit intersection. Server tests cover local `sts2.capabilities` discovery,
-lifecycle invalidation, list-changed notification queuing, session epochs, pre-forward stale
-rejection, fail-closed rejection of untracked snapshot references, retention of a pending tool-set
-revision across unrelated events, and rejected calls not consuming snapshot tracking capacity. The
-executable profile verifies both copied source artifacts before advertising the composition.
+revision conflicts for the gameplay and game-information profiles, and verify caller-scope and
+per-tool limit intersection. Server tests cover local `sts2.capabilities` discovery, lifecycle
+invalidation, list-changed notification queuing, session epochs, pre-forward stale rejection,
+fail-closed rejection of untracked snapshot references, retention of a pending tool-set revision
+across unrelated events, refusal-shaped responses that must not consume snapshot tracking capacity,
+and admitted calls that still register the live reference they used. Game-information integration
+tests verify forwarding of a live detail query from a standalone session that never registered the
+reference. The executable profile verifies both copied source artifacts before advertising the
+composition.
 
 These checks establish only the MCP source/component seam. They do not prove dynamic producer
 discovery, gateway readiness or instance selection, host extraction, fresh snapshots, provider
