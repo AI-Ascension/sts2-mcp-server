@@ -5,6 +5,16 @@ exists.
 
 ## Unreleased
 
+- 2026-09-14: Add `game_information_query_e2e`, an in-process end-to-end acceptance test that drives
+  the real game-information MCP catalog and the fixed gateway route mapping through `initialize` ->
+  `tools/list` -> manifest -> two-page search with an opaque cursor -> get -> pinned live detail
+  against an owned synthetic producer. It also composes the runtime-map and game-information profiles
+  with explicit gateway/producer capability layers, asserts local capability discovery, and requires
+  typed errors for malformed input and fields, unknown references, stale cursors and snapshots,
+  oversized requests and results, and missing capability. This is synthetic in-process boundary
+  evidence for issue #51; native host behavior, gateway deployment and effect settlement remain
+  unverified.
+
 - Add the additive `save-profile-v1-mcp` consumer profile with bounded list/current/select/
   create-disposable/status tools mapped to the fixed `gateway-save-profile-v1` routes. Capability
   publication is fail-closed (`unsupported`, `read`, or `read-write`), read-only and mutation
