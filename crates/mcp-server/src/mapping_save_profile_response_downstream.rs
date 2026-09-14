@@ -78,19 +78,19 @@ impl From<&'static str> for DownstreamError {
     }
 }
 
+/// Projects one `downstream` value exactly as it arrives on the wire.
+///
+/// The gateway serializes a save-profile result body as a JSON array of byte
+/// values, so this decodes that opaque carrier once and then hands the decoded
+/// content to [`project_decoded`]. Decoding and projection stay separate: the
+/// decoded content is never reinterpreted as a byte array, so a body such as
+/// `[123,125]` is rejected instead of being decoded a second time into `{}`.
 pub(super) fn project(value: &JsonValue, context: &Context) -> Result<JsonValue, DownstreamError> {
     match value {
-        JsonValue::Null => Ok(JsonValue::Null),
+        // The gateway uses an empty array for a result that carries no body.
         JsonValue::Array(values) if values.is_empty() => Ok(JsonValue::Array(Vec::new())),
         JsonValue::Array(values) => project_byte_array(values, context),
-        JsonValue::Object(object) if object.is_empty() => Ok(JsonValue::object([])),
-        JsonValue::Object(object) => {
-            bounded(value.to_json().len())?;
-            reject_sensitive_material(value)?;
-            validate_fields(object)?;
-            let projection = DownstreamProjection::parse(object, context)?;
-            Ok(projection.to_json())
-        }
+        JsonValue::Null | JsonValue::Object(_) => project_decoded(value, context),
         _ => {
             bounded(value.to_json().len())?;
             Err("save-profile downstream must be an object or null".into())
@@ -121,7 +121,30 @@ fn project_byte_array(
         .map_err(|_| "save-profile downstream bytes are not valid UTF-8")?;
     let decoded = crate::json::parse_json(text)
         .map_err(|_| "save-profile downstream bytes are not valid JSON")?;
-    project(&decoded, context)
+    project_decoded(&decoded, context)
+}
+
+/// Projects one already-decoded downstream body.
+///
+/// A decoded body is a closed object or `null`. Every other shape, including
+/// any array, is rejected: an unrecognized body must keep mutation uncertainty
+/// instead of being projected as a settled result.
+fn project_decoded(value: &JsonValue, context: &Context) -> Result<JsonValue, DownstreamError> {
+    match value {
+        JsonValue::Null => Ok(JsonValue::Null),
+        JsonValue::Object(object) if object.is_empty() => Ok(JsonValue::object([])),
+        JsonValue::Object(object) => {
+            bounded(value.to_json().len())?;
+            reject_sensitive_material(value)?;
+            validate_fields(object)?;
+            let projection = DownstreamProjection::parse(object, context)?;
+            Ok(projection.to_json())
+        }
+        _ => {
+            bounded(value.to_json().len())?;
+            Err("save-profile downstream content must be an object or null".into())
+        }
+    }
 }
 
 fn bounded(length: usize) -> Result<(), DownstreamError> {

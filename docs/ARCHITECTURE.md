@@ -284,8 +284,10 @@ response becomes `unknown` with the original MCP operation identity and reconcil
 `sts2.save_profile_status` reads that identity and never repeats the mutation.
 
 The gateway serializes each save-profile result body as a JSON array of byte values. MCP decodes that
-opaque representation under the same 16 KiB body bound, requires valid UTF-8 and JSON, and then
-applies the closed projection; an undecodable body fails closed instead of being treated as valid.
+opaque representation exactly once under the same 16 KiB body bound, requires valid UTF-8 and JSON, and
+then applies the closed projection. Decoding and projection stay separate: only a decoded object or
+`null` is projected, so a decoded body that is itself an array is never decoded a second time and
+instead fails closed as an unsupported shape.
 
 Capability publication is fail-closed. The executable defaults this profile to unsupported unless
 `STS2_SAVE_PROFILE_CAPABILITY=read` or `read-write` is set (the plural spelling is accepted as an

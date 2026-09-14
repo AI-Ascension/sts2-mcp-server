@@ -645,6 +645,9 @@ fn malformed_byte_array_downstream_fails_closed() {
     let cases = [
         JsonValue::Array(vec![JsonValue::Number(0xff), JsonValue::Number(0xfe)]),
         byte_array("not json"),
+        byte_array("[123,125]"),
+        byte_array("[]"),
+        byte_array("123"),
         JsonValue::Array(vec![JsonValue::Number(256)]),
         JsonValue::Array(vec![JsonValue::Number(0), JsonValue::Bool(true)]),
     ];
@@ -672,4 +675,61 @@ fn malformed_byte_array_downstream_fails_closed() {
         );
     }
     assert_eq!(server.gateway().requests.len(), case_count);
+}
+
+#[test]
+fn decoded_array_downstream_is_not_decoded_twice() {
+    // `[123,125]` is the byte-encoded form of a downstream body that is itself a
+    // JSON array. It must fail closed as an unsupported content shape instead of
+    // being decoded a second time into `{}` and reported as settled.
+    let body = byte_array("[123,125]");
+    let mut server = McpServer::with_catalog_and_sessions(
+        FakeGateway::new([
+            Ok(GatewayResponse {
+                status: 200,
+                body: with_downstream(result("list-1", "list", "settled"), body.clone()),
+            }),
+            Ok(GatewayResponse {
+                status: 200,
+                body: with_downstream(result("select-1", "select", "settled"), body),
+            }),
+        ]),
+        ToolCatalog::save_profile_v1(),
+        "gateway-session-1",
+        "mcp-session-1",
+    );
+
+    let listed = wire(&server.handle_frame(&frame("list-1", SAVE_PROFILE_LIST_TOOL, context())));
+    assert_eq!(listed["result"]["isError"], true, "{listed}");
+    assert_eq!(
+        listed["result"]["structuredContent"]["error"]["code"],
+        "save_profile_malformed_response"
+    );
+    assert_eq!(
+        listed["result"]["structuredContent"]["error"]["message"],
+        "save-profile downstream content must be an object or null"
+    );
+
+    let selected = wire(&server.handle_frame(&frame(
+        "select-1",
+        SAVE_PROFILE_SELECT_TOOL,
+        select_arguments("slot-2"),
+    )));
+    assert_eq!(selected["result"]["isError"], true, "{selected}");
+    assert_eq!(
+        selected["result"]["structuredContent"]["error"]["code"],
+        "save_profile_unknown_after_malformed_response"
+    );
+    let unknown: serde_json::Value = serde_json::from_str(
+        selected["result"]["content"][0]["text"]
+            .as_str()
+            .expect("unknown result text"),
+    )
+    .expect("unknown result body");
+    assert_eq!(unknown["status"], "unknown");
+    assert_eq!(unknown["downstream"], serde_json::Value::Null);
+    assert_eq!(
+        unknown["guidance"]["code"],
+        "save_profile_reconcile_required"
+    );
 }
