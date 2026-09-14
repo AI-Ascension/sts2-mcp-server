@@ -67,6 +67,15 @@ impl From<&'static str> for NormalizeError {
     }
 }
 
+impl From<downstream::DownstreamError> for NormalizeError {
+    fn from(error: downstream::DownstreamError) -> Self {
+        match error {
+            downstream::DownstreamError::Malformed(message) => Self::Malformed(message),
+            downstream::DownstreamError::TooLarge => Self::ResponseTooLarge,
+        }
+    }
+}
+
 pub(super) fn gateway_success(
     context: Context,
     response: GatewayResponse,
@@ -217,11 +226,6 @@ fn normalize(context: &Context, response: &GatewayResponse) -> Result<JsonValue,
     validation::validate_user_data(object.get("user_data"), context)?;
     validation::validate_guidance(object.get("guidance"))?;
     validation::validate_error_code(object.get("error_code"))?;
-    if let Some(downstream) = object.get("downstream")
-        && downstream.to_json().len() > SAVE_PROFILE_MAX_BODY_BYTES
-    {
-        return Err(NormalizeError::ResponseTooLarge);
-    }
     let projected_downstream = object
         .get("downstream")
         .map(|value| downstream::project(value, context))

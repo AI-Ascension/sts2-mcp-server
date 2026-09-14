@@ -143,6 +143,25 @@ pub fn result(operation_id: &str, route: &str, status: &str) -> JsonValue {
     JsonValue::object(fields)
 }
 
+/// Builds a result whose `downstream` is replaced by an explicit projection
+/// input, encoding the gateway's opaque byte-array representation on demand.
+pub fn with_downstream(mut result: JsonValue, downstream: JsonValue) -> JsonValue {
+    let JsonValue::Object(object) = &mut result else {
+        panic!("result is an object");
+    };
+    object.insert(String::from("downstream"), downstream);
+    result
+}
+
+/// Encodes one UTF-8 body the way the gateway serializes `SaveProfileResult`.
+pub fn byte_array(body: &str) -> JsonValue {
+    JsonValue::Array(
+        body.bytes()
+            .map(|byte| JsonValue::Number(i64::from(byte)))
+            .collect(),
+    )
+}
+
 pub fn wire(output: &str) -> serde_json::Value {
     serde_json::from_str(output).expect("MCP response JSON")
 }
