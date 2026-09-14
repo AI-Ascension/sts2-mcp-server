@@ -250,6 +250,9 @@ fn fake_gateway_proves_capabilities_search_get_detail_and_cursor_routes() {
         "gateway-session-1",
         "mcp-session-1",
     );
+    server
+        .register_snapshot_reference("snapshot-42")
+        .expect("session registers the live snapshot it observed");
 
     let calls = [
         (

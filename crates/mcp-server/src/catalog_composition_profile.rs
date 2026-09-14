@@ -108,7 +108,7 @@ fn operation_shape(name: &str) -> Result<(CapabilityGroup, CapabilityScope), Neg
     Ok(shape)
 }
 
-fn operation_revision(name: &str, profile_revision: &str) -> String {
+pub(super) fn operation_revision(name: &str, profile_revision: &str) -> String {
     if name == CAPABILITY_DISCOVERY_TOOL {
         return NEGOTIATED_COMPOSITION_REVISION.to_owned();
     }

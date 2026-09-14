@@ -16,10 +16,12 @@ explicit capability contract instead of adding every tool to a legacy catalog.
 ## Decision
 
 `ToolCatalog::compose_profiles` merges descriptors by unique operation name and negotiates each
-operation across MCP, gateway, producer, and caller layers. Operation revisions are compared exactly,
-with only the transport suffix `-mcp` treated as compatible. A conflicting revision fails the
-negotiation; a missing or unsupported layer records an unavailable reason and leaves unrelated
-operations available.
+operation across MCP, gateway, producer, and caller layers. Each source operation revision is derived
+and validated before deduplication, so identical descriptors that declare conflicting source
+revisions fail composition instead of being merged under the composition revision. Operation
+revisions are compared exactly, with only the transport suffix `-mcp` treated as compatible. A
+conflicting revision fails the negotiation; a missing or unsupported layer records an unavailable
+reason and leaves unrelated operations available.
 
 The effective scope is the intersection of all four layers. The six feature groups are
 `static_reference`, `live_details`, `gameplay_actions`, `maps`, `profile_reads`, and
@@ -35,9 +37,12 @@ game-information adapter; no second gameplay adapter or arbitrary downstream rou
 
 Producer restart, content reload, permission changes, and tool-set revision changes advance the MCP
 session epoch, invalidate tracked snapshot references, require a fresh negotiated catalog, and queue
-`notifications/tools/list_changed`. Calls that would forward while refresh is required, or that
-carry an invalidated snapshot reference, fail with the stale negotiation error before gateway access.
-Reinitialization and `tools/list` expose the refresh flag and session epoch.
+`notifications/tools/list_changed`. Snapshot-dependent calls must reference a snapshot registered by
+the current session; unknown or untracked references fail closed with the stale negotiation error
+before argument validation or gateway access. A pending tool-set revision constraint is retained
+across unrelated lifecycle events until a compliant refresh satisfies it, and only admitted calls may
+change snapshot tracking state. Reinitialization and `tools/list` expose the refresh flag and session
+epoch.
 
 ## Evidence and exclusions
 

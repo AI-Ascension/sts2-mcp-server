@@ -60,7 +60,9 @@ pub(crate) fn tools_call<G: GatewayAdapter>(
     }
     let request_params = request.params.clone();
     let request_id = request.id.clone();
-    if let Err(message) = server.remember_snapshot_from_params(&request_params) {
+    // Validate snapshot identities before dispatch so malformed references never
+    // reach the gateway.
+    if let Err(message) = McpServer::<G>::validate_snapshot_params(&request_params) {
         return RpcResponse::failure(Some(request_id), RpcError::new(INVALID_PARAMS, message));
     }
     let response = if server.catalog.is_negotiated_composition() {
@@ -90,6 +92,13 @@ pub(crate) fn tools_call<G: GatewayAdapter>(
     } else {
         legacy::tools_call(server, request)
     };
+    // Admitted calls only: a rejected tool membership or argument set must not
+    // change snapshot tracking state or consume tracking capacity.
+    if response.result().is_some()
+        && let Err(message) = server.remember_snapshot_from_params(&request_params)
+    {
+        return RpcResponse::failure(Some(request_id), RpcError::new(INVALID_PARAMS, message));
+    }
     if let Err(message) = server.remember_snapshot_from_response(&response) {
         return RpcResponse::failure(Some(request_id), RpcError::new(INVALID_PARAMS, message));
     }
