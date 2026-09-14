@@ -32,7 +32,7 @@ pub(super) fn forward<G: GatewayAdapter>(
     } else {
         None
     };
-    match server.gateway.forward(request) {
+    match server.forward_gateway(request) {
         Ok(response) => match project_coop_native_response(
             &response.body,
             &context.projection_context(),
@@ -57,7 +57,7 @@ pub(super) fn forward_legal_catalog<G: GatewayAdapter>(
     actor_peer: &str,
     expected_generation: i64,
 ) -> RpcResponse {
-    match server.gateway.forward(request) {
+    match server.forward_gateway(request) {
         Ok(response) => match project_coop_native_legal_catalog(
             &response.body,
             &context.projection_context(),

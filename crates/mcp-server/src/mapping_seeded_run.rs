@@ -242,7 +242,7 @@ fn forward<G: GatewayAdapter>(
     requested_seed: Option<&str>,
     run_mode: Option<&str>,
 ) -> RpcResponse {
-    match server.gateway.forward(request) {
+    match server.forward_gateway(request) {
         Ok(response) => response::gateway_success(
             id,
             response,

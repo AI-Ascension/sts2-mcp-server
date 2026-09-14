@@ -88,7 +88,7 @@ pub(super) fn tools_call<G: GatewayAdapter>(
             mcp_request_id: id.clone(),
         },
     };
-    match server.gateway.forward(request) {
+    match server.forward_gateway(request) {
         Ok(response) => match projection::project_coop_receipt_query_response(
             &response.body,
             &context,

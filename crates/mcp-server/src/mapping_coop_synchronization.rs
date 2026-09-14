@@ -52,7 +52,7 @@ pub(super) fn tools_call<G: GatewayAdapter>(
             mcp_request_id: request.id.clone(),
         },
     };
-    match server.gateway.forward(gateway_request) {
+    match server.forward_gateway(gateway_request) {
         Ok(response) => match projection::project_response(&response.body, &context) {
             Ok(body) => tool_result(
                 request.id,

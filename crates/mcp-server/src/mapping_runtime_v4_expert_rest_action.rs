@@ -189,7 +189,7 @@ fn expert_rest_reconcile_call<G: GatewayAdapter>(
         operation_id: operation_id.to_owned(),
         action: original_binding.map(|(_, _, action)| action),
     };
-    match server.gateway.forward(request) {
+    match server.forward_gateway(request) {
         Ok(response) => dispatch::expert_rest_action_response(server, id, response, binding),
         Err(error) => gateway_error_result(id, error),
     }
@@ -238,7 +238,7 @@ fn expert_state_call<G: GatewayAdapter>(
             mcp_request_id: id.clone(),
         },
     };
-    match server.gateway.forward(request) {
+    match server.forward_gateway(request) {
         Ok(response) if (200..300).contains(&response.status) => {
             let Ok(body) =
                 crate::projection::project_runtime_v4_expert_gateway_body(&response.body)

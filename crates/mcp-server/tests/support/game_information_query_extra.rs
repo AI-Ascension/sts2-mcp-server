@@ -10,9 +10,6 @@ fn malformed_inputs_and_responses_fail_closed_without_mutation() {
         FakeGateway::new([Err(GatewayError::Unavailable)]),
         ToolCatalog::game_information_query_v1(),
     );
-    server
-        .register_snapshot_reference("snapshot-42")
-        .expect("session registers the live snapshot it observed");
     let mut unknown = static_arguments(None);
     if let JsonValue::Object(object) = &mut unknown {
         object.insert(String::from("unexpected"), JsonValue::Bool(true));
@@ -49,9 +46,6 @@ fn unsupported_fields_and_live_fences_fail_before_gateway() {
         FakeGateway::new([]),
         ToolCatalog::game_information_query_v1(),
     );
-    server
-        .register_snapshot_reference("snapshot-42")
-        .expect("session registers the live snapshot it observed");
     let mut duplicate_fields = static_arguments(None);
     if let JsonValue::Object(object) = &mut duplicate_fields {
         object.insert(
@@ -126,4 +120,62 @@ fn malformed_page_accounting_and_state_are_not_projected() {
 #[test]
 fn copied_protocol_artifact_and_checksum_inventory_are_verified() {
     assert_eq!(verify_game_information_artifact(), Ok(()));
+}
+
+/// A standalone game-information session exposes no snapshot registration flow,
+/// so a live reference that no session event invalidated must still be
+/// forwarded instead of failing closed with the stale negotiation error.
+#[test]
+fn standalone_live_detail_forwards_without_session_registration() {
+    let mut response = golden("live-detail-response");
+    let mut server = McpServer::with_catalog_and_sessions(
+        FakeGateway::new([successful_response(&mut response, "detail-unregistered")]),
+        ToolCatalog::game_information_query_v1(),
+        "gateway-session-1",
+        "mcp-session-1",
+    );
+
+    let output = server.handle_frame(&frame(
+        "detail-unregistered",
+        GAME_INFORMATION_DETAIL_TOOL,
+        live_arguments(),
+    ));
+    assert!(!output.contains("-32009"), "{output}");
+    assert_eq!(wire_value(&output)["result"]["isError"], false, "{output}");
+    assert_eq!(server.gateway().requests.len(), 1);
+}
+
+/// The converse invariant: an admitted call still changes session snapshot
+/// tracking, so a later lifecycle event invalidates the live reference it used
+/// and the session fails closed on that reference.
+#[test]
+fn admitted_standalone_query_registers_the_live_snapshot_it_referenced() {
+    let mut response = golden("live-detail-response");
+    let mut server = McpServer::with_catalog_and_sessions(
+        FakeGateway::new([successful_response(&mut response, "detail-admitted")]),
+        ToolCatalog::game_information_query_v1(),
+        "gateway-session-1",
+        "mcp-session-1",
+    );
+    assert!(!server.snapshot_is_invalidated("snapshot-42"));
+
+    let output = server.handle_frame(&frame(
+        "detail-admitted",
+        GAME_INFORMATION_DETAIL_TOOL,
+        live_arguments(),
+    ));
+    assert_eq!(wire_value(&output)["result"]["isError"], false, "{output}");
+
+    server
+        .apply_session_event(sts2_mcp_server::SessionEvent::ProducerRestart)
+        .expect("lifecycle event applies to the session");
+    assert!(server.snapshot_is_invalidated("snapshot-42"));
+
+    let stale = server.handle_frame(&frame(
+        "detail-after-restart",
+        GAME_INFORMATION_DETAIL_TOOL,
+        live_arguments(),
+    ));
+    assert!(stale.contains("\"code\":-32009"), "{stale}");
+    assert_eq!(server.gateway().requests.len(), 1);
 }

@@ -105,7 +105,7 @@ fn reference_call<G: GatewayAdapter>(
             mcp_request_id: id.clone(),
         },
     };
-    match server.gateway.forward(request) {
+    match server.forward_gateway(request) {
         Ok(response) => match project(&response.body, &context.projection) {
             Ok(reference) if response.status == 200 => {
                 super::tool_result(id, reference.to_json(), false)

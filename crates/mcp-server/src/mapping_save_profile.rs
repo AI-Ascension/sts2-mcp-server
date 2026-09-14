@@ -125,7 +125,7 @@ fn forward<G: GatewayAdapter>(
     context: Context,
     request: GatewayRequest,
 ) -> RpcResponse {
-    match server.gateway.forward(request) {
+    match server.forward_gateway(request) {
         Ok(response) => response::gateway_success(context, response),
         Err(error) if context.kind.is_mutation() && uncertain(error) => {
             response::unknown_result(context, error)

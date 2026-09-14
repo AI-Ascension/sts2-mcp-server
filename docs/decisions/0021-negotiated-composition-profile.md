@@ -37,12 +37,14 @@ game-information adapter; no second gameplay adapter or arbitrary downstream rou
 
 Producer restart, content reload, permission changes, and tool-set revision changes advance the MCP
 session epoch, invalidate tracked snapshot references, require a fresh negotiated catalog, and queue
-`notifications/tools/list_changed`. Snapshot-dependent calls must reference a snapshot registered by
-the current session; unknown or untracked references fail closed with the stale negotiation error
-before argument validation or gateway access. A pending tool-set revision constraint is retained
-across unrelated lifecycle events until a compliant refresh satisfies it, and only admitted calls may
-change snapshot tracking state. Reinitialization and `tools/list` expose the refresh flag and session
-epoch.
+`notifications/tools/list_changed`. In this profile, snapshot-dependent calls must reference a
+snapshot registered by the current session; unknown or untracked references fail closed with the
+stale negotiation error before argument validation or gateway access. A standalone profile exposes no
+registration flow, so it keeps forwarding a live reference that no lifecycle event invalidated. A
+pending tool-set revision constraint is retained across unrelated lifecycle events until a compliant
+refresh satisfies it, and only a call the dispatcher explicitly admits, recorded at the gateway
+hand-off rather than inferred from the response, may change snapshot tracking state. Reinitialization
+and `tools/list` expose the refresh flag and session epoch.
 
 ## Evidence and exclusions
 

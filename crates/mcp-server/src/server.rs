@@ -45,6 +45,14 @@ pub struct McpServer<G> {
     pub(crate) snapshot_tracking_exhausted: bool,
     pub(crate) notifications: VecDeque<String>,
     pub(crate) dispatch_operation: Option<String>,
+    /// Explicit boundary admission for the in-flight `tools/call`.
+    ///
+    /// Snapshot tracking mutates session state, so `mapping::tools_call`
+    /// applies it only when the dispatch path records that the call was
+    /// admitted and handed to the gateway. Refusals return before that
+    /// hand-off, and MCP tool errors are result-shaped responses, so admission
+    /// is never inferred from the response shape.
+    pub(crate) tool_call_admitted: bool,
     pub(crate) pending_revision: Option<String>,
     pub(crate) authority_scope: CapabilityScope,
 }
@@ -76,6 +84,7 @@ impl<G: GatewayAdapter> McpServer<G> {
             snapshot_tracking_exhausted: false,
             notifications: VecDeque::new(),
             dispatch_operation: None,
+            tool_call_admitted: false,
             pending_revision: None,
             authority_scope: CapabilityScope::ALL,
         }
@@ -99,6 +108,7 @@ impl<G: GatewayAdapter> McpServer<G> {
             snapshot_tracking_exhausted: false,
             notifications: VecDeque::new(),
             dispatch_operation: None,
+            tool_call_admitted: false,
             pending_revision: None,
             authority_scope,
         }
@@ -133,6 +143,7 @@ impl<G: GatewayAdapter> McpServer<G> {
             snapshot_tracking_exhausted: false,
             notifications: VecDeque::new(),
             dispatch_operation: None,
+            tool_call_admitted: false,
             pending_revision: None,
             authority_scope,
         }
@@ -171,6 +182,20 @@ impl<G: GatewayAdapter> McpServer<G> {
         result
     }
 
+    /// Clears the admission record for the next `tools/call` dispatch.
+    pub(crate) fn begin_tool_call(&mut self) {
+        self.tool_call_admitted = false;
+    }
+
+    /// Records explicit boundary admission for the in-flight call.
+    pub(crate) fn admit_tool_call(&mut self) {
+        self.tool_call_admitted = true;
+    }
+
+    pub(crate) fn tool_call_was_admitted(&self) -> bool {
+        self.tool_call_admitted
+    }
+
     pub(crate) fn forward_gateway(
         &mut self,
         request: GatewayRequest,
@@ -187,6 +212,8 @@ impl<G: GatewayAdapter> McpServer<G> {
         }) {
             return Err(GatewayError::ResponseTooLarge);
         }
+        // The call passed boundary admission and is handed to the gateway.
+        self.admit_tool_call();
         let response = self.gateway.forward(request)?;
         if limits.is_some_and(|limits| response.body.to_json().len() > limits.max_response_bytes) {
             return Err(GatewayError::ResponseTooLarge);

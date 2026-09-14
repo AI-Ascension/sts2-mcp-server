@@ -215,3 +215,19 @@ fn duplicate_descriptors_with_conflicting_source_revisions_fail_negotiation()
     ));
     Ok(())
 }
+
+#[test]
+fn game_information_profiles_with_conflicting_source_revisions_fail_negotiation()
+-> Result<(), NegotiationError> {
+    let mut game_information_v999 = ToolCatalog::game_information();
+    game_information_v999.revision = String::from("game-information-query-v999-mcp");
+    let profiles = [ToolCatalog::game_information(), game_information_v999];
+    let gateway = CapabilityLayer::from_catalog_for(CapabilityOwner::Gateway, &profiles[0])?;
+    let producer = CapabilityLayer::from_catalog_for(CapabilityOwner::Producer, &profiles[0])?;
+
+    assert!(matches!(
+        ToolCatalog::compose_profiles(&profiles, gateway, producer, CapabilityScope::ALL),
+        Err(NegotiationError::RevisionConflict { .. })
+    ));
+    Ok(())
+}

@@ -198,13 +198,15 @@ impl<G> McpServer<G> {
         None
     }
 
-    /// Admits a snapshot reference only when registered in the current session.
+    /// Admits a snapshot reference only when this session can still use it:
+    /// composition sessions require registration, standalone catalogs do not.
     fn request_has_stale_snapshot(&self, request: &RpcRequest) -> bool {
         let mut references = Vec::new();
         collect_snapshot_ids(&request.params, &mut references).is_ok()
             && references.iter().any(|snapshot_id| {
-                !self.active_snapshots.contains(snapshot_id)
-                    || self.snapshot_is_invalidated(snapshot_id)
+                self.snapshot_is_invalidated(snapshot_id)
+                    || (self.catalog.is_negotiated_composition()
+                        && !self.active_snapshots.contains(snapshot_id))
             })
     }
 

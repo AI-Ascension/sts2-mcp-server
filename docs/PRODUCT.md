@@ -108,7 +108,9 @@ gameplay/map and game-information operations after unique-name, revision, produc
 scope, and limit negotiation. `sts2.capabilities` is an MCP-local read-only discovery call;
 unsupported operations remain visible as bounded unavailable reasons and are not forwarded.
 Lifecycle events invalidate tracked snapshots and require catalog refresh before forwarding;
-snapshot references must be registered by the current session, and unknown references fail closed.
+snapshot references must be registered by the current session, unknown references fail closed, and
+only explicitly admitted calls change tracking state. Standalone profiles keep forwarding an
+unregistered live reference that no lifecycle event invalidated.
 The source/component and copied-artifact checks do not establish producer discovery, gateway
 readiness, host extraction, live snapshot freshness, provider execution, or end-to-end acceptance.
 

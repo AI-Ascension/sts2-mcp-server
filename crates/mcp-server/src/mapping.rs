@@ -52,6 +52,7 @@ pub(crate) fn tools_call<G: GatewayAdapter>(
     server: &mut McpServer<G>,
     request: RpcRequest,
 ) -> RpcResponse {
+    server.begin_tool_call();
     if let Some(response) = server.reject_stale_call(&request) {
         return response;
     }
@@ -92,11 +93,15 @@ pub(crate) fn tools_call<G: GatewayAdapter>(
     } else {
         legacy::tools_call(server, request)
     };
-    // Admitted calls only: a rejected tool membership or argument set must not
-    // change snapshot tracking state or consume tracking capacity.
-    if response.result().is_some()
-        && let Err(message) = server.remember_snapshot_from_params(&request_params)
-    {
+    // Explicit admission only. The dispatch path records admission when the call
+    // is handed to the gateway, so every refusal that returns before that
+    // hand-off leaves snapshot tracking untouched. Response shape is never used:
+    // MCP tool errors are result-shaped responses that must not be mistaken for
+    // admitted calls.
+    if !server.tool_call_was_admitted() {
+        return response;
+    }
+    if let Err(message) = server.remember_snapshot_from_params(&request_params) {
         return RpcResponse::failure(Some(request_id), RpcError::new(INVALID_PARAMS, message));
     }
     if let Err(message) = server.remember_snapshot_from_response(&response) {
@@ -185,6 +190,8 @@ fn composed_tools_call<G: GatewayAdapter>(
                 JsonValue::Number(i64::try_from(server.session_epoch()).unwrap_or(i64::MAX)),
             );
         }
+        // Local discovery is admitted without a gateway hand-off.
+        server.admit_tool_call();
         let response = tool_result(request.id, metadata.to_json(), false);
         return enforce_composed_response(request_id, response, limits);
     }
