@@ -11,6 +11,8 @@ use crate::protocol_artifact_game_information::{
 
 use super::GameInformationContext;
 
+#[path = "mapping_game_information_binding_validation.rs"]
+pub(super) mod binding_validation;
 #[path = "mapping_game_information_shapes.rs"]
 mod shapes;
 
@@ -99,6 +101,16 @@ pub(super) fn project_query(
     }
 }
 
+pub(super) fn project_binding(
+    body: &JsonValue,
+    context: &GameInformationContext,
+    request: &JsonValue,
+) -> Result<(JsonValue, bool), &'static str> {
+    let is_error = binding_validation::validate(body, context, request)?;
+    bounded(body)?;
+    Ok((body.clone(), is_error))
+}
+
 fn validate_header(
     value: &JsonValue,
     expected_kind: &str,
@@ -167,10 +179,12 @@ fn bounded(value: &JsonValue) -> Result<(), &'static str> {
 }
 
 pub(super) fn projection_error_code(message: &str) -> (&'static str, &'static str) {
-    if message == RESPONSE_TOO_LARGE {
-        ("game_information_response_too_large", "size")
-    } else {
-        ("game_information_malformed_response", "malformed_response")
+    match message {
+        RESPONSE_TOO_LARGE => ("game_information_response_too_large", "size"),
+        binding_validation::UNSUPPORTED_VERSION | binding_validation::UNSUPPORTED_DIGEST => {
+            ("game_information_unsupported_version", "unsupported")
+        }
+        _ => ("game_information_malformed_response", "malformed_response"),
     }
 }
 
@@ -184,14 +198,17 @@ pub(super) fn protocol_error_code(body: &JsonValue) -> Option<&str> {
 
 pub(super) fn protocol_error_category(code: &str) -> &'static str {
     match code {
-        "unknown_kind"
-        | "unsupported_filter"
-        | "unsupported_projection"
-        | "unsupported_version"
-        | "unsupported_field" => "unsupported",
+        "unknown_kind" | "unsupported_filter" | "unsupported_projection" | "unsupported_field" => {
+            "unsupported"
+        }
+        "unsupported_version" => "unsupported",
         "unknown_id" | "missing_capability" => "missing",
         "denied_scope" | "read_only_violation" => "denied",
-        "stale_snapshot" | "stale_cursor" | "mixed_generation" => "stale",
+        "stale_snapshot"
+        | "stale_cursor"
+        | "mixed_generation"
+        | "mixed_binding"
+        | "reobserve_unavailable" => "stale",
         "result_limit_exceeded" => "size",
         "invalid_identity" | "invalid_bounds" | "ambiguous_id" => "invalid_input",
         "malformed" => "malformed_response",

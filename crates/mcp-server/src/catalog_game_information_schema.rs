@@ -100,6 +100,25 @@ pub(super) fn context(required: &[&str]) -> JsonValue {
     object(required, common_properties())
 }
 
+pub(super) fn binding(required: &[&str]) -> JsonValue {
+    let mut properties = common_properties();
+    properties.extend([
+        (
+            String::from("operation"),
+            enum_values(&["discovery", "observe"]),
+        ),
+        (String::from("project_id"), identity()),
+        (String::from("run_id"), identity()),
+        (String::from("episode_id"), identity()),
+        (String::from("agent_id"), identity()),
+        (
+            String::from("authority_epoch"),
+            bounded(0, 9_007_199_254_740_991),
+        ),
+    ]);
+    object(required, properties)
+}
+
 fn common_properties() -> Vec<(String, JsonValue)> {
     vec![
         (String::from("instance_id"), segment()),

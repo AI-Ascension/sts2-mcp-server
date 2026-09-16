@@ -159,6 +159,26 @@ pub(super) fn query(
     Ok((context, query))
 }
 
+pub(super) fn binding(arguments: &BTreeMap<String, JsonValue>) -> Result<JsonValue, &'static str> {
+    let operation = enum_value(arguments, "operation", &["discovery", "observe"])?;
+    let project_id = identity(arguments, "project_id")?;
+    let run_id = identity(arguments, "run_id")?;
+    let episode_id = identity(arguments, "episode_id")?;
+    let agent_id = identity(arguments, "agent_id")?;
+    let authority_epoch = integer(arguments, "authority_epoch")?;
+    Ok(JsonValue::object([
+        (String::from("operation"), JsonValue::string(operation)),
+        (String::from("project_id"), JsonValue::string(project_id)),
+        (String::from("run_id"), JsonValue::string(run_id)),
+        (String::from("episode_id"), JsonValue::string(episode_id)),
+        (String::from("agent_id"), JsonValue::string(agent_id)),
+        (
+            String::from("authority_epoch"),
+            JsonValue::Number(authority_epoch),
+        ),
+    ]))
+}
+
 fn integer(arguments: &BTreeMap<String, JsonValue>, key: &str) -> Result<i64, &'static str> {
     refs::integer_object(arguments, key)
 }

@@ -5,10 +5,10 @@ use std::collections::VecDeque;
 
 use serde_json::Value;
 use sts2_mcp_server::{
-    GAME_INFORMATION_AVAILABILITY_TOOL, GAME_INFORMATION_CAPABILITIES_TOOL,
-    GAME_INFORMATION_DETAIL_TOOL, GAME_INFORMATION_GET_TOOL, GAME_INFORMATION_LIST_TOOL,
-    GAME_INFORMATION_SEARCH_TOOL, GatewayAdapter, GatewayError, GatewayMethod, GatewayRequest,
-    GatewayResponse, JsonValue, McpServer, ToolCatalog, parse_json,
+    GAME_INFORMATION_AVAILABILITY_TOOL, GAME_INFORMATION_BINDING_TOOL,
+    GAME_INFORMATION_CAPABILITIES_TOOL, GAME_INFORMATION_DETAIL_TOOL, GAME_INFORMATION_GET_TOOL,
+    GAME_INFORMATION_LIST_TOOL, GAME_INFORMATION_SEARCH_TOOL, GatewayAdapter, GatewayError,
+    GatewayMethod, GatewayRequest, GatewayResponse, JsonValue, McpServer, ToolCatalog, parse_json,
     verify_game_information_artifact,
 };
 
@@ -201,7 +201,7 @@ fn catalog_is_versioned_strict_and_read_only() {
     );
     assert_eq!(wire["result"]["revision"], "game-information-query-v1-mcp");
     let tools = wire["result"]["tools"].as_array().expect("tools array");
-    assert_eq!(tools.len(), 6);
+    assert_eq!(tools.len(), 7);
     for tool in tools {
         assert_eq!(tool["annotations"]["readOnlyHint"], true);
         assert_eq!(tool["annotations"]["destructiveHint"], false);
@@ -218,6 +218,7 @@ fn catalog_is_versioned_strict_and_read_only() {
     assert!(names.contains(&GAME_INFORMATION_GET_TOOL));
     assert!(names.contains(&GAME_INFORMATION_DETAIL_TOOL));
     assert!(names.contains(&GAME_INFORMATION_AVAILABILITY_TOOL));
+    assert!(names.contains(&GAME_INFORMATION_BINDING_TOOL));
 }
 
 #[test]

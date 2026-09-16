@@ -1,13 +1,25 @@
 // SPDX-License-Identifier: MIT
 
 use crate::catalog::{
-    GAME_INFORMATION_AVAILABILITY_TOOL, GAME_INFORMATION_CAPABILITIES_TOOL,
-    GAME_INFORMATION_DETAIL_TOOL, GAME_INFORMATION_GET_TOOL, GAME_INFORMATION_LIST_TOOL,
-    GAME_INFORMATION_SEARCH_TOOL,
+    GAME_INFORMATION_AVAILABILITY_TOOL, GAME_INFORMATION_BINDING_TOOL,
+    GAME_INFORMATION_CAPABILITIES_TOOL, GAME_INFORMATION_DETAIL_TOOL, GAME_INFORMATION_GET_TOOL,
+    GAME_INFORMATION_LIST_TOOL, GAME_INFORMATION_SEARCH_TOOL,
 };
 
 pub(super) fn arguments(tool_name: &str) -> &'static [&'static str] {
     match tool_name {
+        GAME_INFORMATION_BINDING_TOOL => &[
+            "instance_id",
+            "mcp_session_id",
+            "lease_id",
+            "lease_epoch",
+            "operation",
+            "project_id",
+            "run_id",
+            "episode_id",
+            "agent_id",
+            "authority_epoch",
+        ],
         GAME_INFORMATION_CAPABILITIES_TOOL => {
             &["instance_id", "mcp_session_id", "lease_id", "lease_epoch"]
         }
