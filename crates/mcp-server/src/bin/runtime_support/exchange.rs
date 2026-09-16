@@ -29,12 +29,12 @@ pub(super) fn exchange(
         GatewayMethod::Get => "GET",
         GatewayMethod::Post => "POST",
     };
-    let headers = request_headers(
-        config,
-        request.headers,
-        &request.correlation.mcp_request_id.stable_text(),
-        body.len(),
-    );
+    let correlation = request
+        .headers
+        .get("x-sts2-correlation-id")
+        .cloned()
+        .unwrap_or_else(|| request.correlation.mcp_request_id.stable_text());
+    let headers = request_headers(config, request.headers, &correlation, body.len());
     write_request(
         &mut stream,
         method,

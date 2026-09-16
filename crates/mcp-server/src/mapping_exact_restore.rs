@@ -146,6 +146,10 @@ fn transport_headers(
             String::from("x-mcp-correlation-id"),
             mcp_correlation.to_owned(),
         ),
+        (
+            String::from("x-sts2-correlation-id"),
+            binding.correlation_id.clone(),
+        ),
     ]);
     if let Some(owner) = binding.expected_owner.as_object() {
         for (field, header) in [

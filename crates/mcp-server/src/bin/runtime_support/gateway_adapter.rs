@@ -138,7 +138,13 @@ impl GatewayAdapter for RuntimeGatewayAdapter {
         {
             return Err(GatewayError::Rejected);
         }
-        let request = binding::attach_native_peer_token(&self.config, request)?;
+        let mut request = binding::attach_native_peer_token(&self.config, request)?;
+        if let Some(binding) = &restore {
+            request.headers.insert(
+                String::from("x-sts2-correlation-id"),
+                binding.correlation_id.clone(),
+            );
+        }
         let save_profile_route = binding::is_save_profile_route(&request);
         let response_kind = binding::response_kind(&self.config, &request);
         let expert_state_route = request.method == sts2_mcp_server::GatewayMethod::Get
