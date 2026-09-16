@@ -141,10 +141,10 @@ fn forward_binding<G: GatewayAdapter>(
             "/v1/instances/{}/{}",
             context.instance_id, BINDING_PATH_SUFFIX
         ),
-        Some(binding),
+        Some(binding.clone()),
     );
     match server.forward_gateway(request) {
-        Ok(response) => match response::project_binding(&response.body, &context) {
+        Ok(response) => match response::project_binding(&response.body, &context, &binding) {
             Ok((body, is_error)) => {
                 projected_result(context.request_id, body, is_error, response.status)
             }

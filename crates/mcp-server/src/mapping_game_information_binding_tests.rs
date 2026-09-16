@@ -2,7 +2,7 @@
 
 use super::*;
 use crate::gateway::GatewayError;
-use crate::{GatewayRequest, GatewayResponse, McpServer, ToolCatalog, parse_json};
+use crate::{GatewayRequest, GatewayResponse, JsonValue, McpServer, ToolCatalog, parse_json};
 
 #[derive(Clone)]
 struct RecordingGateway {
@@ -91,3 +91,10 @@ fn rejects_unknown_binding_operation_before_gateway() -> Result<(), String> {
     }
     Ok(())
 }
+
+#[path = "mapping_game_information_binding_artifact_tests.rs"]
+mod artifact_tests;
+#[path = "mapping_game_information_binding_boundary_tests.rs"]
+mod boundary_tests;
+#[path = "mapping_game_information_binding_vector_data.rs"]
+mod vector_data;
