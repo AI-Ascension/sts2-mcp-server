@@ -322,10 +322,13 @@ to select the standalone read tool; existing profiles are unchanged.
 request/response pairs, closure limits, canonical chunk digests, receipt binding, duplicate-key
 rejection, and malformed/oversized/direction-swapped frames. `exact_restore_mapping` sends serialized
 MCP calls for all five tools through the fixed route mapper and confirms a known `no_restore_adapter`
-begin refusal stays typed before any later upload. The executable loopback tests exercise all five
-routes with configured recovery authentication and validate the correlated wrapper responses. They
-also reject foreign lease, schema, and MCP correlation before connecting, and verify an `UNKNOWN`
-commit cannot be committed again while lookup remains available.
+begin refusal stays typed before any later upload. `exact_restore_runtime_process` spawns the shipped
+stdio binary and verifies a begin call reaches a strict loopback Gateway with configured recovery
+authentication and the inner frame's correlation header, then preserves a typed
+`no_restore_adapter` response. Binary-target adapter loopback tests exercise all five routes and
+validate correlated wrapper responses; they also reject foreign lease, schema, and MCP correlation
+before connecting, and verify an `UNKNOWN` commit cannot be committed again while lookup remains
+available.
 
 These tests confirm only the MCP boundary and synthetic Gateway responses. They do not establish
 Gateway persistence across restarts, native restore support, host effect success, or release

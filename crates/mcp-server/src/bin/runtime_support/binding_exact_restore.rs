@@ -48,11 +48,15 @@ pub(crate) fn validate(
     let body = request.body.as_ref().ok_or(GatewayError::Rejected)?;
     let binding = validate_exact_restore_request(body, expected_tool, &config.caller_id, &owner)
         .map_err(|_| GatewayError::Rejected)?;
-    validate_headers(config, request)?;
+    validate_headers(config, request, &binding)?;
     Ok(Some(binding))
 }
 
-fn validate_headers(config: &RuntimeConfig, request: &GatewayRequest) -> Result<(), GatewayError> {
+fn validate_headers(
+    config: &RuntimeConfig,
+    request: &GatewayRequest,
+    binding: &ExactRestoreRequestBinding,
+) -> Result<(), GatewayError> {
     let lease_epoch = config.lease_epoch.to_string();
     let request_id = request.correlation.mcp_request_id.stable_text();
     for (header, expected) in [
@@ -67,9 +71,18 @@ fn validate_headers(config: &RuntimeConfig, request: &GatewayRequest) -> Result<
             return Err(GatewayError::Rejected);
         }
     }
-    const ALLOWED_HEADERS: [&str; 6] = [
+    if request
+        .headers
+        .get("x-sts2-correlation-id")
+        .map(String::as_str)
+        != Some(binding.correlation_id.as_str())
+    {
+        return Err(GatewayError::Rejected);
+    }
+    const ALLOWED_HEADERS: [&str; 7] = [
         "x-mcp-session-id",
         "x-mcp-correlation-id",
+        "x-sts2-correlation-id",
         "x-sts2-instance-id",
         "x-sts2-session-id",
         "x-sts2-lease-id",

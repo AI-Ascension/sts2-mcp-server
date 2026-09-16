@@ -89,6 +89,10 @@ fn request(index: usize, route: &str) -> GatewayRequest {
             ),
             (String::from("x-mcp-correlation-id"), format!("mcp-{index}")),
             (
+                String::from("x-sts2-correlation-id"),
+                ids[index]["correlation_id"].as_str().unwrap().to_owned(),
+            ),
+            (
                 String::from("x-sts2-instance-id"),
                 String::from("02ab8278-c166-4557-bd6d-8f7575484a55"),
             ),
@@ -322,6 +326,16 @@ fn rejects_foreign_owner_and_schema_before_opening_gateway_socket() {
     );
     assert_eq!(
         adapter.forward(wrong_correlation),
+        Err(sts2_mcp_server::GatewayError::Rejected)
+    );
+
+    let mut wrong_gateway_correlation = request(0, "begin");
+    wrong_gateway_correlation.headers.insert(
+        String::from("x-sts2-correlation-id"),
+        String::from("gateway-correlation-from-another-request"),
+    );
+    assert_eq!(
+        adapter.forward(wrong_gateway_correlation),
         Err(sts2_mcp_server::GatewayError::Rejected)
     );
 }
