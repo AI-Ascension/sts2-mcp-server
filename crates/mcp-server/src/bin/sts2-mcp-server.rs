@@ -16,8 +16,10 @@ fn main() {
 
 fn run() -> Result<(), String> {
     let profile = runtime_http::profile_from_environment()?;
-    let config =
-        runtime_http::RuntimeConfig::from_environment(profile.requires_coop_native_peer_binding)?;
+    let config = runtime_http::RuntimeConfig::from_environment(
+        profile.requires_coop_native_peer_binding,
+        profile.catalog.revision == "exact-restore-v1-mcp",
+    )?;
     let gateway_session_id = config.session_id.clone();
     let mcp_session_id = config.mcp_session_id.clone();
     let native_peer_id = config.native_peer_id().map(str::to_owned);

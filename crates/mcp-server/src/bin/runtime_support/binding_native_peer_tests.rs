@@ -4,6 +4,7 @@
 use super::*;
 use std::collections::BTreeMap;
 use std::net::SocketAddr;
+use sts2_mcp_server::COOP_NATIVE_PROTOCOL_VERSION;
 use sts2_mcp_server::{Correlation, GatewayAdapter, RequestId};
 
 fn config() -> RuntimeConfig {
@@ -16,6 +17,8 @@ fn config() -> RuntimeConfig {
         mcp_session_id: String::from("mcp-session"),
         lease_id: String::from("lease"),
         lease_epoch: 1,
+        recovery_token: None,
+        exact_restore_profile: false,
         coop_native_peer_binding: None,
     }
 }

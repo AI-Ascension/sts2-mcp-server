@@ -294,6 +294,23 @@ then applies the closed projection. Decoding and projection stay separate: only 
 `null` is projected, so a decoded body that is itself an array is never decoded a second time and
 instead fails closed as an unsupported shape.
 
+## Exact-restore MCP profile
+
+ADR 0026 adds the opt-in `exact-restore-v1-mcp` profile, selected with
+`STS2_RUNTIME_PROFILE=exact-restore-v1`. It advertises only `sts2.exact_restore.begin`,
+`sts2.exact_restore.put_chunk`, `sts2.exact_restore.finish_blob`, `sts2.exact_restore.commit`,
+and `sts2.exact_restore.lookup`. Each maps to one fixed POST route under
+`/v1/exact-restore/`; the adapter accepts only the pinned neutral frame and its closed
+consumer-owned authenticated wrapper.
+
+The MCP boundary validates both schemas, configured caller identity, configured instance/session/
+lease/epoch, request and response correlation, operation identity, request digest, phase, receipt
+digest, and transfer limits before forwarding or exposing a response. Commit uncertainty becomes
+lookup-only for that process; the adapter never retries a commit. It requires
+`STS2_RECOVERY_TOKEN` and sends only the configured recovery capability. Artifact and loopback
+tests establish the MCP source/component boundary, not gateway persistence, native restore support,
+host effects, or release compatibility.
+
 Capability publication is fail-closed. The executable defaults this profile to unsupported unless
 `STS2_SAVE_PROFILE_CAPABILITY=read` or `read-write` is set (the plural spelling is accepted as an
 alias). Unsupported owners advertise no usable save-profile tools; read-only owners advertise only

@@ -2,6 +2,7 @@
 
 mod catalog;
 mod catalog_reobserve;
+mod exact_restore;
 mod gateway;
 mod json;
 mod mapping;
@@ -10,6 +11,7 @@ mod protocol;
 mod protocol_artifact;
 mod protocol_artifact_coop_native;
 mod protocol_artifact_coop_receipt_query;
+mod protocol_artifact_exact_restore;
 mod protocol_artifact_game_information;
 #[path = "protocol_artifact_runtime_v2_hash.rs"]
 mod protocol_artifact_hash;
@@ -41,6 +43,10 @@ pub use catalog::{
     OBSERVE_TOOL, RECONCILE_ACTION_TOOL, RECOVER_TOOL, REOBSERVE_TOOL, SUBMIT_ACTION_TOOL,
     ToolCatalog, ToolDescriptor, WAIT_FOR_TRANSITION_TOOL,
 };
+pub use catalog::{
+    EXACT_RESTORE_BEGIN_TOOL, EXACT_RESTORE_COMMIT_TOOL, EXACT_RESTORE_FINISH_BLOB_TOOL,
+    EXACT_RESTORE_LOOKUP_TOOL, EXACT_RESTORE_PUT_CHUNK_TOOL,
+};
 pub use catalog::{EXPERT_ACTION_TOOL, EXPERT_RECONCILE_TOOL, EXPERT_STATE_TOOL};
 pub use catalog::{EXPERT_REST_ACTION_TOOL, EXPERT_REST_RECONCILE_TOOL};
 pub use catalog::{
@@ -58,6 +64,11 @@ pub use catalog::{
     SAVE_PROFILE_RECEIPT_TOOL, SAVE_PROFILE_SELECT_TOOL, SAVE_PROFILE_STATUS_TOOL,
 };
 pub use catalog_reobserve::catalog_reobserve_body;
+pub use exact_restore::{
+    ExactRestorePhase, ExactRestoreRequestBinding, ExactRestoreResponse,
+    ExactRestoreTransportOwner, exact_restore_request_input_schema, validate_exact_restore_request,
+    validate_exact_restore_response,
+};
 pub use gateway::{
     Correlation, GatewayAdapter, GatewayError, GatewayMethod, GatewayRequest, GatewayResponse,
 };
@@ -83,6 +94,12 @@ pub use protocol_artifact_coop_receipt_query::{
     COOP_RECEIPT_QUERY_MAX_GENERATION, COOP_RECEIPT_QUERY_PROTOCOL_VERSION,
     COOP_RECEIPT_QUERY_SCHEMA_DIGEST, COOP_RECEIPT_QUERY_SCHEMA_SOURCE,
     CoopReceiptQueryArtifactError, verify_coop_receipt_query_artifact,
+};
+pub use protocol_artifact_exact_restore::{
+    EXACT_RESTORE_GATEWAY_CONTRACT, EXACT_RESTORE_GATEWAY_SCHEMA_DIGEST,
+    EXACT_RESTORE_MAX_CHUNK_BASE64_BYTES, EXACT_RESTORE_MAX_CHUNK_RAW_BYTES,
+    EXACT_RESTORE_MAX_FRAME_BYTES, EXACT_RESTORE_PROTOCOL_SCHEMA_DIGEST,
+    EXACT_RESTORE_PROTOCOL_VERSION, ExactRestoreArtifactError, verify_exact_restore_artifact,
 };
 pub use protocol_artifact_game_information::{
     GAME_INFORMATION_ARTIFACT, GAME_INFORMATION_GENERATOR, GAME_INFORMATION_MAX_CURSOR_BYTES,

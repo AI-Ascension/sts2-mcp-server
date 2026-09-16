@@ -29,12 +29,12 @@ pub(super) fn exchange(
         GatewayMethod::Get => "GET",
         GatewayMethod::Post => "POST",
     };
-    let headers = request_headers(
-        config,
-        request.headers,
-        &request.correlation.mcp_request_id.stable_text(),
-        body.len(),
-    );
+    let correlation = request
+        .headers
+        .get("x-sts2-correlation-id")
+        .cloned()
+        .unwrap_or_else(|| request.correlation.mcp_request_id.stable_text());
+    let headers = request_headers(config, request.headers, &correlation, body.len());
     write_request(
         &mut stream,
         method,
@@ -74,10 +74,17 @@ fn request_headers(
     body_length: usize,
 ) -> BTreeMap<String, String> {
     let mut headers = supplied;
-    headers.insert(
-        String::from("Authorization"),
-        format!("Bearer {}", config.gateway_token),
-    );
+    let token = config
+        .recovery_token
+        .as_deref()
+        .unwrap_or(config.gateway_token.as_str());
+    headers.insert(String::from("Authorization"), format!("Bearer {token}"));
+    if config.exact_restore_profile {
+        headers.insert(
+            String::from("x-sts2-recovery-capability"),
+            String::from("exact_restore"),
+        );
+    }
     headers.insert(String::from("Host"), config.gateway_address.to_string());
     headers.insert(
         String::from("x-sts2-instance-id"),
