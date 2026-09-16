@@ -1,27 +1,17 @@
 // SPDX-License-Identifier: MIT
 
+use std::collections::HashSet;
 use std::net::SocketAddr;
 
 mod binding;
-use binding::is_runtime_result;
 #[path = "config_coop_native.rs"]
 mod coop_native_config;
 use coop_native_config::CoopNativePeerBinding;
 mod exchange;
+mod gateway_adapter;
 mod http;
 mod profiles;
 pub(crate) use profiles::profile_from_environment;
-
-use sts2_mcp_server::{
-    COOP_NATIVE_PROTOCOL_VERSION, COOP_NATIVE_SCHEMA_DIGEST, COOP_RECEIPT_QUERY_PROTOCOL_VERSION,
-    GAME_INFORMATION_PROTOCOL_VERSION, GAME_INFORMATION_SCHEMA_DIGEST, GatewayAdapter,
-    GatewayError, GatewayRequest, GatewayResponse, JsonValue, RUNTIME_MAP_V1_PROTOCOL_VERSION,
-    RUNTIME_V2_PROTOCOL_VERSION, RUNTIME_V3_GAMEPLAY_PROTOCOL_VERSION,
-    RUNTIME_V4_EXPERT_ACTION_PROTOCOL_VERSION, RUNTIME_V4_EXPERT_REST_ACTION_PROTOCOL_VERSION,
-    SEEDED_RUN_PROTOCOL_VERSION, SEEDED_RUN_SCHEMA_DIGEST,
-};
-
-const MAX_BODY_BYTES: usize = 16 * 1024;
 const DEFAULT_MCP_SESSION_ID: &str = "mcp-session-1";
 
 pub(crate) struct RuntimeConfig {
@@ -33,18 +23,37 @@ pub(crate) struct RuntimeConfig {
     pub(crate) mcp_session_id: String,
     pub(crate) lease_id: String,
     pub(crate) lease_epoch: i64,
+    recovery_token: Option<String>,
+    exact_restore_profile: bool,
     coop_native_peer_binding: Option<CoopNativePeerBinding>,
 }
 
 impl RuntimeConfig {
     pub(crate) fn from_environment(
         requires_coop_native_peer_binding: bool,
+        exact_restore_profile: bool,
     ) -> Result<Self, String> {
         let gateway_address = gateway_address(&required_or_default(
             "STS2_GATEWAY_ADDR",
             "127.0.0.1:15525",
         )?)?;
-        let gateway_token = required("STS2_GATEWAY_TOKEN")?;
+        let (gateway_token, recovery_token) = if exact_restore_profile {
+            let token = required("STS2_RECOVERY_TOKEN")?;
+            if !safe_token(&token) {
+                return Err(String::from(
+                    "STS2_RECOVERY_TOKEN is empty, unsafe, or oversized",
+                ));
+            }
+            (String::new(), Some(token))
+        } else {
+            let token = required("STS2_GATEWAY_TOKEN")?;
+            if !safe_token(&token) {
+                return Err(String::from(
+                    "STS2_GATEWAY_TOKEN is empty, unsafe, or oversized",
+                ));
+            }
+            (token, None)
+        };
         let instance_id = required_or_default("STS2_INSTANCE_ID", "instance-1")?;
         let caller_id = required_or_default("STS2_CALLER_ID", "harness")?;
         let session_id = required_or_default("STS2_SESSION_ID", "session-1")?;
@@ -67,11 +76,6 @@ impl RuntimeConfig {
                 return Err(format!("{name} is empty, unsafe, or oversized"));
             }
         }
-        if !safe_token(&gateway_token) {
-            return Err(String::from(
-                "STS2_GATEWAY_TOKEN is empty, unsafe, or oversized",
-            ));
-        }
         // The native credential pair is meaningful only to the native profile.
         // Do not make unrelated profiles fail because an operator has a partial
         // native configuration in their process environment.
@@ -89,6 +93,8 @@ impl RuntimeConfig {
             mcp_session_id,
             lease_id,
             lease_epoch,
+            recovery_token,
+            exact_restore_profile,
             coop_native_peer_binding,
         })
     }
@@ -103,158 +109,17 @@ impl RuntimeConfig {
 pub(crate) struct RuntimeGatewayAdapter {
     config: RuntimeConfig,
     max_response_bytes: usize,
+    lookup_only_operations: HashSet<String>,
 }
 
 impl RuntimeGatewayAdapter {
     /// `max_response_bytes` is the selected profile's gateway body limit
     /// (`RuntimeProfile::max_response_bytes`); legacy profiles keep 64 KiB.
-    pub(crate) const fn new(config: RuntimeConfig, max_response_bytes: usize) -> Self {
+    pub(crate) fn new(config: RuntimeConfig, max_response_bytes: usize) -> Self {
         Self {
             config,
             max_response_bytes,
-        }
-    }
-
-    fn body(&self, request: &GatewayRequest) -> Result<Vec<u8>, GatewayError> {
-        let Some(value) = &request.body else {
-            return Ok(Vec::new());
-        };
-        let JsonValue::Object(mut object) = value.clone() else {
-            return Err(GatewayError::Rejected);
-        };
-        let is_runtime_v2 = matches!(
-            object.get("protocol_version"),
-            Some(JsonValue::String(value)) if value == RUNTIME_V2_PROTOCOL_VERSION
-        );
-        let is_runtime_v3 = matches!(
-            object.get("protocol_version"),
-            Some(JsonValue::String(value)) if value == RUNTIME_V3_GAMEPLAY_PROTOCOL_VERSION
-        );
-        let is_runtime_v4_action = matches!(
-            object.get("protocol_version"),
-            Some(JsonValue::String(value)) if value == RUNTIME_V4_EXPERT_ACTION_PROTOCOL_VERSION
-        );
-        let is_runtime_v4_rest_action = matches!(
-            object.get("protocol_version"),
-            Some(JsonValue::String(value)) if value == RUNTIME_V4_EXPERT_REST_ACTION_PROTOCOL_VERSION
-        );
-        let is_runtime_map = matches!(
-            object.get("protocol_version"),
-            Some(JsonValue::String(value)) if value == RUNTIME_MAP_V1_PROTOCOL_VERSION
-        );
-        let is_coop_receipt_query = matches!(
-            object.get("protocol_version"),
-            Some(JsonValue::String(value)) if value == COOP_RECEIPT_QUERY_PROTOCOL_VERSION
-        );
-        let is_coop_native = matches!(
-            object.get("protocol_version"),
-            Some(JsonValue::String(value)) if value == COOP_NATIVE_PROTOCOL_VERSION
-        );
-        let is_seeded_run = matches!(
-            object.get("protocol_version"),
-            Some(JsonValue::String(value)) if value == SEEDED_RUN_PROTOCOL_VERSION
-        );
-        let is_game_information = matches!(
-            object.get("protocol_version"),
-            Some(JsonValue::String(value)) if value == GAME_INFORMATION_PROTOCOL_VERSION
-        );
-        let is_save_profile = binding::is_save_profile_route(request);
-        if !is_save_profile
-            && (is_runtime_v2
-                || is_runtime_v3
-                || is_runtime_v4_action
-                || is_runtime_v4_rest_action
-                || is_runtime_map
-                || is_coop_receipt_query
-                || is_coop_native
-                || is_seeded_run)
-        {
-            if object.get("instance_id")
-                != Some(&JsonValue::string(self.config.instance_id.as_str()))
-                || object.get("session_id")
-                    != Some(&JsonValue::string(self.config.session_id.as_str()))
-                || object.get("lease_id") != Some(&JsonValue::string(self.config.lease_id.as_str()))
-                || object.get("lease_epoch") != Some(&JsonValue::Number(self.config.lease_epoch))
-            {
-                return Err(GatewayError::Rejected);
-            }
-            if is_seeded_run
-                && object.get("schema_digest") != Some(&JsonValue::string(SEEDED_RUN_SCHEMA_DIGEST))
-            {
-                return Err(GatewayError::Rejected);
-            }
-            if is_coop_native
-                && object.get("schema_digest")
-                    != Some(&JsonValue::string(COOP_NATIVE_SCHEMA_DIGEST))
-            {
-                return Err(GatewayError::Rejected);
-            }
-        } else if !is_save_profile && is_game_information {
-            if object.get("schema_digest")
-                != Some(&JsonValue::string(GAME_INFORMATION_SCHEMA_DIGEST))
-                || object.get("kind") != Some(&JsonValue::string("query_request"))
-            {
-                return Err(GatewayError::Rejected);
-            }
-        } else if !is_save_profile {
-            object.insert(
-                String::from("instance_id"),
-                JsonValue::string(self.config.instance_id.as_str()),
-            );
-            object.insert(
-                String::from("session_id"),
-                JsonValue::string(self.config.session_id.as_str()),
-            );
-            object.insert(
-                String::from("lease_id"),
-                JsonValue::string(self.config.lease_id.as_str()),
-            );
-            object.insert(
-                String::from("lease_epoch"),
-                JsonValue::Number(self.config.lease_epoch),
-            );
-        }
-        let encoded = if is_coop_receipt_query {
-            sts2_mcp_server::canonical_coop_receipt_query(&JsonValue::Object(object))
-                .ok_or(GatewayError::Rejected)?
-        } else {
-            JsonValue::Object(object).to_json()
-        };
-        if encoded.len() > MAX_BODY_BYTES {
-            return Err(GatewayError::Rejected);
-        }
-        Ok(encoded.into_bytes())
-    }
-}
-
-impl GatewayAdapter for RuntimeGatewayAdapter {
-    fn forward(&mut self, request: GatewayRequest) -> Result<GatewayResponse, GatewayError> {
-        binding::admit(&self.config, &request)?;
-        let request = binding::attach_native_peer_token(&self.config, request)?;
-        let save_profile_route = binding::is_save_profile_route(&request);
-        let response_kind = binding::response_kind(&self.config, &request);
-        let expert_state_route = request.method == sts2_mcp_server::GatewayMethod::Get
-            && request.path == format!("/v4/instances/{}/expert-state", self.config.instance_id);
-        let correlation = request.correlation.mcp_request_id.stable_text();
-        let catalog_read = request.method == sts2_mcp_server::GatewayMethod::Get
-            && request.path == format!("/v3/instances/{}/legal-actions", self.config.instance_id);
-        let body = self.body(&request)?;
-        let response = exchange::exchange(&self.config, request, body, self.max_response_bytes)?;
-        if catalog_read
-            && sts2_mcp_server::catalog_reobserve_body(&response, &correlation).is_some()
-        {
-            return Ok(response);
-        }
-        if !expert_state_route
-            && ((200..300).contains(&response.status) || is_runtime_result(&response.body))
-            && let Some(kind) = response_kind
-        {
-            binding::response(&self.config, &response.body, &correlation, kind)?;
-        }
-        if save_profile_route {
-            binding::classify_save_profile(response)
-        } else {
-            exchange::classify(response)
+            lookup_only_operations: HashSet::new(),
         }
     }
 }
@@ -308,3 +173,7 @@ fn safe_header_value(value: &str) -> bool {
 #[cfg(test)]
 #[path = "runtime_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "exact_restore_runtime_tests.rs"]
+mod exact_restore_runtime_tests;

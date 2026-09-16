@@ -1,19 +1,20 @@
 // SPDX-License-Identifier: MIT
 
 use super::{RuntimeConfig, safe_header_value};
-use sts2_mcp_server::{
-    COOP_NATIVE_PROTOCOL_VERSION, COOP_RECEIPT_QUERY_PROTOCOL_VERSION,
-    GAME_INFORMATION_PROTOCOL_VERSION, GAME_INFORMATION_SCHEMA_DIGEST, GatewayError, GatewayMethod,
-    GatewayRequest, JsonValue, RUNTIME_V4_EXPERT_REST_ACTION_PROTOCOL_VERSION,
-};
+use sts2_mcp_server::{GatewayError, GatewayMethod, GatewayRequest, JsonValue};
 
+#[path = "binding_exact_restore.rs"]
+mod exact_restore;
 #[path = "binding_native_peer.rs"]
 mod native_peer;
 #[path = "binding_response.rs"]
 mod response;
+#[path = "binding_response_kind.rs"]
+mod response_kind;
 #[path = "binding_save_profile.rs"]
 mod save_profile;
 pub(super) use response::validate as response;
+pub(super) use response_kind::response_kind;
 #[path = "binding_result.rs"]
 mod result;
 pub(super) use result::{is_runtime_result, is_save_profile_result};
@@ -21,6 +22,9 @@ pub(super) use result::{is_runtime_result, is_save_profile_result};
 pub(super) fn is_save_profile_route(request: &GatewayRequest) -> bool {
     save_profile::is_route(request)
 }
+pub(super) use exact_restore::{
+    is_route as is_exact_restore_route, validate as exact_restore_binding,
+};
 pub(super) use save_profile::classify as classify_save_profile;
 
 pub(super) fn admit(config: &RuntimeConfig, request: &GatewayRequest) -> Result<(), GatewayError> {
@@ -35,13 +39,19 @@ pub(super) fn admit(config: &RuntimeConfig, request: &GatewayRequest) -> Result<
         .split('/')
         .nth(1)
         .ok_or(GatewayError::Rejected)?;
+    let exact_restore_route = is_exact_restore_route(request);
     if !matches!(version, "v1" | "v2" | "v3" | "v4")
-        || !request
-            .path
-            .starts_with(&format!("/{version}/instances/{}/", config.instance_id))
+        || (!exact_restore_route
+            && !request
+                .path
+                .starts_with(&format!("/{version}/instances/{}/", config.instance_id)))
         || !safe_header_value(&request.correlation.mcp_request_id.stable_text())
     {
         return Err(GatewayError::Rejected);
+    }
+    if exact_restore_route {
+        exact_restore_binding(config, request)?;
+        return Ok(());
     }
     let native_route = version == "v1" && native_peer::is_route(config, request);
     if native_route {
@@ -144,158 +154,6 @@ mod native_peer_tests;
 #[cfg(test)]
 #[path = "binding_save_profile_tests.rs"]
 mod save_profile_tests;
-
-pub(super) fn response_kind(
-    config: &RuntimeConfig,
-    request: &GatewayRequest,
-) -> Option<&'static str> {
-    // V3 profile-specific validation is owned by its versioned projection.
-    for version in ["v1", "v2"] {
-        let prefix = format!("/{version}/instances/{}/", config.instance_id);
-        if let Some(route) = request.path.strip_prefix(&prefix) {
-            if version == "v1" && save_profile::response_kind(request) {
-                return Some("save_profile_response");
-            }
-            return match (request.method, route) {
-                (GatewayMethod::Get, "coop/native/observation")
-                    if version == "v1" && request.body.is_none() =>
-                {
-                    Some("observation")
-                }
-                (GatewayMethod::Post, "coop/native/legal-catalog")
-                    if version == "v1" && is_native_body(request) =>
-                {
-                    Some("legal_catalog_response")
-                }
-                (GatewayMethod::Post, "coop/native/action" | "coop/native/vote")
-                    if version == "v1" && is_native_body(request) =>
-                {
-                    Some("effect_response")
-                }
-                (GatewayMethod::Post, "coop/native/rejoin" | "coop/native/recover")
-                    if version == "v1" && is_native_body(request) =>
-                {
-                    Some("recovery_response")
-                }
-                (GatewayMethod::Get, "coop/synchronization")
-                    if version == "v1" && request.body.is_none() =>
-                {
-                    Some("synchronization_response")
-                }
-                (GatewayMethod::Get, "checkpoint-reference")
-                    if version == "v1" && request.body.is_none() =>
-                {
-                    Some("checkpoint_reference_response")
-                }
-                (GatewayMethod::Get, "state") => Some("state_response"),
-                (GatewayMethod::Get, "map-snapshot") if version == "v1" => {
-                    Some("snapshot_response")
-                }
-                (GatewayMethod::Get, "game-information/capabilities")
-                    if version == "v1" && request.body.is_none() =>
-                {
-                    Some("capabilities_response")
-                }
-                (GatewayMethod::Post, "game-information/query")
-                    if version == "v1" && is_game_information_body(request) =>
-                {
-                    Some("game_information_response")
-                }
-                (GatewayMethod::Post, "action") => Some("action_response"),
-                (GatewayMethod::Post, "coop/receipt-query")
-                    if version == "v1"
-                        && request.body.as_ref().and_then(|body| match body {
-                            JsonValue::Object(object) => object.get("protocol_version"),
-                            _ => None,
-                        }) == Some(&JsonValue::string(COOP_RECEIPT_QUERY_PROTOCOL_VERSION)) =>
-                {
-                    Some("receipt_query_response")
-                }
-                (GatewayMethod::Get, route)
-                    if version == "v2" && route.starts_with("operations/") =>
-                {
-                    Some("reconcile_response")
-                }
-                (GatewayMethod::Post, "seeded-run")
-                    if version == "v2" && request.body.is_some() =>
-                {
-                    Some("start_response")
-                }
-                (GatewayMethod::Get, route)
-                    if version == "v2"
-                        && route.starts_with("seeded-operations/")
-                        && safe_operation_id(
-                            route.strip_prefix("seeded-operations/").unwrap_or(""),
-                        ) =>
-                {
-                    Some("reconcile_response")
-                }
-                _ => None,
-            };
-        }
-    }
-    let prefix = format!("/v4/instances/{}/", config.instance_id);
-    if let Some(route) = request.path.strip_prefix(&prefix) {
-        return match (request.method, route) {
-            (GatewayMethod::Get, "expert-state") => Some("state_response"),
-            (GatewayMethod::Post, "expert-action") => Some("action_response"),
-            (GatewayMethod::Post, "expert-rest-action")
-                if request.body.as_ref().and_then(|body| match body {
-                    JsonValue::Object(object) => object.get("protocol_version"),
-                    _ => None,
-                }) == Some(&JsonValue::string(
-                    RUNTIME_V4_EXPERT_REST_ACTION_PROTOCOL_VERSION,
-                )) =>
-            {
-                Some("action_response")
-            }
-            (GatewayMethod::Get, route)
-                if route.starts_with("expert-rest-actions/")
-                    && safe_operation_id(
-                        route.strip_prefix("expert-rest-actions/").unwrap_or(""),
-                    ) =>
-            {
-                Some("action_response")
-            }
-            (GatewayMethod::Get, route)
-                if route.starts_with("expert-actions/")
-                    && safe_operation_id(route.strip_prefix("expert-actions/").unwrap_or("")) =>
-            {
-                Some("action_response")
-            }
-            _ => None,
-        };
-    }
-    None
-}
-
-fn is_native_body(request: &GatewayRequest) -> bool {
-    request.body.as_ref().is_some_and(|body| {
-        matches!(
-            body,
-            JsonValue::Object(object)
-                if object.get("protocol_version")
-                    == Some(&JsonValue::string(COOP_NATIVE_PROTOCOL_VERSION))
-                    && object.get("schema_digest")
-                        == Some(&JsonValue::string(sts2_mcp_server::COOP_NATIVE_SCHEMA_DIGEST))
-        )
-    })
-}
-
-fn is_game_information_body(request: &GatewayRequest) -> bool {
-    request.body.as_ref().is_some_and(|body| {
-        matches!(
-            body,
-            JsonValue::Object(object)
-                if object.get("protocol_version")
-                    == Some(&JsonValue::string(GAME_INFORMATION_PROTOCOL_VERSION))
-                    && object.get("schema_digest")
-                        == Some(&JsonValue::string(GAME_INFORMATION_SCHEMA_DIGEST))
-                    && object.get("kind")
-                        == Some(&JsonValue::string("query_request"))
-        )
-    })
-}
 
 fn safe_operation_id(value: &str) -> bool {
     !value.is_empty()

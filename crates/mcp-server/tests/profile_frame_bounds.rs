@@ -1,9 +1,8 @@
 // SPDX-License-Identifier: MIT
 
 //! The MCP frame limit is a profile property: the poc, runtime-v1, and runtime-v2
-//! profiles keep their historical 16 KiB limit, and semantic/read-only profiles
-//! accept frames up to the 256 KiB ceiling. Oversized frames are rejected before
-//! any gateway access.
+//! profiles keep their historical 16 KiB limit, while additive profiles use their
+//! selected frame bound. Oversized frames are rejected before any gateway access.
 
 use sts2_mcp_server::{
     GatewayAdapter, GatewayError, GatewayRequest, GatewayResponse, MAX_FRAME_BYTES, McpServer,
@@ -11,6 +10,7 @@ use sts2_mcp_server::{
 };
 
 const LEGACY_MAX_FRAME_BYTES: usize = 16 * 1024;
+const EXACT_RESTORE_MAX_FRAME_BYTES: usize = 20 * 1024;
 
 struct CountingGateway {
     requests: usize,
@@ -35,8 +35,8 @@ fn padded_frame(total_bytes: usize) -> String {
     frame
 }
 
-fn profiles() -> Result<[(&'static str, ToolCatalog, usize); 7], String> {
-    Ok([
+fn profiles() -> Result<Vec<(&'static str, ToolCatalog, usize)>, String> {
+    Ok(vec![
         ("poc-v1-mcp", ToolCatalog::default(), LEGACY_MAX_FRAME_BYTES),
         (
             "runtime-v1-mcp",
@@ -89,6 +89,11 @@ fn profiles() -> Result<[(&'static str, ToolCatalog, usize); 7], String> {
                 .map_err(|error| error.to_string())?
             },
             MAX_FRAME_BYTES,
+        ),
+        (
+            "exact-restore-v1-mcp",
+            ToolCatalog::exact_restore_v1(),
+            EXACT_RESTORE_MAX_FRAME_BYTES,
         ),
     ])
 }

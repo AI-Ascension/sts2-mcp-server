@@ -15,6 +15,8 @@ mod coop_native;
 mod coop_receipt_query;
 #[path = "mapping_coop_synchronization.rs"]
 mod coop_synchronization;
+#[path = "mapping_exact_restore.rs"]
+mod exact_restore;
 #[path = "mapping_game_information.rs"]
 mod game_information;
 #[path = "mapping_helpers.rs"]
@@ -68,6 +70,8 @@ pub(crate) fn tools_call<G: GatewayAdapter>(
     }
     let response = if server.catalog.is_negotiated_composition() {
         composed_tools_call(server, request)
+    } else if server.catalog.is_exact_restore() {
+        exact_restore::tools_call(server, request)
     } else if server.catalog.is_game_information() {
         game_information::tools_call(server, request)
     } else if server.catalog.is_coop_native() {

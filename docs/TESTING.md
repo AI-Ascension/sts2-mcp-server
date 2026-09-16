@@ -17,7 +17,7 @@ Run from this target root:
 
 ```bash
 cargo metadata --locked --offline --no-deps --format-version 1
-for profile in poc-v1 runtime-v1 runtime-v2 runtime-v3-gameplay runtime-v4-expert runtime-v4-expert-action runtime-v4-expert-rest-action runtime-map-v1 coop-synchronization-v1 coop-receipt-query-v1 seeded-run-v1 coop-native-v1 game-information-query-v1; do
+for profile in poc-v1 runtime-v1 runtime-v2 runtime-v3-gameplay runtime-v4-expert runtime-v4-expert-action runtime-v4-expert-rest-action runtime-map-v1 coop-synchronization-v1 coop-receipt-query-v1 seeded-run-v1 coop-native-v1 game-information-query-v1 exact-restore-v1 exact-restore-gateway-v1; do
   (cd "protocol-artifact/$profile" && sha256sum --check SHA256SUMS)
 done
 cargo test --locked --offline --package sts2-mcp-server --test artifact
@@ -315,3 +315,18 @@ versions, privileged fields, and unavailable transport. Executable binding tests
 admission and a synthetic HTTP response with a foreign caller. These are source/component tests,
 not proof of a native checkpoint producer or verified restore. Use `STS2_RUNTIME_PROFILE=checkpoint-reference-v1`
 to select the standalone read tool; existing profiles are unchanged.
+
+## Exact-restore MCP checks
+
+`exact_restore` validates the pinned neutral and consumer-wrapper artifacts, all five phase
+request/response pairs, closure limits, canonical chunk digests, receipt binding, duplicate-key
+rejection, and malformed/oversized/direction-swapped frames. `exact_restore_mapping` sends serialized
+MCP calls for all five tools through the fixed route mapper and confirms a known `no_restore_adapter`
+begin refusal stays typed before any later upload. The executable loopback tests exercise all five
+routes with configured recovery authentication and validate the correlated wrapper responses. They
+also reject foreign lease, schema, and MCP correlation before connecting, and verify an `UNKNOWN`
+commit cannot be committed again while lookup remains available.
+
+These tests confirm only the MCP boundary and synthetic Gateway responses. They do not establish
+Gateway persistence across restarts, native restore support, host effect success, or release
+compatibility.

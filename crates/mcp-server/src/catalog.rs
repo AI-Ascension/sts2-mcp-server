@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: MIT
 
 use crate::json::JsonValue;
-use crate::transport::{LEGACY_MAX_FRAME_BYTES, MAX_FRAME_BYTES};
+use crate::transport::{
+    EXACT_RESTORE_MCP_MAX_FRAME_BYTES, LEGACY_MAX_FRAME_BYTES, MAX_FRAME_BYTES,
+};
 
 #[path = "catalog_checkpoint_reference.rs"]
 mod checkpoint_reference;
@@ -15,6 +17,8 @@ mod coop_native;
 mod coop_receipt_query;
 #[path = "catalog_coop_synchronization.rs"]
 mod coop_synchronization;
+#[path = "catalog_exact_restore.rs"]
+mod exact_restore;
 #[path = "catalog_game_information.rs"]
 mod game_information;
 #[path = "catalog_json.rs"]
@@ -49,6 +53,11 @@ pub const CHECKPOINT_REFERENCE_TOOL: &str = "sts2.checkpoint_reference";
 pub const MAP_SNAPSHOT_TOOL: &str = "sts2.map_snapshot";
 pub const COOP_SYNCHRONIZATION_TOOL: &str = coop_synchronization::SYNC_TOOL;
 pub const COOP_RECEIPT_QUERY_TOOL: &str = coop_receipt_query::COOP_RECEIPT_QUERY_TOOL;
+pub const EXACT_RESTORE_BEGIN_TOOL: &str = exact_restore::BEGIN_TOOL;
+pub const EXACT_RESTORE_PUT_CHUNK_TOOL: &str = exact_restore::PUT_CHUNK_TOOL;
+pub const EXACT_RESTORE_FINISH_BLOB_TOOL: &str = exact_restore::FINISH_BLOB_TOOL;
+pub const EXACT_RESTORE_COMMIT_TOOL: &str = exact_restore::COMMIT_TOOL;
+pub const EXACT_RESTORE_LOOKUP_TOOL: &str = exact_restore::LOOKUP_TOOL;
 pub const COOP_NATIVE_OBSERVATION_TOOL: &str = coop_native::OBSERVATION_TOOL;
 pub const COOP_NATIVE_ACTION_TOOL: &str = coop_native::ACTION_TOOL;
 pub const COOP_NATIVE_VOTE_TOOL: &str = coop_native::VOTE_TOOL;
@@ -182,6 +191,11 @@ impl ToolCatalog {
     }
 
     #[must_use]
+    pub fn exact_restore_v1() -> Self {
+        exact_restore::build()
+    }
+
+    #[must_use]
     pub fn seeded_run_v1() -> Self {
         seeded_run::build()
     }
@@ -216,12 +230,15 @@ impl ToolCatalog {
     /// profiles accept frames up to [`MAX_FRAME_BYTES`].
     #[must_use]
     pub fn max_frame_bytes(&self) -> usize {
-        if self.is_runtime_v3_gameplay()
+        if self.is_exact_restore() {
+            EXACT_RESTORE_MCP_MAX_FRAME_BYTES
+        } else if self.is_runtime_v3_gameplay()
             || self.is_runtime_v4_expert()
             || self.is_runtime_v4_expert_rest_action()
             || self.is_runtime_map_v1()
             || self.is_seeded_run()
             || self.is_coop_native()
+            || self.is_exact_restore()
             || self.is_game_information()
             || self.is_negotiated_composition()
         {
@@ -265,6 +282,10 @@ impl ToolCatalog {
 
     pub(crate) fn is_coop_receipt_query(&self) -> bool {
         self.revision == coop_receipt_query::REVISION
+    }
+
+    pub(crate) fn is_exact_restore(&self) -> bool {
+        self.revision == exact_restore::REVISION
     }
 
     pub(crate) fn is_seeded_run(&self) -> bool {

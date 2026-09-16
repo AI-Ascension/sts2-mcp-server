@@ -64,6 +64,7 @@ host to a supported compatibility row.
 | `game-information-query-v1-mcp` | `GET /v1/instances/{id}/game-information/capabilities`, `POST /v1/instances/{id}/game-information/query` | Six-tool catalog, pinned protocol artifact/checksums, fake-gateway mapping, executable binding/profile and loopback capabilities tests | Source/component seam confirmed at merged protocol main `34f68b18` (schema `376845b0…`); gateway #52, producer capability negotiation, live snapshots, host extraction, provider, deployment, and release remain unverified |
 | `negotiated-composition-v1-mcp` | Negotiated union of the fixed Runtime-v3/map and game-information routes | Composition, scope/limit intersection, unavailable-feature, lifecycle, and stale-snapshot unit tests; both copied source artifacts verified before executable selection | Source/component composition seam confirmed; live producer discovery, gateway readiness/selection, host extraction, provider execution, deployment, and release compatibility unverified |
 | `save-profile-v1-mcp` | Fixed `GET` list/current/status and `POST` select/create-disposable routes under `/v1/instances/{id}` | Five-tool catalog, closed schemas, fake-gateway route/body/error/reconciliation tests, executable route/authority binding tests | Source/component consumer seam confirmed for merged gateway PR #53; game-mod launch-profile/save-slot integration, live gateway, host settlement, provider, deployment, and release remain unverified |
+| `exact-restore-v1-mcp` | Fixed `POST /v1/exact-restore/{begin,chunk,finish,commit,lookup}` routes | Pinned neutral and wrapper artifacts, five-phase MCP mapping, configured lease/correlation binding, and loopback HTTP tests | Source/component adapter confirmed at the pinned contract; gateway durability, native restore, host effects, deployment, and release remain unverified |
 
 For `coop-native-v1-mcp`, configured instance, MCP-session, gateway-session, lease, and correlation
 identities remain header/path bounded at 128 bytes. Operation, peer, action, proposal, and vote-choice
@@ -306,6 +307,27 @@ reconciliation routes, validate the selected standard context and identity fence
 same operation ID for unknown recovery. A settled projection requires canonical seed readback, a
 fresh observation, and the `run_started` witness. These source/component and artifact checks do not
 establish native host settlement, profile/save isolation, gameplay, deployment, or release support.
+
+### Exact-restore compatibility
+
+The additive `exact-restore-v1-mcp` profile is selected with
+`STS2_RUNTIME_PROFILE=exact-restore-v1`. It consumes neutral artifact
+`sts2-protocol/exact-restore-v1` from protocol main commit
+`5d5a368ef8a89fd1cb356b04dbf9d8a056adbf05` (schema digest
+`2289d888c33eac46873408303c4423eab762e3f7bd6132ae8ae88d0d3b1858e4`) and the MCP-owned
+`sts2-exact-restore-gateway-v1` wrapper schema digest
+`0b181dc30524c8b14dea73e490da55538f2d57fe87bf58ed9fe33223406a7d89`. It exposes exactly five
+tools mapped to fixed POST routes. Both neutral frames and complete wrappers are capped at 16 KiB;
+decoded chunks at 8 KiB; each manifest/blob at 16 MiB; and aggregate manifest plus distinct blobs at
+64 MiB. Duplicate JSON keys, unknown fields, wrong phase or route, foreign configured lease
+identity, schema drift, and mismatched correlation/request/receipt digests fail closed.
+
+The executable requires `STS2_RECOVERY_TOKEN` and adds the fixed `exact_restore` recovery
+capability header from trusted configuration. The adapter does not retry commits. An uncertain
+commit result blocks another commit in that process and remains eligible for lookup. Pinned artifact,
+serialized MCP, and loopback tests are source/component evidence only; they do not establish that a
+gateway durably stores operations, that the game-mod has a restore adapter, or that a host restore
+effect succeeds.
 
 ### Native co-op compatibility
 

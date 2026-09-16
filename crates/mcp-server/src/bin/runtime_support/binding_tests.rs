@@ -16,6 +16,8 @@ pub(super) fn config() -> RuntimeConfig {
         mcp_session_id: String::from("mcp-session"),
         lease_id: String::from("lease"),
         lease_epoch: 1,
+        recovery_token: None,
+        exact_restore_profile: false,
         coop_native_peer_binding: None,
     }
 }

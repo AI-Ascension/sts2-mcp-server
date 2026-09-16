@@ -130,3 +130,18 @@ The status/receipt tool reconciles the original operation identity and never rep
 Gateway owns allocation, authorization, leases, ledger state, and forwarding; game-mod owns save-slot
 meaning and host effects. Gateway PR #53 is the source/component dependency. Launch-profile wiring,
 game-mod readback, host settlement, and integrated readiness remain unverified.
+
+## `exact-restore-v1-mcp` profile
+
+ADR 0026 defines the additive exact-restore consumer selected with
+`STS2_RUNTIME_PROFILE=exact-restore-v1`. It exposes only the five fixed begin, chunk, finish, commit,
+and lookup tools, mapped to the matching `/v1/exact-restore/` routes. Every call carries the pinned
+neutral frame inside a closed authenticated wrapper and is checked against the configured MCP caller
+and gateway instance/session/lease/epoch. The executable requires `STS2_RECOVERY_TOKEN`; no token or
+downstream route is accepted from tool arguments.
+
+Requests and responses are capped at 16 KiB, chunks at 8 KiB decoded, and closure accounting at
+64 MiB across the manifest and distinct blobs. An uncertain commit is not retried; the client must
+use lookup. Local artifact, serialized MCP, and loopback HTTP tests prove only the consumer adapter
+boundary. Gateway durability, a working native restore adapter, host effects, and deployment support
+remain unverified.

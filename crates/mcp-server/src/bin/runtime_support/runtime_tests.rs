@@ -1,10 +1,15 @@
 // SPDX-License-Identifier: MIT
 
+use super::binding::is_runtime_result;
 use super::http::ReadError;
 use super::profiles::profile_for_name;
 use super::*;
 use std::collections::BTreeMap;
-use sts2_mcp_server::{Correlation, GatewayMethod};
+use sts2_mcp_server::{
+    COOP_NATIVE_PROTOCOL_VERSION, Correlation, GatewayError, GatewayMethod, GatewayRequest,
+    GatewayResponse, JsonValue, RUNTIME_V2_PROTOCOL_VERSION, RUNTIME_V3_GAMEPLAY_PROTOCOL_VERSION,
+    SEEDED_RUN_PROTOCOL_VERSION,
+};
 
 #[path = "catalog_http_tests.rs"]
 mod catalog_http;
@@ -19,6 +24,8 @@ fn config() -> RuntimeConfig {
         mcp_session_id: String::from("configured-session"),
         lease_id: String::from("configured-lease"),
         lease_epoch: 7,
+        recovery_token: None,
+        exact_restore_profile: false,
         coop_native_peer_binding: None,
     }
 }

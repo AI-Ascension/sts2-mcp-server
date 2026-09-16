@@ -5,6 +5,8 @@ use crate::protocol::{RpcRequest, RpcResponse};
 
 /// Absolute MCP frame ceiling; additive semantic/read-only profiles may accept frames this large.
 pub const MAX_FRAME_BYTES: usize = 256 * 1024;
+/// Exact-restore MCP frame limit includes 16 KiB wrapper plus JSON-RPC overhead.
+pub(crate) const EXACT_RESTORE_MCP_MAX_FRAME_BYTES: usize = 20 * 1024;
 /// Historical frame limit kept by the poc, runtime-v1, and runtime-v2 profiles.
 pub(crate) const LEGACY_MAX_FRAME_BYTES: usize = 16 * 1024;
 
