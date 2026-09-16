@@ -1,6 +1,6 @@
 {
   "contract": "sts2-exact-restore-gateway-v1",
-  "schema_digest": "f6b5d4179a46c1e2c1dd624b0f29e75713c1fe51921da96d97c99d11f84074c5",
+  "schema_digest": "0b181dc30524c8b14dea73e490da55538f2d57fe87bf58ed9fe33223406a7d89",
   "message_id": "00000001-6fef-4a1b-9d98-ef2e3def8f20",
   "correlation_id": "00000001-6fef-4a1b-9d98-ef2e3def8f20",
   "actor": {

@@ -11,7 +11,9 @@ principal fields with configured `STS2_CALLER_ID`; callers cannot grant themselv
 Gateway authentication uses the configured `STS2_RECOVERY_TOKEN` bearer and the fixed
 `x-sts2-recovery-capability: exact_restore` header.
 
-`payload.frame` is the complete neutral request or response frame. The outer and inner
+`payload.frame` is the complete neutral request or response frame. The request wrapper schema
+admits only request kinds, and the response wrapper schema admits only response and error kinds.
+The outer and inner
 `message_id` and `correlation_id` values must match. A response correlation must name the current
 request message ID. The neutral frame is validated against
 `sts2-protocol/exact-restore-v1` schema digest

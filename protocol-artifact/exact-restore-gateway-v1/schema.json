@@ -81,6 +81,43 @@
       ],
       "additionalProperties": false
     },
+    "neutral_request_frame": {
+      "allOf": [
+        {"$ref": "#/$defs/neutral_frame"},
+        {
+          "properties": {
+            "kind": {
+              "enum": [
+                "exact_restore_begin_request",
+                "exact_restore_chunk_request",
+                "exact_restore_finish_blob_request",
+                "exact_restore_commit_request",
+                "exact_restore_lookup_request"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "neutral_response_frame": {
+      "allOf": [
+        {"$ref": "#/$defs/neutral_frame"},
+        {
+          "properties": {
+            "kind": {
+              "enum": [
+                "exact_restore_begin_response",
+                "exact_restore_chunk_response",
+                "exact_restore_finish_blob_response",
+                "exact_restore_commit_response",
+                "exact_restore_lookup_response",
+                "exact_restore_error_response"
+              ]
+            }
+          }
+        }
+      ]
+    },
     "request": {
       "type": "object",
       "properties": {
@@ -94,7 +131,7 @@
         "payload": {
           "type": "object",
           "properties": {
-            "frame": {"$ref": "#/$defs/neutral_frame"}
+            "frame": {"$ref": "#/$defs/neutral_request_frame"}
           },
           "required": ["frame"],
           "additionalProperties": false
@@ -125,7 +162,7 @@
         "payload": {
           "type": "object",
           "properties": {
-            "frame": {"$ref": "#/$defs/neutral_frame"}
+            "frame": {"$ref": "#/$defs/neutral_response_frame"}
           },
           "required": ["frame"],
           "additionalProperties": false
