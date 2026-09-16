@@ -13,11 +13,18 @@ pub(super) const SEARCH_TOOL: &str = "sts2.game_information_search";
 pub(super) const GET_TOOL: &str = "sts2.game_information_get";
 pub(super) const DETAIL_TOOL: &str = "sts2.game_information_detail";
 pub(super) const AVAILABILITY_TOOL: &str = "sts2.game_information_availability";
+pub(super) const BINDING_TOOL: &str = "sts2.game_information_binding";
 
 pub(super) fn is_tool(name: &str) -> bool {
     matches!(
         name,
-        CAPABILITIES_TOOL | LIST_TOOL | SEARCH_TOOL | GET_TOOL | DETAIL_TOOL | AVAILABILITY_TOOL
+        CAPABILITIES_TOOL
+            | LIST_TOOL
+            | SEARCH_TOOL
+            | GET_TOOL
+            | DETAIL_TOOL
+            | AVAILABILITY_TOOL
+            | BINDING_TOOL
     )
 }
 
@@ -26,6 +33,22 @@ pub(super) fn build() -> super::ToolCatalog {
         revision: String::from(REVISION),
         capabilities: CapabilityCatalog::default(),
         tools: vec![
+            descriptor(
+                BINDING_TOOL,
+                "Read the closed discovery or observation binding for game information. This operation is read-only and accepts only the current harness scope fence and authority epoch.",
+                schema::binding(&[
+                    "instance_id",
+                    "mcp_session_id",
+                    "lease_id",
+                    "lease_epoch",
+                    "operation",
+                    "project_id",
+                    "run_id",
+                    "episode_id",
+                    "agent_id",
+                    "authority_epoch",
+                ]),
+            ),
             descriptor(
                 CAPABILITIES_TOOL,
                 "Read the producer's bounded game-information manifest and effective capabilities. This is read-only and does not provision or select an instance.",

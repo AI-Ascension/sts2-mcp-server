@@ -3,9 +3,9 @@
 use std::collections::BTreeMap;
 
 use crate::catalog::{
-    GAME_INFORMATION_AVAILABILITY_TOOL, GAME_INFORMATION_CAPABILITIES_TOOL,
-    GAME_INFORMATION_DETAIL_TOOL, GAME_INFORMATION_GET_TOOL, GAME_INFORMATION_LIST_TOOL,
-    GAME_INFORMATION_SEARCH_TOOL,
+    GAME_INFORMATION_AVAILABILITY_TOOL, GAME_INFORMATION_BINDING_TOOL,
+    GAME_INFORMATION_CAPABILITIES_TOOL, GAME_INFORMATION_DETAIL_TOOL, GAME_INFORMATION_GET_TOOL,
+    GAME_INFORMATION_LIST_TOOL, GAME_INFORMATION_SEARCH_TOOL,
 };
 use crate::gateway::{GatewayAdapter, GatewayMethod};
 use crate::json::JsonValue;
@@ -25,6 +25,7 @@ mod transport;
 
 pub(crate) const CAPABILITIES_PATH_SUFFIX: &str = "game-information/capabilities";
 pub(crate) const QUERY_PATH_SUFFIX: &str = "game-information/query";
+pub(crate) const BINDING_PATH_SUFFIX: &str = "game-information/lookup-binding";
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(crate) enum CallKind {
@@ -111,6 +112,13 @@ pub(super) fn tools_call<G: GatewayAdapter>(
     if tool_name == GAME_INFORMATION_CAPABILITIES_TOOL {
         return forward_capabilities(server, context);
     }
+    if tool_name == GAME_INFORMATION_BINDING_TOOL {
+        let binding = match request::binding(arguments) {
+            Ok(binding) => binding,
+            Err(message) => return invalid_params(id, message),
+        };
+        return forward_binding(server, context, binding);
+    }
     let Some(kind) = kind_for(tool_name) else {
         return invalid_params(id, "game-information query kind is unavailable");
     };
@@ -119,6 +127,31 @@ pub(super) fn tools_call<G: GatewayAdapter>(
         Err(message) => return invalid_params(id, message),
     };
     forward_query(server, context, query)
+}
+
+fn forward_binding<G: GatewayAdapter>(
+    server: &mut McpServer<G>,
+    context: GameInformationContext,
+    binding: JsonValue,
+) -> RpcResponse {
+    let request = transport::gateway_request(
+        &context,
+        GatewayMethod::Post,
+        format!(
+            "/v1/instances/{}/{}",
+            context.instance_id, BINDING_PATH_SUFFIX
+        ),
+        Some(binding),
+    );
+    match server.forward_gateway(request) {
+        Ok(response) => match response::project_binding(&response.body, &context) {
+            Ok((body, is_error)) => {
+                projected_result(context.request_id, body, is_error, response.status)
+            }
+            Err(message) => projection_error_result(context.request_id, message),
+        },
+        Err(error) => super::gateway_error_result(context.request_id, error),
+    }
 }
 
 fn forward_capabilities<G: GatewayAdapter>(
@@ -232,7 +265,7 @@ fn kind_for(name: &str) -> Option<CallKind> {
         GAME_INFORMATION_GET_TOOL => Some(CallKind::Get),
         GAME_INFORMATION_DETAIL_TOOL => Some(CallKind::Detail),
         GAME_INFORMATION_AVAILABILITY_TOOL => Some(CallKind::Availability),
-        GAME_INFORMATION_CAPABILITIES_TOOL => None,
+        GAME_INFORMATION_CAPABILITIES_TOOL | GAME_INFORMATION_BINDING_TOOL => None,
         _ => None,
     }
 }
@@ -246,8 +279,13 @@ pub(super) fn is_tool(name: &str) -> bool {
             | GAME_INFORMATION_GET_TOOL
             | GAME_INFORMATION_DETAIL_TOOL
             | GAME_INFORMATION_AVAILABILITY_TOOL
+            | GAME_INFORMATION_BINDING_TOOL
     )
 }
+
+#[cfg(test)]
+#[path = "mapping_game_information_binding_tests.rs"]
+mod binding_tests;
 
 fn identity<'a>(
     arguments: &'a BTreeMap<String, JsonValue>,

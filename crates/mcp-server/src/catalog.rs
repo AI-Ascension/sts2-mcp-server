@@ -82,6 +82,7 @@ pub const GAME_INFORMATION_SEARCH_TOOL: &str = game_information::SEARCH_TOOL;
 pub const GAME_INFORMATION_GET_TOOL: &str = game_information::GET_TOOL;
 pub const GAME_INFORMATION_DETAIL_TOOL: &str = game_information::DETAIL_TOOL;
 pub const GAME_INFORMATION_AVAILABILITY_TOOL: &str = game_information::AVAILABILITY_TOOL;
+pub const GAME_INFORMATION_BINDING_TOOL: &str = game_information::BINDING_TOOL;
 pub use composition::{
     CAPABILITY_DISCOVERY_TOOL, CapabilityGroup, CapabilityLayer, CapabilityOffer, CapabilityOwner,
     CapabilityScope, NEGOTIATED_COMPOSITION_REVISION, NEGOTIATION_STALE_CODE,
