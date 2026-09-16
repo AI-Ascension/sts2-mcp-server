@@ -160,6 +160,13 @@ fn serialized_mcp_calls_reach_all_five_fixed_gateway_routes() {
         assert_eq!(
             request
                 .headers
+                .get("x-sts2-correlation-id")
+                .map(String::as_str),
+            frames[request_index]["correlation_id"].as_str()
+        );
+        assert_eq!(
+            request
+                .headers
                 .get("x-sts2-lease-epoch")
                 .map(String::as_str),
             Some("8")

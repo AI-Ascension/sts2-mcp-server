@@ -183,6 +183,12 @@ fn five_fixed_routes_forward_authenticated_frames_and_validate_correlated_respon
             assert_eq!(path, format!("/v1/exact-restore/{route}"));
             assert!(header.contains("Authorization: Bearer recovery-secret\r\n"));
             assert!(header.contains("x-sts2-recovery-capability: exact_restore\r\n"));
+            assert!(header.contains(&format!(
+                "x-sts2-correlation-id: {}\r\n",
+                response_frames[request_index]["correlation_id"]
+                    .as_str()
+                    .unwrap()
+            )));
             let request_json = serde_json::from_slice::<Value>(&request_body).unwrap();
             assert_eq!(
                 request_json,
