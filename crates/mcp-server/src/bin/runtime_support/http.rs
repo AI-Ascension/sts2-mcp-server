@@ -14,6 +14,25 @@ pub(super) const RUNTIME_V3_MAX_RESPONSE_BYTES: usize = 128 * 1024;
 pub(super) const MAP_MAX_RESPONSE_BYTES: usize = 256 * 1024;
 /// Gateway response body limit for game-information-query-v1 envelopes.
 pub(super) const GAME_INFORMATION_MAX_RESPONSE_BYTES: usize = 256 * 1024;
+/// Worst-case numeric carrier for a body at the decoded save-profile limit.
+///
+/// Each byte of the decoded body is written as up to three digits plus a
+/// separator, so a body of `n` bytes is carried in at most `4 * n + 1` bytes.
+const SAVE_PROFILE_WORST_CASE_CARRIER_BYTES: usize =
+    4 * sts2_mcp_server::SAVE_PROFILE_MAX_BODY_BYTES + 1;
+/// Result-envelope headroom kept above the worst-case save-profile carrier.
+const SAVE_PROFILE_ENVELOPE_HEADROOM_BYTES: usize = 4 * 1024;
+/// Gateway response body limit for the `save-profile-v1` profile.
+///
+/// A save-profile result carries its downstream body as a JSON array of byte
+/// values, so a body at the documented
+/// [`sts2_mcp_server::SAVE_PROFILE_MAX_BODY_BYTES`] decoded limit needs up to
+/// [`SAVE_PROFILE_WORST_CASE_CARRIER_BYTES`] on the wire. The legacy 64 KiB cap
+/// cannot carry that worst case, so this profile keeps a bound sized to the
+/// worst-case carrier plus envelope headroom instead of rejecting a valid body
+/// as transport-oversized before the decode runs.
+pub(super) const SAVE_PROFILE_MAX_RESPONSE_BYTES: usize =
+    SAVE_PROFILE_WORST_CASE_CARRIER_BYTES + SAVE_PROFILE_ENVELOPE_HEADROOM_BYTES;
 
 pub(super) struct HttpResponse {
     pub(super) status: u16,

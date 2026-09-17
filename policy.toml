@@ -20,8 +20,8 @@ markdown_preferred = 500
 markdown_max = 700
 
 [exemptions]
-"crates/mcp-server/src/mapping_save_profile_response.rs" = "Reviewed exact-path size exception: the save-profile response validation module remains cohesive at 327 nonblank lines, within the 400 hard maximum."
-"crates/mcp-server/src/mapping_save_profile_response_downstream.rs" = "Reviewed exact-path size exception: the save-profile downstream closed projection, bounded byte-array decode, and single-decode content rejection remain one cohesive unit at 355 nonblank lines, within the 400 hard maximum."
-"crates/mcp-server/tests/save_profile_mapping.rs" = "Reviewed exact-path size exception: the save-profile mapping golden and negative tests remain one cohesive suite at 708 nonblank lines; the byte-array decode regressions stay beside the fixtures they exercise."
+"crates/mcp-server/src/mapping_save_profile_response.rs" = "Reviewed exact-path size exception: the save-profile response validation module remains cohesive at 330 nonblank lines, within the 400 hard maximum."
+"crates/mcp-server/src/mapping_save_profile_response_downstream.rs" = "Reviewed exact-path size exception: the save-profile downstream closed projection, bounded size-first byte-array decode, and single-decode content rejection remain one cohesive unit at 359 nonblank lines, within the 400 hard maximum."
+"crates/mcp-server/tests/save_profile_mapping.rs" = "Reviewed exact-path size exception: the save-profile catalog, projection, and reconciliation goldens remain cohesive at 505 nonblank lines, within the 600 hard maximum; the byte-array carrier regressions live in a separate test file."
 "crates/mcp-server/tests/negotiated_composition_runtime_process.rs" = "Reviewed exact-path size exception: the spawned stdio process, v1 fallback, v2 negotiation, and per-operation wire-limit tests must remain one executable-boundary suite at 458 nonblank lines."
 "crates/mcp-server/tests/support/negotiated_runtime_process_support.rs" = "Reviewed exact-path size exception: the bounded loopback HTTP fixture serves the complete negotiated startup and routed operation sequence at 415 nonblank lines."

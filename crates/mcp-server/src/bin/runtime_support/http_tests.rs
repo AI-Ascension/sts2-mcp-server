@@ -4,6 +4,7 @@
 use super::*;
 use std::net::TcpListener;
 use std::thread;
+use sts2_mcp_server::SAVE_PROFILE_MAX_BODY_BYTES;
 
 fn socket_pair() -> (TcpStream, TcpStream) {
     let listener = TcpListener::bind("127.0.0.1:0").unwrap();
@@ -100,6 +101,31 @@ fn response_body_budget_is_profile_scoped() {
     assert!(parse_headers(&wire(128 * 1024), RUNTIME_V3_MAX_RESPONSE_BYTES).is_ok());
     assert_eq!(
         parse_headers(&wire(128 * 1024 + 1), RUNTIME_V3_MAX_RESPONSE_BYTES),
+        Err(ReadError::Oversized)
+    );
+}
+
+#[test]
+fn save_profile_transport_budget_carries_the_worst_case_byte_array() {
+    let wire = |size| {
+        format!("HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {size}")
+    };
+    // A save-profile downstream body at the documented 16 KiB decoded limit is
+    // carried as a JSON array of byte values: at most `4 * n + 1` characters
+    // (three digits and a separator per byte), plus the result envelope.
+    let worst_case = 4 * SAVE_PROFILE_MAX_BODY_BYTES + 1 + SAVE_PROFILE_ENVELOPE_HEADROOM_BYTES;
+    assert!(worst_case > LEGACY_MAX_RESPONSE_BYTES);
+    assert!(worst_case <= SAVE_PROFILE_MAX_RESPONSE_BYTES);
+    assert!(parse_headers(&wire(worst_case), SAVE_PROFILE_MAX_RESPONSE_BYTES).is_ok());
+    assert_eq!(
+        parse_headers(&wire(worst_case), LEGACY_MAX_RESPONSE_BYTES),
+        Err(ReadError::Oversized)
+    );
+    assert_eq!(
+        parse_headers(
+            &wire(SAVE_PROFILE_MAX_RESPONSE_BYTES + 1),
+            SAVE_PROFILE_MAX_RESPONSE_BYTES
+        ),
         Err(ReadError::Oversized)
     );
 }
