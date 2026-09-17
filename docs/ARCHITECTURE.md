@@ -243,12 +243,14 @@ claim host readiness or live snapshot support.
 
 ## Negotiated composition profile
 
-The opt-in `negotiated-composition-v1-mcp` profile composes the Runtime-v3 gameplay/map catalog
-with the game-information query catalog in one MCP session. Operation names are unique and each
-operation is admitted only when its MCP, gateway, producer, and caller layers agree on a compatible
-revision, supported status, scope, and bounded limits. The resulting catalog explicitly groups
-static reference, live details, gameplay actions, maps, profile reads, and research reads; the
-local `sts2.capabilities` discovery operation is read-only and never forwarded.
+The opt-in `negotiated-composition-v1-mcp` profile uses the local Runtime-v3 gameplay/map catalog
+and game-information query catalog as descriptor sources for one MCP session. Operation names are
+unique and each operation is admitted only when its MCP, gateway, producer, and caller layers agree
+on a compatible revision, supported status, scope, and bounded limits. The executable advertises
+only operations with a fixed Gateway mapping and matching offers. It omits `sts2.map_snapshot`:
+the current Gateway artifact has no map offer or mapping. Advertised operations retain their
+explicit capability groups; the local `sts2.capabilities` discovery operation is read-only and
+never forwarded.
 
 Producer restart, content reload, permission changes, and tool-set revision changes invalidate
 tracked snapshot references, advance the session epoch, queue the standard tools-list-changed
