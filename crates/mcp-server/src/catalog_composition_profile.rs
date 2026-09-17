@@ -17,10 +17,11 @@ use crate::catalog::{
     EXPERT_REST_ACTION_TOOL, EXPERT_REST_RECONCILE_TOOL, EXPERT_STATE_TOOL,
     GAME_INFORMATION_AVAILABILITY_TOOL, GAME_INFORMATION_BINDING_TOOL,
     GAME_INFORMATION_CAPABILITIES_TOOL, GAME_INFORMATION_DETAIL_TOOL, GAME_INFORMATION_GET_TOOL,
-    GAME_INFORMATION_LIST_TOOL, GAME_INFORMATION_SEARCH_TOOL, LEGAL_ACTIONS_TOOL,
-    MAP_SNAPSHOT_TOOL, OBSERVE_TOOL, RECONCILE_ACTION_TOOL, RECONCILE_SEEDED_RUN_TOOL,
-    RECOVER_TOOL, REOBSERVE_TOOL, START_SEEDED_RUN_TOOL, SUBMIT_ACTION_TOOL, ToolCatalog,
-    ToolDescriptor, WAIT_FOR_TRANSITION_TOOL,
+    GAME_INFORMATION_LIST_TOOL, GAME_INFORMATION_LIVE_OBSERVATION_BOOTSTRAP_TOOL,
+    GAME_INFORMATION_SEARCH_TOOL, LEGAL_ACTIONS_TOOL, MAP_SNAPSHOT_TOOL, OBSERVE_TOOL,
+    RECONCILE_ACTION_TOOL, RECONCILE_SEEDED_RUN_TOOL, RECOVER_TOOL, REOBSERVE_TOOL,
+    START_SEEDED_RUN_TOOL, SUBMIT_ACTION_TOOL, ToolCatalog, ToolDescriptor,
+    WAIT_FOR_TRANSITION_TOOL,
 };
 
 pub(crate) fn layer_from_catalog(
@@ -94,6 +95,9 @@ fn operation_shape(name: &str) -> Result<(CapabilityGroup, CapabilityScope), Neg
         GAME_INFORMATION_DETAIL_TOOL | GAME_INFORMATION_AVAILABILITY_TOOL => {
             (CapabilityGroup::LiveDetails, CapabilityScope::READ)
         }
+        GAME_INFORMATION_LIVE_OBSERVATION_BOOTSTRAP_TOOL => {
+            (CapabilityGroup::LiveDetails, CapabilityScope::READ)
+        }
         MAP_SNAPSHOT_TOOL => (CapabilityGroup::Maps, CapabilityScope::READ),
         OBSERVE_TOOL
         | LEGAL_ACTIONS_TOOL
@@ -132,6 +136,9 @@ pub(super) fn operation_revision(name: &str, profile_revision: &str) -> String {
     }
     if name == GAME_INFORMATION_BINDING_TOOL {
         return "game-information-lookup-binding-v1-mcp".to_owned();
+    }
+    if name == GAME_INFORMATION_LIVE_OBSERVATION_BOOTSTRAP_TOOL {
+        return "game-information-live-observation-bootstrap-v1".to_owned();
     }
     if name == MAP_SNAPSHOT_TOOL {
         return "runtime-map-v1-mcp".to_owned();

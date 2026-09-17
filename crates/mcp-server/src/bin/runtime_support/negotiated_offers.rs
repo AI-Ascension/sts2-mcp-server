@@ -6,9 +6,10 @@ use sts2_mcp_server::{
     CapabilityLayer, CapabilityOffer, CapabilityOwner, CapabilityScope, DISPATCH_ACTION_TOOL,
     GAME_INFORMATION_AVAILABILITY_TOOL, GAME_INFORMATION_BINDING_TOOL,
     GAME_INFORMATION_CAPABILITIES_TOOL, GAME_INFORMATION_DETAIL_TOOL, GAME_INFORMATION_GET_TOOL,
-    GAME_INFORMATION_LIST_TOOL, GAME_INFORMATION_SEARCH_TOOL, LEGAL_ACTIONS_TOOL,
-    NEGOTIATED_COMPOSITION_REVISION, NegotiationError, OBSERVE_TOOL, RECOVER_TOOL, REOBSERVE_TOOL,
-    ToolCatalog, ToolLimits, WAIT_FOR_TRANSITION_TOOL,
+    GAME_INFORMATION_LIST_TOOL, GAME_INFORMATION_LIVE_OBSERVATION_BOOTSTRAP_TOOL,
+    GAME_INFORMATION_SEARCH_TOOL, LEGAL_ACTIONS_TOOL, NEGOTIATED_COMPOSITION_REVISION,
+    NegotiationError, OBSERVE_TOOL, RECOVER_TOOL, REOBSERVE_TOOL, ToolCatalog, ToolLimits,
+    WAIT_FOR_TRANSITION_TOOL,
 };
 
 use super::profiles::GatewayWireLimits;
@@ -53,6 +54,10 @@ const MAPPINGS: &[Mapping] = &[
             "game_information.lookup_binding.discovery",
             "game_information.lookup_binding.observe",
         ],
+    },
+    Mapping {
+        local: GAME_INFORMATION_LIVE_OBSERVATION_BOOTSTRAP_TOOL,
+        remote: &["game_information.live_observation_bootstrap"],
     },
     Mapping {
         local: OBSERVE_TOOL,
@@ -239,7 +244,9 @@ fn combine_remote(
 }
 
 fn validate_revision(operation: &str, revision: &str) -> Result<(), String> {
-    let expected = if operation.starts_with("game_information.lookup_binding.") {
+    let expected = if operation == "game_information.live_observation_bootstrap" {
+        "game-information-live-observation-bootstrap-v1"
+    } else if operation.starts_with("game_information.lookup_binding.") {
         "game-information-lookup-binding-v1"
     } else if operation.starts_with("game_information.") {
         "game-information-query-v1"

@@ -102,6 +102,7 @@ fn shipped_stdio_process_discovers_and_routes_negotiated_profile() {
         "sts2.reobserve",
         "sts2.game_information_capabilities",
         "sts2.game_information_binding",
+        "sts2.game_information.live_observation_bootstrap",
     ] {
         assert!(
             tools.iter().any(|tool| tool["name"] == expected),
@@ -151,6 +152,30 @@ fn shipped_stdio_process_discovers_and_routes_negotiated_profile() {
                 "authority_epoch":7
             }),
         ),
+        (
+            "bootstrap-call",
+            "sts2.game_information.live_observation_bootstrap",
+            json!({
+                "instance_id":"instance-1",
+                "mcp_session_id":"mcp-session-1",
+                "lease_id":"lease-1",
+                "lease_epoch":1,
+                "run_id":"run-42",
+                "authority_epoch":7,
+                "content_manifest_id":"content-1",
+                "locale":"en-US",
+                "definition_ref":{
+                    "content_manifest_id":"content-1",
+                    "entity_kind":"card",
+                    "namespaced_id":"ironclad:strike",
+                    "variant":null
+                },
+                "instance_ref":null,
+                "max_visible_entities":2,
+                "max_item_bytes":4096,
+                "max_message_bytes":262144
+            }),
+        ),
     ] {
         let response = mcp_request(
             &mut stdin,
@@ -166,6 +191,47 @@ fn shipped_stdio_process_discovers_and_routes_negotiated_profile() {
         assert_eq!(response["result"]["isError"], false, "{response}");
     }
 
+    drop(stdin);
+    wait_child(&mut child.0);
+    gateway.join().unwrap().unwrap();
+}
+
+#[test]
+fn v1_gateway_fallback_preserves_legacy_catalog_without_live_bootstrap() {
+    let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+    let address = listener.local_addr().unwrap().to_string();
+    let gateway = thread::spawn(move || support::serve_gateway_v1(listener));
+    let mut child = spawn_mcp(address, LOOKUP_REQUEST);
+    let mut stdin = child.0.stdin.take().unwrap();
+    let mut stdout = BufReader::new(child.0.stdout.take().unwrap());
+    let _ = mcp_request(
+        &mut stdin,
+        &mut stdout,
+        &mut child.0,
+        json!({
+            "jsonrpc":"2.0",
+            "id":"initialize",
+            "method":"initialize",
+            "params":{
+                "protocolVersion":"2025-06-18",
+                "capabilities":{},
+                "clientInfo":{"name":"negotiated-v1-fallback-test","version":"1"}
+            }
+        }),
+    );
+    let listed = mcp_request(
+        &mut stdin,
+        &mut stdout,
+        &mut child.0,
+        json!({"jsonrpc":"2.0","id":"list","method":"tools/list","params":{}}),
+    );
+    assert!(
+        !listed["result"]["tools"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|tool| tool["name"] == "sts2.game_information.live_observation_bootstrap")
+    );
     drop(stdin);
     wait_child(&mut child.0);
     gateway.join().unwrap().unwrap();
@@ -205,6 +271,7 @@ fn stale_schema_and_oversized_startup_snapshot_fail_closed() {
     for mutation in [
         "stale-lease",
         "schema",
+        "unsupported-version",
         "oversized",
         "identity",
         "producer-run",

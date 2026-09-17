@@ -13,9 +13,11 @@ mod protocol_artifact_coop_native;
 mod protocol_artifact_coop_receipt_query;
 mod protocol_artifact_exact_restore;
 mod protocol_artifact_game_information;
+mod protocol_artifact_game_information_live_observation_bootstrap;
 #[path = "protocol_artifact_runtime_v2_hash.rs"]
 mod protocol_artifact_hash;
 mod protocol_artifact_negotiated;
+mod protocol_artifact_negotiated_v2;
 mod protocol_artifact_runtime_map;
 mod protocol_artifact_runtime_v2;
 mod protocol_artifact_runtime_v3_gameplay;
@@ -53,7 +55,8 @@ pub use catalog::{EXPERT_REST_ACTION_TOOL, EXPERT_REST_RECONCILE_TOOL};
 pub use catalog::{
     GAME_INFORMATION_AVAILABILITY_TOOL, GAME_INFORMATION_BINDING_TOOL,
     GAME_INFORMATION_CAPABILITIES_TOOL, GAME_INFORMATION_DETAIL_TOOL, GAME_INFORMATION_GET_TOOL,
-    GAME_INFORMATION_LIST_TOOL, GAME_INFORMATION_SEARCH_TOOL,
+    GAME_INFORMATION_LIST_TOOL, GAME_INFORMATION_LIVE_OBSERVATION_BOOTSTRAP_TOOL,
+    GAME_INFORMATION_SEARCH_TOOL,
 };
 pub use catalog::{RECONCILE_SEEDED_RUN_TOOL, START_SEEDED_RUN_TOOL};
 pub use catalog::{
@@ -111,12 +114,26 @@ pub use protocol_artifact_game_information::{
     GAME_INFORMATION_SCHEMA_DIGEST, GAME_INFORMATION_SCHEMA_SOURCE, GameInformationArtifactError,
     verify_game_information_artifact,
 };
+pub use protocol_artifact_game_information_live_observation_bootstrap::{
+    LIVE_BOOTSTRAP_ARTIFACT, LIVE_BOOTSTRAP_GENERATOR, LIVE_BOOTSTRAP_MAX_BODY_BYTES,
+    LIVE_BOOTSTRAP_MAX_ITEM_BYTES, LIVE_BOOTSTRAP_MAX_MESSAGE_BYTES,
+    LIVE_BOOTSTRAP_MAX_VISIBLE_ENTITIES, LIVE_BOOTSTRAP_PROTOCOL_VERSION,
+    LIVE_BOOTSTRAP_SCHEMA_DIGEST, LIVE_BOOTSTRAP_SCHEMA_SOURCE, LiveBootstrapArtifactError,
+    verify_live_bootstrap_artifact,
+};
 pub use protocol_artifact_negotiated::{
     NEGOTIATED_CAPABILITIES_MAX_BYTES, NEGOTIATED_CAPABILITIES_PROTOCOL_VERSION,
     NEGOTIATED_CAPABILITIES_SCHEMA_DIGEST, NEGOTIATED_CAPABILITIES_SOURCE_COMMIT,
     NegotiatedCapabilitiesArtifactError, validate_negotiated_capabilities_snapshot,
     verify_negotiated_capabilities_artifact,
 };
+pub use protocol_artifact_negotiated_v2::{
+    NEGOTIATED_CAPABILITIES_V2_MAX_BYTES, NEGOTIATED_CAPABILITIES_V2_PROTOCOL_VERSION,
+    NEGOTIATED_CAPABILITIES_V2_SCHEMA_DIGEST, NEGOTIATED_CAPABILITIES_V2_SOURCE_COMMIT,
+    NegotiatedCapabilitiesV2ArtifactError, validate_negotiated_capabilities_v2_snapshot,
+    verify_negotiated_capabilities_v2_artifact,
+};
+
 pub use protocol_artifact_runtime_map::{
     RUNTIME_MAP_V1_ARTIFACT, RUNTIME_MAP_V1_GENERATOR, RUNTIME_MAP_V1_MAX_BINDINGS,
     RUNTIME_MAP_V1_MAX_EDGES, RUNTIME_MAP_V1_MAX_GENERATION, RUNTIME_MAP_V1_MAX_HISTORY,

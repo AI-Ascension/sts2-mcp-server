@@ -7,7 +7,7 @@ use std::time::Duration;
 use serde_json::{Value, json};
 
 pub(crate) fn serve_gateway(listener: TcpListener) -> Result<(), String> {
-    for step in 0..5 {
+    for step in 0..6 {
         let (mut stream, _) = super::accept_bounded(&listener)?;
         stream
             .set_read_timeout(Some(Duration::from_secs(3)))
@@ -105,11 +105,61 @@ pub(crate) fn serve_gateway(listener: TcpListener) -> Result<(), String> {
                 response["correlation_id"] = json!("binding-call");
                 response
             }
+            5 => {
+                super::assert_tool_identity(&request, "bootstrap-call");
+                assert_eq!(request.method, "POST");
+                assert_eq!(
+                    request.path,
+                    "/v1/instances/instance-1/game-information/live-observation-bootstrap"
+                );
+                let body: Value = serde_json::from_slice(&request.body).unwrap();
+                assert_eq!(body["kind"], "bootstrap_request");
+                assert_eq!(body["correlation_id"], "bootstrap-call");
+                assert_eq!(body["scope"]["instance_id"], "instance-1");
+                assert_eq!(body["scope"]["run_id"], "run-42");
+                assert_eq!(body["scope"]["authority_epoch"], 7);
+                assert_eq!(body["scope"]["content_manifest_id"], "content-1");
+                assert_eq!(body["selector"]["instance_ref"], Value::Null);
+                assert_eq!(body["limits"]["max_visible_entities"], 2);
+                assert_eq!(body["limits"]["max_item_bytes"], 4096);
+                assert_eq!(body["limits"]["max_message_bytes"], 262144);
+                let mut response: Value = serde_json::from_str(include_str!(
+                    "../../../../protocol-artifact/game-information-live-observation-bootstrap-v1/golden/bootstrap-response.json"
+                ))
+                .unwrap();
+                response["correlation_id"] = json!("bootstrap-call");
+                set_native_epoch(&mut response, 11);
+                response
+            }
             _ => unreachable!(),
         };
         super::write_json_response(&mut stream, &response)?;
     }
     Ok(())
+}
+
+pub(crate) fn serve_gateway_v1(listener: TcpListener) -> Result<(), String> {
+    let (mut discovery, _) = super::accept_bounded(&listener)?;
+    let request = super::read_request(&mut discovery)?;
+    super::assert_startup_identity(&request, "game-information-binding-discovery");
+    super::write_json_response(&mut discovery, &lookup_discovery_response())?;
+
+    let (mut snapshot_request, _) = super::accept_bounded(&listener)?;
+    let request = super::read_request(&mut snapshot_request)?;
+    super::assert_startup_identity(&request, "negotiated-capabilities-startup");
+    let mut snapshot = negotiated_snapshot();
+    snapshot["schema_version"] = json!("sts2-gateway-negotiated-capabilities-v1");
+    snapshot["gateway_revision"] = json!("sts2-gateway-negotiated-capabilities-v1");
+    snapshot["offers"] = Value::Array(
+        snapshot["offers"]
+            .as_array()
+            .ok_or("snapshot offers are malformed")?
+            .iter()
+            .filter(|offer| offer["operation"] != "game_information.live_observation_bootstrap")
+            .cloned()
+            .collect(),
+    );
+    super::write_json_response(&mut snapshot_request, &snapshot)
 }
 
 pub(crate) fn serve_invalid_snapshot(listener: TcpListener, mutation: &str) -> Result<(), String> {
@@ -135,6 +185,9 @@ pub(crate) fn serve_invalid_snapshot(listener: TcpListener, mutation: &str) -> R
     match mutation {
         "stale-lease" => snapshot["lease_epoch"] = json!(2),
         "schema" => snapshot["schema_version"] = json!("unrecognized-contract"),
+        "unsupported-version" => {
+            snapshot["schema_version"] = json!("sts2-gateway-negotiated-capabilities-v3")
+        }
         "identity" => snapshot["caller_id"] = json!("foreign-caller"),
         "producer-run" => snapshot["producer"]["run_id"] = json!("foreign-run"),
         "witness" => {
@@ -280,6 +333,7 @@ pub(crate) fn negotiated_snapshot() -> Value {
     let mut offers = Vec::new();
     for operation in [
         "game_information.capabilities",
+        "game_information.live_observation_bootstrap",
         "game_information.lookup_binding.discovery",
         "game_information.lookup_binding.observe",
         "runtime_v3.state",
@@ -291,6 +345,13 @@ pub(crate) fn negotiated_snapshot() -> Value {
             if operation.starts_with("game_information.lookup_binding.") {
                 (
                     "game-information-lookup-binding-v1",
+                    16_384,
+                    262_144,
+                    262_144,
+                )
+            } else if operation == "game_information.live_observation_bootstrap" {
+                (
+                    "game-information-live-observation-bootstrap-v1",
                     16_384,
                     262_144,
                     262_144,
@@ -316,8 +377,8 @@ pub(crate) fn negotiated_snapshot() -> Value {
         }));
     }
     json!({
-        "schema_version":"sts2-gateway-negotiated-capabilities-v1",
-        "gateway_revision":"sts2-gateway-negotiated-capabilities-v1",
+        "schema_version":"sts2-gateway-negotiated-capabilities-v2",
+        "gateway_revision":"sts2-gateway-negotiated-capabilities-v2",
         "correlation_id":"negotiated-capabilities-startup",
         "instance_id":"instance-1",
         "caller_id":"harness",
@@ -347,4 +408,24 @@ pub(crate) fn negotiated_snapshot() -> Value {
         },
         "offers":offers
     })
+}
+
+fn set_native_epoch(value: &mut Value, epoch: i64) {
+    match value {
+        Value::Object(object) => {
+            for (key, child) in object {
+                if key == "epoch" {
+                    *child = json!(epoch);
+                } else {
+                    set_native_epoch(child, epoch);
+                }
+            }
+        }
+        Value::Array(values) => {
+            for child in values {
+                set_native_epoch(child, epoch);
+            }
+        }
+        Value::Null | Value::Bool(_) | Value::Number(_) | Value::String(_) => {}
+    }
 }

@@ -2,7 +2,9 @@
 
 use crate::json::JsonValue;
 
-use super::{ToolCatalog, game_information, save_profile};
+use super::{
+    ToolCatalog, game_information, game_information_live_observation_bootstrap, save_profile,
+};
 
 impl ToolCatalog {
     pub(crate) fn to_json(&self) -> JsonValue {
@@ -19,11 +21,13 @@ impl ToolCatalog {
                     ("inputSchema".to_owned(), tool.input_schema.clone()),
                 ]);
                 if (game_information::is_tool(&tool.name)
+                    || game_information_live_observation_bootstrap::is_tool(&tool.name)
                     || save_profile::is_tool(&tool.name)
                     || tool.name == super::composition::CAPABILITY_DISCOVERY_TOOL)
                     && let JsonValue::Object(object) = &mut descriptor
                 {
                     let read_only = game_information::is_tool(&tool.name)
+                        || game_information_live_observation_bootstrap::is_tool(&tool.name)
                         || save_profile::is_read_tool(&tool.name)
                         || tool.name == super::composition::CAPABILITY_DISCOVERY_TOOL;
                     object.insert(

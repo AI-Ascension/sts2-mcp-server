@@ -4,7 +4,7 @@ use std::collections::BTreeMap;
 use sts2_mcp_server::{
     CapabilityLayer, CapabilityOwner, CapabilityScope, ToolCatalog, verify_coop_native_artifact,
     verify_coop_receipt_query_artifact, verify_exact_restore_artifact,
-    verify_game_information_artifact, verify_runtime_map_artifact,
+    verify_game_information_artifact, verify_live_bootstrap_artifact, verify_runtime_map_artifact,
     verify_runtime_v4_expert_rest_action_artifact,
 };
 
@@ -216,10 +216,13 @@ pub(crate) fn profile_for_negotiation(
         .map_err(|error| format!("runtime-map artifact is invalid: {error}"))?;
     verify_game_information_artifact()
         .map_err(|error| format!("game-information artifact is invalid: {error}"))?;
+    verify_live_bootstrap_artifact()
+        .map_err(|error| format!("live-observation bootstrap artifact is invalid: {error}"))?;
     let catalog = ToolCatalog::compose_profiles(
         &[
             ToolCatalog::runtime_map_v1(),
             ToolCatalog::game_information(),
+            ToolCatalog::game_information_live_observation_bootstrap(),
         ],
         gateway,
         producer,

@@ -71,6 +71,32 @@ pub(super) fn exchange_startup(
     )
 }
 
+pub(super) fn exchange_startup_capabilities(
+    config: &RuntimeConfig,
+    path: &str,
+    correlation: &str,
+    max_response_bytes: usize,
+) -> Result<GatewayResponse, GatewayError> {
+    exchange_wire(
+        config,
+        "GET",
+        path,
+        BTreeMap::from([
+            (
+                String::from("x-mcp-session-id"),
+                config.mcp_session_id.clone(),
+            ),
+            (
+                String::from("x-sts2-capabilities-version"),
+                String::from("sts2-gateway-negotiated-capabilities-v2"),
+            ),
+        ]),
+        &[],
+        correlation,
+        max_response_bytes,
+    )
+}
+
 fn exchange_wire(
     config: &RuntimeConfig,
     method: &str,

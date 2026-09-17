@@ -19,6 +19,8 @@ mod coop_synchronization;
 mod exact_restore;
 #[path = "mapping_game_information.rs"]
 mod game_information;
+#[path = "mapping_game_information_live_observation_bootstrap.rs"]
+mod game_information_live_observation_bootstrap;
 pub use game_information::validate_game_information_binding_discovery;
 #[path = "mapping_helpers.rs"]
 mod helpers;
@@ -75,6 +77,8 @@ pub(crate) fn tools_call<G: GatewayAdapter>(
         exact_restore::tools_call(server, request)
     } else if server.catalog.is_game_information() {
         game_information::tools_call(server, request)
+    } else if server.catalog.is_live_observation_bootstrap() {
+        game_information_live_observation_bootstrap::tools_call(server, request)
     } else if server.catalog.is_coop_native() {
         coop_native::tools_call(server, request)
     } else if server.catalog.is_coop_receipt_query() {
@@ -203,6 +207,9 @@ fn composed_tools_call<G: GatewayAdapter>(
     let response = server.with_dispatch_operation(&tool_name, |server| {
         if game_information::is_tool(&tool_name) {
             return game_information::tools_call(server, request);
+        }
+        if game_information_live_observation_bootstrap::is_tool(&tool_name) {
+            return game_information_live_observation_bootstrap::tools_call(server, request);
         }
         if matches!(
             tool_name.as_str(),
