@@ -10,6 +10,10 @@ const IDENTITY_PATTERN: &str = "^[A-Za-z0-9_.:/-]{1,512}$";
 const SEGMENT_PATTERN: &str = "^[A-Za-z0-9_-]{1,128}$";
 
 pub(super) fn build() -> super::ToolCatalog {
+    build_with_recovery_kinds(&["reobserve", "reconcile", "release_lease", "stop_episode"])
+}
+
+pub(super) fn build_with_recovery_kinds(recovery_kinds: &[&str]) -> super::ToolCatalog {
     super::ToolCatalog {
         revision: String::from(REVISION),
         capabilities: CapabilityCatalog::default(),
@@ -19,49 +23,61 @@ pub(super) fn build() -> super::ToolCatalog {
                 description: String::from(
                     "Read one bounded fair-play GameObservation through the authenticated gateway.",
                 ),
-                input_schema: context_schema(&[], &[]),
+                input_schema: context_schema(&[], &[], recovery_kinds),
             },
             ToolDescriptor {
                 name: String::from("sts2.legal_actions"),
                 description: String::from(
                     "Read the complete host-generated LegalAction set for one observation generation.",
                 ),
-                input_schema: context_schema(&["state_id"], &[]),
+                input_schema: context_schema(&["state_id"], &[], recovery_kinds),
             },
             ToolDescriptor {
                 name: String::from("sts2.dispatch_action"),
                 description: String::from(
                     "Dispatch exactly one current typed LegalAction with an idempotency identity.",
                 ),
-                input_schema: context_schema(&["state_id", "operation_id", "action"], &[]),
+                input_schema: context_schema(
+                    &["state_id", "operation_id", "action"],
+                    &[],
+                    recovery_kinds,
+                ),
             },
             ToolDescriptor {
                 name: String::from("sts2.wait_for_transition"),
                 description: String::from(
                     "Wait for a semantic successor, same-state mutation, or bounded timeout.",
                 ),
-                input_schema: context_schema(&["operation_id", "wait_for_millis"], &[]),
+                input_schema: context_schema(
+                    &["operation_id", "wait_for_millis"],
+                    &[],
+                    recovery_kinds,
+                ),
             },
             ToolDescriptor {
                 name: String::from("sts2.reobserve"),
                 description: String::from(
                     "Obtain a fresh ordinary observation after a stale or contradictory result.",
                 ),
-                input_schema: context_schema(&[], &[]),
+                input_schema: context_schema(&[], &[], recovery_kinds),
             },
             ToolDescriptor {
                 name: String::from("sts2.recover"),
                 description: String::from(
                     "Perform only an explicitly safe recovery operation; strategic actions are not accepted.",
                 ),
-                input_schema: context_schema(&["recovery_kind"], &["operation_id"]),
+                input_schema: context_schema(&["recovery_kind"], &["operation_id"], recovery_kinds),
             },
         ],
         composition: None,
     }
 }
 
-fn context_schema(required_extra: &[&str], optional_extra: &[&str]) -> JsonValue {
+fn context_schema(
+    required_extra: &[&str],
+    optional_extra: &[&str],
+    recovery_kinds: &[&str],
+) -> JsonValue {
     let mut required = vec![
         JsonValue::string("instance_id"),
         JsonValue::string("mcp_session_id"),
@@ -81,7 +97,7 @@ fn context_schema(required_extra: &[&str], optional_extra: &[&str]) -> JsonValue
         (String::from("generation"), bounded_counter(MAX_GENERATION)),
     ];
     for key in required_extra {
-        properties.push((String::from(*key), schema_for(key)));
+        properties.push((String::from(*key), schema_for(key, recovery_kinds)));
     }
     for key in optional_extra {
         let schema = if *key == "operation_id" {
@@ -93,7 +109,7 @@ fn context_schema(required_extra: &[&str], optional_extra: &[&str]) -> JsonValue
                 ]),
             )])
         } else {
-            schema_for(key)
+            schema_for(key, recovery_kinds)
         };
         properties.push((String::from(*key), schema));
     }
@@ -253,7 +269,7 @@ fn one_argument_action_schema(kind: &str, field: &str) -> JsonValue {
     ])
 }
 
-fn schema_for(key: &str) -> JsonValue {
+fn schema_for(key: &str, recovery_kinds: &[&str]) -> JsonValue {
     match key {
         "state_id" | "operation_id" => payload_identity(),
         "action" => legal_action_schema(),
@@ -267,9 +283,9 @@ fn schema_for(key: &str) -> JsonValue {
             (
                 String::from("enum"),
                 JsonValue::Array(
-                    ["reobserve", "reconcile", "release_lease", "stop_episode"]
-                        .into_iter()
-                        .map(JsonValue::string)
+                    recovery_kinds
+                        .iter()
+                        .map(|kind| JsonValue::string(*kind))
                         .collect(),
                 ),
             ),

@@ -258,8 +258,23 @@ closed. Standalone profiles have no registration flow and keep forwarding a live
 lifecycle event invalidated. Only a call the dispatcher explicitly admits, recorded at the gateway
 hand-off rather than inferred from the response, can change snapshot tracking state. A pending
 tool-set revision constraint survives unrelated lifecycle events until a compliant refresh satisfies
-it. This source/component seam leaves producer capability discovery, gateway readiness and instance
-selection, host extraction, and live snapshot freshness to their owning systems.
+it.
+
+At executable startup, the profile verifies the pinned Gateway negotiated-capabilities artifact and
+performs an authenticated request to a fixed lookup-binding discovery route when the owner supplies
+the closed `STS2_LOOKUP_BINDING_DISCOVERY_REQUEST_JSON` value. It then fetches and validates the
+Gateway's closed negotiated snapshot before opening MCP stdio. The snapshot's configured identity,
+lease, correlation, producer schema, current lookup-binding witness, and Runtime-v3 witness are
+checked before any advertised catalog is built. A request cannot assert its own grants or supported
+operations.
+
+Gateway wire-byte limits are enforced on the exact mapped HTTP body and response. They remain
+separate from MCP argument limits, which stay descriptor-owned; Gateway content limits apply to the
+semantic response and page items. The negotiated recovery vocabulary is limited to `reobserve` and
+`reconcile`. A shipped-binary test exercises this startup and the capabilities, state, and
+lookup-binding routes against a strict loopback peer. This confirms the MCP adapter boundary only:
+live Gateway readiness/selection, native host extraction, and game effect settlement remain
+unverified.
 
 ## Save-profile MCP profile
 

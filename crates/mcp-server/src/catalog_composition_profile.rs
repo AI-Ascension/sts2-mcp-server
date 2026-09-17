@@ -130,6 +130,9 @@ pub(super) fn operation_revision(name: &str, profile_revision: &str) -> String {
     if name == CAPABILITY_DISCOVERY_TOOL {
         return NEGOTIATED_COMPOSITION_REVISION.to_owned();
     }
+    if name == GAME_INFORMATION_BINDING_TOOL {
+        return "game-information-lookup-binding-v1-mcp".to_owned();
+    }
     if name == MAP_SNAPSHOT_TOOL {
         return "runtime-map-v1-mcp".to_owned();
     }

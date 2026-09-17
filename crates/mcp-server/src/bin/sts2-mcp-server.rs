@@ -15,15 +15,17 @@ fn main() {
 }
 
 fn run() -> Result<(), String> {
-    let profile = runtime_http::profile_from_environment()?;
-    let config = runtime_http::RuntimeConfig::from_environment(
-        profile.requires_coop_native_peer_binding,
-        profile.catalog.revision == "exact-restore-v1-mcp",
-    )?;
+    let (config, profile) = runtime_http::startup_from_environment()?;
     let gateway_session_id = config.session_id.clone();
     let mcp_session_id = config.mcp_session_id.clone();
     let native_peer_id = config.native_peer_id().map(str::to_owned);
-    let adapter = runtime_http::RuntimeGatewayAdapter::new(config, profile.max_response_bytes);
+    let enforce_wire_limits = !profile.wire_limits.is_empty();
+    let adapter = runtime_http::RuntimeGatewayAdapter::new_with_wire_limits(
+        config,
+        profile.max_response_bytes,
+        profile.wire_limits,
+        enforce_wire_limits,
+    );
     let server = McpServer::with_catalog_and_sessions(
         adapter,
         profile.catalog,

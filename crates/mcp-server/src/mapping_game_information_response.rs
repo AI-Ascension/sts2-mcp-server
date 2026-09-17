@@ -215,3 +215,15 @@ pub(super) fn protocol_error_category(code: &str) -> &'static str {
         _ => "malformed_response",
     }
 }
+
+pub(super) fn status_error_category(status: u16) -> &'static str {
+    match status {
+        400 | 422 => "invalid_input",
+        401 | 403 => "denied",
+        404 => "missing",
+        409 => "stale",
+        413 => "size",
+        408 | 429 | 500..=599 => "transport",
+        _ => "malformed_response",
+    }
+}

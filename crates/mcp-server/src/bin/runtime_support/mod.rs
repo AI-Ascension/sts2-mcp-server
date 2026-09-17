@@ -10,9 +10,26 @@ use coop_native_config::CoopNativePeerBinding;
 mod exchange;
 mod gateway_adapter;
 mod http;
+mod negotiated_discovery;
+mod negotiated_offers;
+mod negotiated_startup;
 mod profiles;
-pub(crate) use profiles::profile_from_environment;
 const DEFAULT_MCP_SESSION_ID: &str = "mcp-session-1";
+
+pub(crate) fn startup_from_environment() -> Result<(RuntimeConfig, profiles::RuntimeProfile), String>
+{
+    if profiles::runtime_profile_name()? == "negotiated-composition-v1" {
+        let config = RuntimeConfig::from_environment(false, false)?;
+        let profile = negotiated_startup::bootstrap(&config)?;
+        return Ok((config, profile));
+    }
+    let profile = profiles::profile_from_environment()?;
+    let config = RuntimeConfig::from_environment(
+        profile.requires_coop_native_peer_binding,
+        profile.catalog.revision == "exact-restore-v1-mcp",
+    )?;
+    Ok((config, profile))
+}
 
 pub(crate) struct RuntimeConfig {
     pub(crate) gateway_address: SocketAddr,
@@ -109,16 +126,35 @@ impl RuntimeConfig {
 pub(crate) struct RuntimeGatewayAdapter {
     config: RuntimeConfig,
     max_response_bytes: usize,
+    wire_limits: std::collections::BTreeMap<String, profiles::GatewayWireLimits>,
+    enforce_wire_limits: bool,
     lookup_only_operations: HashSet<String>,
 }
 
 impl RuntimeGatewayAdapter {
     /// `max_response_bytes` is the selected profile's gateway body limit
     /// (`RuntimeProfile::max_response_bytes`); legacy profiles keep 64 KiB.
+    #[cfg(test)]
     pub(crate) fn new(config: RuntimeConfig, max_response_bytes: usize) -> Self {
+        Self::new_with_wire_limits(
+            config,
+            max_response_bytes,
+            std::collections::BTreeMap::new(),
+            false,
+        )
+    }
+
+    pub(crate) fn new_with_wire_limits(
+        config: RuntimeConfig,
+        max_response_bytes: usize,
+        wire_limits: std::collections::BTreeMap<String, profiles::GatewayWireLimits>,
+        enforce_wire_limits: bool,
+    ) -> Self {
         Self {
             config,
             max_response_bytes,
+            wire_limits,
+            enforce_wire_limits,
             lookup_only_operations: HashSet::new(),
         }
     }

@@ -17,7 +17,7 @@ Run from this target root:
 
 ```bash
 cargo metadata --locked --offline --no-deps --format-version 1
-for profile in poc-v1 runtime-v1 runtime-v2 runtime-v3-gameplay runtime-v4-expert runtime-v4-expert-action runtime-v4-expert-rest-action runtime-map-v1 coop-synchronization-v1 coop-receipt-query-v1 seeded-run-v1 coop-native-v1 game-information-query-v1 exact-restore-v1 exact-restore-gateway-v1; do
+for profile in poc-v1 runtime-v1 runtime-v2 runtime-v3-gameplay runtime-v4-expert runtime-v4-expert-action runtime-v4-expert-rest-action runtime-map-v1 coop-synchronization-v1 coop-receipt-query-v1 seeded-run-v1 coop-native-v1 game-information-query-v1 negotiated-capabilities-v1 exact-restore-v1 exact-restore-gateway-v1; do
   (cd "protocol-artifact/$profile" && sha256sum --check SHA256SUMS)
 done
 cargo test --locked --offline --package sts2-mcp-server --test artifact
@@ -32,6 +32,16 @@ These commands validate the local MCP seam, copied artifact identity/checksums/s
 fixed GET/POST fake-gateway mappings, policy tool, and repository structure. They do not establish a
 live MCP transport, gateway readiness, authentication, game compatibility, model/provider behavior,
 or end-to-end action settlement.
+
+`negotiated_composition_runtime_process.rs` launches the shipped stdio executable with an isolated
+environment and a loopback HTTP peer. The peer requires the fixed discovery POST before the
+negotiated-capabilities GET, checks configured bearer and session/lease/correlation headers, and
+then receives real MCP capabilities, Runtime-v3 state, and lookup-binding observe calls. Negative
+cases reject duplicate, unknown-field, and oversized owner JSON before network access and reject
+stale lease, wrong identity, producer/run drift, witness drift, duplicate offers, unsupported
+recovery, wrong schema, or oversized startup snapshots. This proves the MCP adapter's cold-start
+and routing behavior against synthetic Gateway responses; it does not prove Gateway
+deployment/readiness, native producer state, host extraction, or game-effect settlement.
 
 ## Future product tests
 

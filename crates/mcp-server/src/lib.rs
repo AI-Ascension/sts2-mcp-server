@@ -15,6 +15,7 @@ mod protocol_artifact_exact_restore;
 mod protocol_artifact_game_information;
 #[path = "protocol_artifact_runtime_v2_hash.rs"]
 mod protocol_artifact_hash;
+mod protocol_artifact_negotiated;
 mod protocol_artifact_runtime_map;
 mod protocol_artifact_runtime_v2;
 mod protocol_artifact_runtime_v3_gameplay;
@@ -73,6 +74,7 @@ pub use gateway::{
     Correlation, GatewayAdapter, GatewayError, GatewayMethod, GatewayRequest, GatewayResponse,
 };
 pub use json::{JsonValue, parse_json};
+pub use mapping::validate_game_information_binding_discovery;
 pub use protocol::{
     INVALID_PARAMS, INVALID_REQUEST, METHOD_NOT_FOUND, PARSE_ERROR, RequestId, RpcError,
     RpcResponse,
@@ -108,6 +110,12 @@ pub use protocol_artifact_game_information::{
     GAME_INFORMATION_PROTOCOL_SOURCE_COMMIT, GAME_INFORMATION_PROTOCOL_VERSION,
     GAME_INFORMATION_SCHEMA_DIGEST, GAME_INFORMATION_SCHEMA_SOURCE, GameInformationArtifactError,
     verify_game_information_artifact,
+};
+pub use protocol_artifact_negotiated::{
+    NEGOTIATED_CAPABILITIES_MAX_BYTES, NEGOTIATED_CAPABILITIES_PROTOCOL_VERSION,
+    NEGOTIATED_CAPABILITIES_SCHEMA_DIGEST, NEGOTIATED_CAPABILITIES_SOURCE_COMMIT,
+    NegotiatedCapabilitiesArtifactError, validate_negotiated_capabilities_snapshot,
+    verify_negotiated_capabilities_artifact,
 };
 pub use protocol_artifact_runtime_map::{
     RUNTIME_MAP_V1_ARTIFACT, RUNTIME_MAP_V1_GENERATOR, RUNTIME_MAP_V1_MAX_BINDINGS,

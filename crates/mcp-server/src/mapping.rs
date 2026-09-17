@@ -19,6 +19,7 @@ mod coop_synchronization;
 mod exact_restore;
 #[path = "mapping_game_information.rs"]
 mod game_information;
+pub use game_information::validate_game_information_binding_discovery;
 #[path = "mapping_helpers.rs"]
 mod helpers;
 #[path = "mapping_legacy.rs"]

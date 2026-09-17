@@ -2,13 +2,15 @@
 
 use super::binding::is_runtime_result;
 use super::http::ReadError;
-use super::profiles::profile_for_name;
+use super::profiles::{GatewayWireLimits, profile_for_name};
 use super::*;
 use std::collections::BTreeMap;
+use std::io::ErrorKind;
+use std::net::TcpListener;
 use sts2_mcp_server::{
-    COOP_NATIVE_PROTOCOL_VERSION, Correlation, GatewayError, GatewayMethod, GatewayRequest,
-    GatewayResponse, JsonValue, RUNTIME_V2_PROTOCOL_VERSION, RUNTIME_V3_GAMEPLAY_PROTOCOL_VERSION,
-    SEEDED_RUN_PROTOCOL_VERSION,
+    COOP_NATIVE_PROTOCOL_VERSION, Correlation, GatewayAdapter, GatewayError, GatewayMethod,
+    GatewayRequest, GatewayResponse, JsonValue, RUNTIME_V2_PROTOCOL_VERSION,
+    RUNTIME_V3_GAMEPLAY_PROTOCOL_VERSION, SEEDED_RUN_PROTOCOL_VERSION,
 };
 
 #[path = "catalog_http_tests.rs"]
@@ -63,6 +65,70 @@ fn oversized_http_responses_have_a_distinct_gateway_error() {
         exchange::map_io(ReadError::Oversized),
         GatewayError::ResponseTooLarge
     );
+}
+
+#[test]
+fn negotiated_unknown_method_and_extra_path_refuse_before_gateway_connect() -> Result<(), String> {
+    for (method, path) in [
+        (
+            GatewayMethod::Post,
+            "/v3/instances/configured-instance/state",
+        ),
+        (
+            GatewayMethod::Get,
+            "/v3/instances/configured-instance/state/extra",
+        ),
+    ] {
+        let listener = TcpListener::bind("127.0.0.1:0").map_err(|error| error.to_string())?;
+        listener
+            .set_nonblocking(true)
+            .map_err(|error| error.to_string())?;
+        let mut configured = config();
+        configured.gateway_address = listener.local_addr().map_err(|error| error.to_string())?;
+        let request = GatewayRequest {
+            method,
+            path: String::from(path),
+            headers: BTreeMap::from([
+                (
+                    String::from("x-mcp-session-id"),
+                    configured.mcp_session_id.clone(),
+                ),
+                (
+                    String::from("x-sts2-instance-id"),
+                    configured.instance_id.clone(),
+                ),
+                (
+                    String::from("x-sts2-session-id"),
+                    configured.session_id.clone(),
+                ),
+                (String::from("x-sts2-lease-id"), configured.lease_id.clone()),
+                (
+                    String::from("x-sts2-lease-epoch"),
+                    configured.lease_epoch.to_string(),
+                ),
+            ]),
+            body: None,
+            correlation: Correlation {
+                mcp_session_id: configured.mcp_session_id.clone(),
+                mcp_request_id: sts2_mcp_server::RequestId::String(String::from("request-1")),
+            },
+        };
+        let wire_limits = BTreeMap::from([(
+            String::from("sts2.observe"),
+            GatewayWireLimits {
+                max_request_bytes: 16 * 1024,
+                max_response_bytes: 16 * 1024,
+            },
+        )]);
+        let mut adapter =
+            RuntimeGatewayAdapter::new_with_wire_limits(configured, 16 * 1024, wire_limits, true);
+        assert_eq!(adapter.forward(request), Err(GatewayError::Rejected));
+        assert!(matches!(
+            listener.accept(),
+            Err(error) if error.kind() == ErrorKind::WouldBlock
+        ));
+    }
+    Ok(())
 }
 
 fn request(body: JsonValue) -> GatewayRequest {
