@@ -22,9 +22,6 @@ pub(super) fn exchange(
     body: Vec<u8>,
     max_response_bytes: usize,
 ) -> Result<GatewayResponse, GatewayError> {
-    let deadline = Instant::now() + Duration::from_secs(5);
-    let mut stream = TcpStream::connect_timeout(&config.gateway_address, Duration::from_secs(2))
-        .map_err(|error| map_io(http::classify_io(error)))?;
     let method = match request.method {
         GatewayMethod::Get => "GET",
         GatewayMethod::Post => "POST",
@@ -34,19 +31,65 @@ pub(super) fn exchange(
         .get("x-sts2-correlation-id")
         .cloned()
         .unwrap_or_else(|| request.correlation.mcp_request_id.stable_text());
-    let headers = request_headers(config, request.headers, &correlation, body.len());
-    write_request(
-        &mut stream,
+    exchange_wire(
+        config,
         method,
         &request.path,
-        &headers,
+        request.headers,
         &body,
-        deadline,
+        &correlation,
+        max_response_bytes,
     )
-    .map_err(|error| match error {
-        ReadError::Malformed | ReadError::Oversized => GatewayError::Rejected,
-        error => map_io(error),
-    })?;
+}
+
+pub(super) fn exchange_startup(
+    config: &RuntimeConfig,
+    method: GatewayMethod,
+    path: &str,
+    body: &[u8],
+    correlation: &str,
+    max_response_bytes: usize,
+) -> Result<GatewayResponse, GatewayError> {
+    if config.exact_restore_profile {
+        return Err(GatewayError::Rejected);
+    }
+    let method = match method {
+        GatewayMethod::Get => "GET",
+        GatewayMethod::Post => "POST",
+    };
+    exchange_wire(
+        config,
+        method,
+        path,
+        BTreeMap::from([(
+            String::from("x-mcp-session-id"),
+            config.mcp_session_id.clone(),
+        )]),
+        body,
+        correlation,
+        max_response_bytes,
+    )
+}
+
+fn exchange_wire(
+    config: &RuntimeConfig,
+    method: &str,
+    path: &str,
+    supplied_headers: BTreeMap<String, String>,
+    body: &[u8],
+    correlation: &str,
+    max_response_bytes: usize,
+) -> Result<GatewayResponse, GatewayError> {
+    let deadline = Instant::now() + Duration::from_secs(5);
+    let mut stream = TcpStream::connect_timeout(&config.gateway_address, Duration::from_secs(2))
+        .map_err(|error| map_io(http::classify_io(error)))?;
+    let headers = request_headers(config, supplied_headers, correlation, body.len());
+    write_request(&mut stream, method, path, &headers, body, deadline).map_err(
+        |error| match error {
+            ReadError::Malformed | ReadError::Oversized => GatewayError::Rejected,
+            error => map_io(error),
+        },
+    )?;
     let response = read_response(&mut stream, deadline, max_response_bytes).map_err(map_io)?;
     let body = parse_json(
         std::str::from_utf8(&response.body).map_err(|_| GatewayError::MalformedResponse)?,

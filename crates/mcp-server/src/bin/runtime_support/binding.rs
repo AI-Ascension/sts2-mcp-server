@@ -22,6 +22,19 @@ pub(super) use result::{is_runtime_result, is_save_profile_result};
 pub(super) fn is_save_profile_route(request: &GatewayRequest) -> bool {
     save_profile::is_route(request)
 }
+
+pub(super) fn is_game_information_binding_route(
+    config: &RuntimeConfig,
+    request: &GatewayRequest,
+) -> bool {
+    request.method == GatewayMethod::Post
+        && request.path
+            == format!(
+                "/v1/instances/{}/game-information/lookup-binding",
+                config.instance_id
+            )
+        && request.body.is_some()
+}
 pub(super) use exact_restore::{
     is_route as is_exact_restore_route, validate as exact_restore_binding,
 };
@@ -40,6 +53,7 @@ pub(super) fn admit(config: &RuntimeConfig, request: &GatewayRequest) -> Result<
         .nth(1)
         .ok_or(GatewayError::Rejected)?;
     let exact_restore_route = is_exact_restore_route(request);
+    let game_information_binding_route = is_game_information_binding_route(config, request);
     if !matches!(version, "v1" | "v2" | "v3" | "v4")
         || (!exact_restore_route
             && !request
@@ -66,6 +80,7 @@ pub(super) fn admit(config: &RuntimeConfig, request: &GatewayRequest) -> Result<
         && version != "v4"
         && response_kind(config, request).is_none()
         && !native_route
+        && !game_information_binding_route
     {
         return Err(GatewayError::Rejected);
     }
@@ -106,12 +121,14 @@ pub(super) fn admit(config: &RuntimeConfig, request: &GatewayRequest) -> Result<
         && !request.path.ends_with("/checkpoint-reference")
         && !request.path.ends_with("/game-information/capabilities")
         && !request.path.ends_with("/game-information/query")
+        && !game_information_binding_route
         && !is_save_profile_route(request);
     if !is_legacy_v1_injection {
         // MCP correlation sessions are a separate namespace; only explicit gateway
         // authority headers/body fields are compared with configured gateway identity.
         let game_information_route = request.path.ends_with("/game-information/capabilities")
-            || request.path.ends_with("/game-information/query");
+            || request.path.ends_with("/game-information/query")
+            || game_information_binding_route;
         for (name, expected) in [
             ("x-sts2-instance-id", config.instance_id.as_str()),
             ("x-sts2-session-id", config.session_id.as_str()),

@@ -181,6 +181,11 @@ impl ToolCatalog {
     }
 
     #[must_use]
+    pub fn runtime_map_v1_negotiated() -> Self {
+        runtime_map::build_negotiated()
+    }
+
+    #[must_use]
     pub fn coop_synchronization() -> Self {
         coop_synchronization::build()
     }

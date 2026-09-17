@@ -11,6 +11,9 @@ use sts2_mcp_server::{
     SEEDED_RUN_SCHEMA_DIGEST, validate_exact_restore_response,
 };
 
+#[path = "gateway_adapter_negotiated.rs"]
+mod negotiated;
+
 const MAX_BODY_BYTES: usize = 16 * 1024;
 
 impl RuntimeGatewayAdapter {
@@ -33,8 +36,11 @@ impl RuntimeGatewayAdapter {
         let is_game_information = protocol_is(&object, GAME_INFORMATION_PROTOCOL_VERSION);
         let is_save_profile = binding::is_save_profile_route(request);
         let is_exact_restore = binding::is_exact_restore_route(request);
+        let is_game_information_binding =
+            binding::is_game_information_binding_route(&self.config, request);
         if !is_save_profile
             && !is_exact_restore
+            && !is_game_information_binding
             && (is_runtime_v2
                 || is_runtime_v3
                 || is_runtime_v4_action
@@ -53,6 +59,8 @@ impl RuntimeGatewayAdapter {
             {
                 return Err(GatewayError::Rejected);
             }
+        } else if is_game_information_binding {
+            negotiated::validate_binding_body(&object)?;
         } else if !is_save_profile && !is_exact_restore {
             self.inject_profile_identity(&mut object);
         }
@@ -150,17 +158,30 @@ impl GatewayAdapter for RuntimeGatewayAdapter {
         let expert_state_route = request.method == sts2_mcp_server::GatewayMethod::Get
             && request.path == format!("/v4/instances/{}/expert-state", self.config.instance_id);
         let correlation = request.correlation.mcp_request_id.stable_text();
+        let wire_operation = negotiated::wire_operation(&self.config.instance_id, &request);
         let catalog_read = request.method == sts2_mcp_server::GatewayMethod::Get
             && request.path == format!("/v3/instances/{}/legal-actions", self.config.instance_id);
         let body = self.body(&request)?;
-        let response =
-            match exchange::exchange(&self.config, request, body, self.max_response_bytes) {
-                Ok(response) => response,
-                Err(error) => {
-                    self.retain_lookup_only_after_uncertain_commit(&restore);
-                    return Err(error);
-                }
-            };
+        let response_limit = if self.enforce_wire_limits {
+            let operation = wire_operation.ok_or(GatewayError::Rejected)?;
+            let limits = self
+                .wire_limits
+                .get(operation)
+                .ok_or(GatewayError::Rejected)?;
+            if body.len() > limits.max_request_bytes {
+                return Err(GatewayError::Rejected);
+            }
+            limits.max_response_bytes
+        } else {
+            self.max_response_bytes
+        };
+        let response = match exchange::exchange(&self.config, request, body, response_limit) {
+            Ok(response) => response,
+            Err(error) => {
+                self.retain_lookup_only_after_uncertain_commit(&restore);
+                return Err(error);
+            }
+        };
         if let Some(binding) = &restore {
             let validated = match validate_exact_restore_response(
                 &response.body,

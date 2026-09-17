@@ -6,7 +6,15 @@ use crate::json::JsonValue;
 pub(super) const REVISION: &str = "runtime-map-v1-mcp";
 
 pub(super) fn build() -> super::ToolCatalog {
-    let mut catalog = super::runtime_v3_gameplay::build();
+    build_with_recovery_kinds(&["reobserve", "reconcile", "release_lease", "stop_episode"])
+}
+
+pub(super) fn build_negotiated() -> super::ToolCatalog {
+    build_with_recovery_kinds(&["reobserve", "reconcile"])
+}
+
+fn build_with_recovery_kinds(recovery_kinds: &[&str]) -> super::ToolCatalog {
+    let mut catalog = super::runtime_v3_gameplay::build_with_recovery_kinds(recovery_kinds);
     catalog.revision = String::from(REVISION);
     catalog.tools.push(ToolDescriptor {
         name: String::from(super::MAP_SNAPSHOT_TOOL),

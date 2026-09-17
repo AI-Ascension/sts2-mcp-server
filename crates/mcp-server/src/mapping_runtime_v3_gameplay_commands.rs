@@ -157,7 +157,11 @@ pub(super) fn recover_call<G: GatewayAdapter>(
         Ok(context) => context,
         Err(message) => return invalid_params(id, message),
     };
-    let recovery = match recovery_payload(arguments, &context) {
+    let recovery = match recovery_payload(
+        arguments,
+        &context,
+        server.catalog.is_negotiated_composition(),
+    ) {
         Ok(recovery) => recovery,
         Err(message) => return invalid_params(id, message),
     };
@@ -190,6 +194,7 @@ fn bounded_wait(arguments: &BTreeMap<String, JsonValue>) -> Option<i64> {
 fn recovery_payload(
     arguments: &BTreeMap<String, JsonValue>,
     context: &context::RuntimeV3GameplayContext,
+    negotiated_profile: bool,
 ) -> Result<JsonValue, &'static str> {
     let Some(kind) = arguments
         .get("recovery_kind")
@@ -197,10 +202,15 @@ fn recovery_payload(
     else {
         return Err("recovery_kind must be an allowlisted string");
     };
-    if !matches!(
-        kind,
-        "reobserve" | "reconcile" | "release_lease" | "stop_episode"
-    ) {
+    let allowed = if negotiated_profile {
+        matches!(kind, "reobserve" | "reconcile")
+    } else {
+        matches!(
+            kind,
+            "reobserve" | "reconcile" | "release_lease" | "stop_episode"
+        )
+    };
+    if !allowed {
         return Err("recovery_kind is not allowlisted");
     }
     if kind == "reconcile" && context.operation_id.is_none() {

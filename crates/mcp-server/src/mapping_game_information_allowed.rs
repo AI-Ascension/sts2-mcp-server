@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 
+use super::CallKind;
 use crate::catalog::{
     GAME_INFORMATION_AVAILABILITY_TOOL, GAME_INFORMATION_BINDING_TOOL,
     GAME_INFORMATION_CAPABILITIES_TOOL, GAME_INFORMATION_DETAIL_TOOL, GAME_INFORMATION_GET_TOOL,
@@ -123,4 +124,29 @@ pub(super) fn arguments(tool_name: &str) -> &'static [&'static str] {
         ],
         _ => &[],
     }
+}
+
+pub(super) fn kind_for(name: &str) -> Option<CallKind> {
+    match name {
+        GAME_INFORMATION_LIST_TOOL => Some(CallKind::List),
+        GAME_INFORMATION_SEARCH_TOOL => Some(CallKind::Search),
+        GAME_INFORMATION_GET_TOOL => Some(CallKind::Get),
+        GAME_INFORMATION_DETAIL_TOOL => Some(CallKind::Detail),
+        GAME_INFORMATION_AVAILABILITY_TOOL => Some(CallKind::Availability),
+        GAME_INFORMATION_CAPABILITIES_TOOL | GAME_INFORMATION_BINDING_TOOL => None,
+        _ => None,
+    }
+}
+
+pub(crate) fn is_tool(name: &str) -> bool {
+    matches!(
+        name,
+        GAME_INFORMATION_CAPABILITIES_TOOL
+            | GAME_INFORMATION_LIST_TOOL
+            | GAME_INFORMATION_SEARCH_TOOL
+            | GAME_INFORMATION_GET_TOOL
+            | GAME_INFORMATION_DETAIL_TOOL
+            | GAME_INFORMATION_AVAILABILITY_TOOL
+            | GAME_INFORMATION_BINDING_TOOL
+    )
 }

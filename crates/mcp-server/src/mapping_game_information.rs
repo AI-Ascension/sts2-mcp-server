@@ -2,11 +2,7 @@
 
 use std::collections::BTreeMap;
 
-use crate::catalog::{
-    GAME_INFORMATION_AVAILABILITY_TOOL, GAME_INFORMATION_BINDING_TOOL,
-    GAME_INFORMATION_CAPABILITIES_TOOL, GAME_INFORMATION_DETAIL_TOOL, GAME_INFORMATION_GET_TOOL,
-    GAME_INFORMATION_LIST_TOOL, GAME_INFORMATION_SEARCH_TOOL,
-};
+use crate::catalog::{GAME_INFORMATION_BINDING_TOOL, GAME_INFORMATION_CAPABILITIES_TOOL};
 use crate::gateway::{GatewayAdapter, GatewayMethod};
 use crate::json::JsonValue;
 use crate::protocol::{METHOD_NOT_FOUND, RequestId, RpcError, RpcRequest, RpcResponse};
@@ -16,6 +12,7 @@ const MAX_QUERY_BODY_BYTES: usize = 16 * 1024;
 
 #[path = "mapping_game_information_allowed.rs"]
 mod allowed;
+pub(super) use allowed::is_tool;
 #[path = "mapping_game_information_request.rs"]
 mod request;
 #[path = "mapping_game_information_response.rs"]
@@ -59,12 +56,43 @@ pub(crate) struct GameInformationContext {
     pub(crate) request_id: RequestId,
 }
 
+/// Validates the configured startup discovery against the pinned lookup-binding
+/// schema and the exact owner scope, epoch, instance, and response correlation.
+pub fn validate_game_information_binding_discovery(
+    body: &JsonValue,
+    instance_id: &str,
+    correlation_id: &str,
+    request: &JsonValue,
+) -> Result<(), &'static str> {
+    if request
+        .as_object()
+        .and_then(|object| object.get("operation"))
+        != Some(&JsonValue::string("discovery"))
+    {
+        return Err("lookup-binding bootstrap only accepts discovery");
+    }
+    let context = GameInformationContext {
+        instance_id: instance_id.to_owned(),
+        mcp_session_id: String::from("bootstrap"),
+        gateway_session_id: String::from("bootstrap"),
+        lease_id: String::from("bootstrap"),
+        lease_epoch: 0,
+        correlation_id: correlation_id.to_owned(),
+        request_id: RequestId::String(correlation_id.to_owned()),
+    };
+    let (_, is_error) = response::project_binding(body, &context, request)?;
+    if is_error {
+        return Err("lookup-binding bootstrap returned an error response");
+    }
+    Ok(())
+}
+
 pub(super) fn tools_call<G: GatewayAdapter>(
     server: &mut McpServer<G>,
     request: RpcRequest,
 ) -> RpcResponse {
     let Some(params) = request.params.as_object() else {
-        return invalid_params(
+        return super::invalid_params(
             request.id,
             "game-information tools/call params must be an object",
         );
@@ -73,26 +101,26 @@ pub(super) fn tools_call<G: GatewayAdapter>(
         .keys()
         .any(|key| !matches!(key.as_str(), "name" | "arguments"))
     {
-        return invalid_params(
+        return super::invalid_params(
             request.id,
             "game-information tools/call has unsupported fields",
         );
     }
     let request_id = request.id.clone();
     let Some(tool_name) = params.get("name").and_then(JsonValue::as_string) else {
-        return invalid_params(request_id, "tools/call requires a tool name");
+        return super::invalid_params(request_id, "tools/call requires a tool name");
     };
-    if !is_tool(tool_name) {
+    if !allowed::is_tool(tool_name) {
         return RpcResponse::failure(
             Some(request_id),
             RpcError::new(METHOD_NOT_FOUND, "game-information tool is not active"),
         );
     }
     let Some(arguments) = params.get("arguments").and_then(JsonValue::as_object) else {
-        return invalid_params(request_id, "game-information arguments must be an object");
+        return super::invalid_params(request_id, "game-information arguments must be an object");
     };
     if !super::has_only_arguments(arguments, allowed::arguments(tool_name)) {
-        return invalid_params(
+        return super::invalid_params(
             request_id,
             "game-information arguments contain an unsupported field",
         );
@@ -100,14 +128,14 @@ pub(super) fn tools_call<G: GatewayAdapter>(
     let id = request.id;
     let correlation_id = id.stable_text();
     if !super::safe_header_value(&correlation_id) {
-        return invalid_params(
+        return super::invalid_params(
             id,
             "request id contains an unsafe or oversized header value",
         );
     }
     let context = match transport::context(server, arguments, &correlation_id, id.clone()) {
         Ok(context) => context,
-        Err(message) => return invalid_params(id, message),
+        Err(message) => return super::invalid_params(id, message),
     };
     if tool_name == GAME_INFORMATION_CAPABILITIES_TOOL {
         return forward_capabilities(server, context);
@@ -115,16 +143,16 @@ pub(super) fn tools_call<G: GatewayAdapter>(
     if tool_name == GAME_INFORMATION_BINDING_TOOL {
         let binding = match request::binding(arguments) {
             Ok(binding) => binding,
-            Err(message) => return invalid_params(id, message),
+            Err(message) => return super::invalid_params(id, message),
         };
         return forward_binding(server, context, binding);
     }
-    let Some(kind) = kind_for(tool_name) else {
-        return invalid_params(id, "game-information query kind is unavailable");
+    let Some(kind) = allowed::kind_for(tool_name) else {
+        return super::invalid_params(id, "game-information query kind is unavailable");
     };
     let (context, query) = match request::query(arguments, kind, context) {
         Ok(value) => value,
-        Err(message) => return invalid_params(id, message),
+        Err(message) => return super::invalid_params(id, message),
     };
     forward_query(server, context, query)
 }
@@ -185,7 +213,7 @@ fn forward_query<G: GatewayAdapter>(
 ) -> RpcResponse {
     let body = transport::envelope(&context.correlation_id, "query_request", query.clone());
     if body.to_json().len() > MAX_QUERY_BODY_BYTES {
-        return invalid_params(
+        return super::invalid_params(
             context.request_id,
             "game-information query exceeds the request bound",
         );
@@ -232,7 +260,7 @@ fn projected_result(id: RequestId, body: JsonValue, is_error: bool, status: u16)
         return super::tool_error_result_with_metadata(
             id,
             format!("game_information_http_{status}"),
-            status_error_category(status),
+            response::status_error_category(status),
             text,
             None,
             Some(status),
@@ -244,43 +272,6 @@ fn projected_result(id: RequestId, body: JsonValue, is_error: bool, status: u16)
 fn projection_error_result(id: RequestId, message: &'static str) -> RpcResponse {
     let (code, category) = response::projection_error_code(message);
     super::tool_error_result(id, code, category, message)
-}
-
-fn status_error_category(status: u16) -> &'static str {
-    match status {
-        400 | 422 => "invalid_input",
-        401 | 403 => "denied",
-        404 => "missing",
-        409 => "stale",
-        413 => "size",
-        408 | 429 | 500..=599 => "transport",
-        _ => "malformed_response",
-    }
-}
-
-fn kind_for(name: &str) -> Option<CallKind> {
-    match name {
-        GAME_INFORMATION_LIST_TOOL => Some(CallKind::List),
-        GAME_INFORMATION_SEARCH_TOOL => Some(CallKind::Search),
-        GAME_INFORMATION_GET_TOOL => Some(CallKind::Get),
-        GAME_INFORMATION_DETAIL_TOOL => Some(CallKind::Detail),
-        GAME_INFORMATION_AVAILABILITY_TOOL => Some(CallKind::Availability),
-        GAME_INFORMATION_CAPABILITIES_TOOL | GAME_INFORMATION_BINDING_TOOL => None,
-        _ => None,
-    }
-}
-
-pub(super) fn is_tool(name: &str) -> bool {
-    matches!(
-        name,
-        GAME_INFORMATION_CAPABILITIES_TOOL
-            | GAME_INFORMATION_LIST_TOOL
-            | GAME_INFORMATION_SEARCH_TOOL
-            | GAME_INFORMATION_GET_TOOL
-            | GAME_INFORMATION_DETAIL_TOOL
-            | GAME_INFORMATION_AVAILABILITY_TOOL
-            | GAME_INFORMATION_BINDING_TOOL
-    )
 }
 
 #[cfg(test)]
@@ -309,8 +300,4 @@ fn valid_identity(value: &str) -> bool {
         && value.bytes().all(|byte| {
             byte.is_ascii_alphanumeric() || matches!(byte, b'.' | b'_' | b':' | b'/' | b'-')
         })
-}
-
-fn invalid_params(id: RequestId, message: impl Into<String>) -> RpcResponse {
-    super::invalid_params(id, message)
 }
