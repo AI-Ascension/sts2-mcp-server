@@ -1,0 +1,25 @@
+{
+  "case_id": "CT-NEGOTIATED-CAPABILITIES-V2-001",
+  "profile": "sts2-gateway-negotiated-capabilities-v2",
+  "supersedes": "sts2-gateway-negotiated-capabilities-v1",
+  "consumers": ["sts2-gateway", "sts2-mcp-server"],
+  "extension": {
+    "operation": "game_information.live_observation_bootstrap",
+    "revision": "game-information-live-observation-bootstrap-v1",
+    "required_scope": "read",
+    "scope": ["read"],
+    "wire_limits": {
+      "max_request_bytes": 16384,
+      "max_response_bytes": 262144
+    },
+    "content_limits": {
+      "max_content_bytes": 262144,
+      "max_page_items": 64
+    }
+  },
+  "compatibility": {
+    "v1_default_is_preserved": true,
+    "v1_unknown_operation_is_rejected": true,
+    "v2_requires_explicit_request": true
+  }
+}

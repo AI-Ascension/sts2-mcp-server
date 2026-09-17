@@ -3,8 +3,9 @@
 use sts2_mcp_server::{
     GAME_INFORMATION_MAX_MESSAGE_BYTES, GatewayMethod, JsonValue,
     NEGOTIATED_CAPABILITIES_MAX_BYTES, validate_game_information_binding_discovery,
-    validate_negotiated_capabilities_snapshot, verify_game_information_artifact,
-    verify_negotiated_capabilities_artifact, verify_runtime_map_artifact,
+    validate_negotiated_capabilities_snapshot, validate_negotiated_capabilities_v2_snapshot,
+    verify_game_information_artifact, verify_negotiated_capabilities_artifact,
+    verify_negotiated_capabilities_v2_artifact, verify_runtime_map_artifact,
 };
 
 use super::{RuntimeConfig, exchange, negotiated_discovery, profiles::RuntimeProfile};
@@ -77,11 +78,9 @@ fn discover_lookup_binding(
 
 fn fetch_snapshot(config: &RuntimeConfig) -> Result<JsonValue, String> {
     let path = format!("/v1/instances/{}{CAPABILITIES_SUFFIX}", config.instance_id);
-    let response = exchange::exchange_startup(
+    let response = exchange::exchange_startup_capabilities(
         config,
-        GatewayMethod::Get,
         &path,
-        &[],
         CAPABILITY_CORRELATION,
         NEGOTIATED_CAPABILITIES_MAX_BYTES,
     )
@@ -91,6 +90,26 @@ fn fetch_snapshot(config: &RuntimeConfig) -> Result<JsonValue, String> {
             "Gateway negotiated capability discovery was not accepted",
         ));
     }
-    validate_negotiated_capabilities_snapshot(&response.body.to_json())
-        .map_err(|_| String::from("Gateway negotiated capability snapshot is invalid"))
+    match response
+        .body
+        .as_object()
+        .and_then(|object| object.get("schema_version"))
+        .and_then(JsonValue::as_string)
+    {
+        Some("sts2-gateway-negotiated-capabilities-v2") => {
+            verify_negotiated_capabilities_v2_artifact()
+                .map_err(|_| String::from("Gateway negotiated v2 artifact is invalid"))?;
+            validate_negotiated_capabilities_v2_snapshot(&response.body.to_json())
+                .map_err(|_| String::from("Gateway negotiated v2 capability snapshot is invalid"))
+        }
+        Some("sts2-gateway-negotiated-capabilities-v1") => {
+            verify_negotiated_capabilities_artifact()
+                .map_err(|_| String::from("Gateway negotiated v1 artifact is invalid"))?;
+            validate_negotiated_capabilities_snapshot(&response.body.to_json())
+                .map_err(|_| String::from("Gateway negotiated v1 capability snapshot is invalid"))
+        }
+        _ => Err(String::from(
+            "Gateway negotiated capability snapshot has an unsupported version",
+        )),
+    }
 }

@@ -18,6 +18,11 @@ pub(super) fn wire_operation(instance_id: &str, request: &GatewayRequest) -> Opt
         return Some("sts2.game_information_binding");
     }
     if request.method == GatewayMethod::Post
+        && request.path == format!("{v1_prefix}game-information/live-observation-bootstrap")
+    {
+        return Some("sts2.game_information.live_observation_bootstrap");
+    }
+    if request.method == GatewayMethod::Post
         && request.path == format!("{v1_prefix}game-information/query")
     {
         let query_kind = request

@@ -21,6 +21,8 @@ mod coop_synchronization;
 mod exact_restore;
 #[path = "catalog_game_information.rs"]
 mod game_information;
+#[path = "catalog_game_information_live_observation_bootstrap.rs"]
+mod game_information_live_observation_bootstrap;
 #[path = "catalog_json.rs"]
 mod json;
 #[path = "catalog_runtime.rs"]
@@ -92,6 +94,8 @@ pub const GAME_INFORMATION_GET_TOOL: &str = game_information::GET_TOOL;
 pub const GAME_INFORMATION_DETAIL_TOOL: &str = game_information::DETAIL_TOOL;
 pub const GAME_INFORMATION_AVAILABILITY_TOOL: &str = game_information::AVAILABILITY_TOOL;
 pub const GAME_INFORMATION_BINDING_TOOL: &str = game_information::BINDING_TOOL;
+pub const GAME_INFORMATION_LIVE_OBSERVATION_BOOTSTRAP_TOOL: &str =
+    game_information_live_observation_bootstrap::TOOL;
 pub use composition::{
     CAPABILITY_DISCOVERY_TOOL, CapabilityGroup, CapabilityLayer, CapabilityOffer, CapabilityOwner,
     CapabilityScope, NEGOTIATED_COMPOSITION_REVISION, NEGOTIATION_STALE_CODE,
@@ -225,6 +229,11 @@ impl ToolCatalog {
         Self::game_information_query_v1()
     }
 
+    #[must_use]
+    pub fn game_information_live_observation_bootstrap() -> Self {
+        game_information_live_observation_bootstrap::build()
+    }
+
     /// Returns the descriptors that survived negotiation.
     pub fn tools(&self) -> &[ToolDescriptor] {
         &self.tools
@@ -245,6 +254,7 @@ impl ToolCatalog {
             || self.is_coop_native()
             || self.is_exact_restore()
             || self.is_game_information()
+            || self.is_live_observation_bootstrap()
             || self.is_negotiated_composition()
         {
             MAX_FRAME_BYTES
@@ -303,6 +313,10 @@ impl ToolCatalog {
 
     pub(crate) fn is_game_information(&self) -> bool {
         self.revision == game_information::REVISION
+    }
+
+    pub(crate) fn is_live_observation_bootstrap(&self) -> bool {
+        self.revision == game_information_live_observation_bootstrap::REVISION
     }
 
     pub(crate) fn is_negotiated_composition(&self) -> bool {

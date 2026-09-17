@@ -53,6 +53,7 @@ pub(super) fn build_profile(
     let local_profiles = [
         ToolCatalog::runtime_map_v1_negotiated(),
         ToolCatalog::game_information(),
+        ToolCatalog::game_information_live_observation_bootstrap(),
     ];
     let mcp = CapabilityLayer::from_catalogs(CapabilityOwner::Mcp, &local_profiles)
         .map_err(negotiation_error)?;

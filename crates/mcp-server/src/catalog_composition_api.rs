@@ -29,7 +29,11 @@ impl ToolCatalog {
         caller_scope: CapabilityScope,
     ) -> Result<Self, NegotiationError> {
         Self::compose_profiles(
-            &[Self::runtime_map_v1(), Self::game_information_query_v1()],
+            &[
+                Self::runtime_map_v1(),
+                Self::game_information_query_v1(),
+                Self::game_information_live_observation_bootstrap(),
+            ],
             gateway,
             producer,
             caller_scope,
