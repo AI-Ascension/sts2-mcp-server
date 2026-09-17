@@ -171,6 +171,11 @@ fn runtime_profile_bounds_are_scoped_to_the_semantic_profile() -> Result<(), Str
         (Some("runtime-map-v1"), 256 * 1024, 256 * 1024),
         (Some("game-information-query-v1"), 256 * 1024, 256 * 1024),
         (Some("negotiated-composition-v1"), 256 * 1024, 256 * 1024),
+        (
+            Some("save-profile-v1"),
+            16 * 1024,
+            http::SAVE_PROFILE_MAX_RESPONSE_BYTES,
+        ),
     ] {
         let profile = profile_for_name(name)?;
         assert_eq!(profile.catalog.max_frame_bytes(), frame, "{name:?}");

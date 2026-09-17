@@ -10,7 +10,7 @@ use sts2_mcp_server::{
 
 use super::http::{
     GAME_INFORMATION_MAX_RESPONSE_BYTES, LEGACY_MAX_RESPONSE_BYTES, MAP_MAX_RESPONSE_BYTES,
-    RUNTIME_V3_MAX_RESPONSE_BYTES,
+    RUNTIME_V3_MAX_RESPONSE_BYTES, SAVE_PROFILE_MAX_RESPONSE_BYTES,
 };
 
 /// One selected executable profile: its tool catalog and the gateway response
@@ -163,7 +163,7 @@ pub(crate) fn profile_for_name(profile: Option<&str>) -> Result<RuntimeProfile, 
         }
         "save-profile-v1" => Ok(RuntimeProfile {
             catalog: ToolCatalog::save_profile_v1(),
-            max_response_bytes: LEGACY_MAX_RESPONSE_BYTES,
+            max_response_bytes: SAVE_PROFILE_MAX_RESPONSE_BYTES,
             requires_coop_native_peer_binding: false,
             wire_limits: BTreeMap::new(),
         }),

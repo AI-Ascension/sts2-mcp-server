@@ -102,11 +102,16 @@ pub(super) fn project(value: &JsonValue, context: &Context) -> Result<JsonValue,
 ///
 /// The gateway serializes a save-profile result body as a JSON array of byte
 /// values, so the body limit applies to the decoded bytes rather than to the
-/// numeric-array text that carries them.
+/// numeric-array text that carries them. The carrier length is checked before
+/// element conversion: each element carries exactly one byte, so an over-limit
+/// array is oversized even when a later element is not a byte.
 fn project_byte_array(
     values: &[JsonValue],
     context: &Context,
 ) -> Result<JsonValue, DownstreamError> {
+    if values.len() > SAVE_PROFILE_MAX_BODY_BYTES {
+        return Err(DownstreamError::TooLarge);
+    }
     let bytes = values
         .iter()
         .map(|value| match value {
@@ -116,7 +121,6 @@ fn project_byte_array(
             _ => Err("save-profile downstream is not a byte array"),
         })
         .collect::<Result<Vec<u8>, _>>()?;
-    bounded(bytes.len())?;
     let text = std::str::from_utf8(&bytes)
         .map_err(|_| "save-profile downstream bytes are not valid UTF-8")?;
     let decoded = crate::json::parse_json(text)

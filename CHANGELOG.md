@@ -5,6 +5,14 @@ exists.
 
 ## Unreleased
 
+- Fix the `save-profile-v1` downstream byte carrier: the gateway byte array is decoded exactly once
+  so a decoded body that is itself an array fails closed instead of settling, an over-limit carrier
+  is classified oversized before element conversion, and the executable's save-profile transport
+  budget covers the worst-case numeric-array carrier (`4n + 1` bytes plus envelope headroom) so a
+  body at the documented 16 KiB decoded limit is not rejected as transport-oversized before decode.
+  This remains source/component evidence; launch-profile wiring, game-mod save-slot readback, host
+  settlement, and integrated readiness remain unverified.
+
 - 2026-09-14: Add `game_information_query_e2e`, an in-process end-to-end acceptance test that drives
   the real game-information MCP catalog and the fixed gateway route mapping through `initialize` ->
   `tools/list` -> manifest -> two-page search with an opaque cursor -> get -> pinned live detail

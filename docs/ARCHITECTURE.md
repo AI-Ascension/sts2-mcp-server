@@ -309,7 +309,10 @@ The gateway serializes each save-profile result body as a JSON array of byte val
 opaque representation exactly once under the same 16 KiB body bound, requires valid UTF-8 and JSON, and
 then applies the closed projection. Decoding and projection stay separate: only a decoded object or
 `null` is projected, so a decoded body that is itself an array is never decoded a second time and
-instead fails closed as an unsupported shape.
+instead fails closed as an unsupported shape. Because that numeric carrier reaches `4n + 1` bytes for
+a decoded body of `n` bytes, the executable's save-profile transport budget is sized for the
+worst-case carrier plus envelope headroom rather than the legacy 64 KiB cap, so a body at the
+documented decoded limit is not rejected as transport-oversized before the decode runs.
 
 ## Exact-restore MCP profile
 

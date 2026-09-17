@@ -1,6 +1,9 @@
 // SPDX-License-Identifier: MIT
 
-use super::super::http::{GAME_INFORMATION_MAX_RESPONSE_BYTES, RUNTIME_V3_MAX_RESPONSE_BYTES};
+use super::super::http::{
+    GAME_INFORMATION_MAX_RESPONSE_BYTES, LEGACY_MAX_RESPONSE_BYTES, RUNTIME_V3_MAX_RESPONSE_BYTES,
+    SAVE_PROFILE_MAX_RESPONSE_BYTES,
+};
 use super::{profile_for_name, profile_for_negotiation, save_profile_capability};
 use sts2_mcp_server::{CapabilityLayer, CapabilityOwner, CapabilityScope, ToolCatalog};
 
@@ -95,9 +98,13 @@ fn save_profile_capability_modes_are_explicit_and_fail_closed() -> Result<(), St
     assert!(save_profile_capability(Some("owner-default")).is_err());
     let profile = profile_for_name(Some("save-profile-v1"))?;
     assert_eq!(profile.catalog.revision, "save-profile-v1-mcp");
-    assert_eq!(
-        profile.max_response_bytes,
-        super::super::http::LEGACY_MAX_RESPONSE_BYTES
+    assert_eq!(profile.max_response_bytes, SAVE_PROFILE_MAX_RESPONSE_BYTES);
+    // The save-profile budget must exceed the legacy cap: a decoded body at the
+    // documented limit needs a wider numeric-byte carrier than 64 KiB, so the
+    // legacy bound would reject a maximal valid body before the decode runs.
+    assert!(
+        profile.max_response_bytes > LEGACY_MAX_RESPONSE_BYTES,
+        "save-profile transport budget must carry the worst-case byte carrier"
     );
     Ok(())
 }
