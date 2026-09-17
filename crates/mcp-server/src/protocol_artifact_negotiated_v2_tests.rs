@@ -12,7 +12,7 @@ fn verifies_the_frozen_gateway_artifact_and_schema_pin() {
     verify_negotiated_capabilities_v2_artifact().unwrap();
     assert_eq!(
         NEGOTIATED_CAPABILITIES_V2_SOURCE_COMMIT,
-        "e35be5377d464d9b4d3847df0f22343edff9dc28"
+        "bfe28e455de48d6d9db466bbcf6062ab5d85e9af"
     );
     assert_eq!(
         NEGOTIATED_CAPABILITIES_V2_SCHEMA_DIGEST,
