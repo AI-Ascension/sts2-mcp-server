@@ -41,19 +41,31 @@ struct GatewayRequest {
 }
 
 fn spawn_mcp(address: String, lookup_request: &str) -> ChildProcess {
+    spawn_mcp_with_lookup(address, Some(lookup_request))
+}
+
+fn spawn_mcp_without_lookup(address: String) -> ChildProcess {
+    spawn_mcp_with_lookup(address, None)
+}
+
+fn spawn_mcp_with_lookup(address: String, lookup_request: Option<&str>) -> ChildProcess {
+    let mut command = Command::new(env!("CARGO_BIN_EXE_sts2-mcp-server"));
+    command
+        .env_clear()
+        .env("STS2_RUNTIME_PROFILE", "negotiated-composition-v1")
+        .env("STS2_GATEWAY_ADDR", address)
+        .env("STS2_GATEWAY_TOKEN", "gateway-test-token")
+        .env("STS2_INSTANCE_ID", "instance-1")
+        .env("STS2_CALLER_ID", "harness")
+        .env("STS2_SESSION_ID", "session-1")
+        .env("STS2_MCP_SESSION_ID", "mcp-session-1")
+        .env("STS2_LEASE_ID", "lease-1")
+        .env("STS2_LEASE_EPOCH", "1");
+    if let Some(lookup_request) = lookup_request {
+        command.env("STS2_LOOKUP_BINDING_DISCOVERY_REQUEST_JSON", lookup_request);
+    }
     ChildProcess(
-        Command::new(env!("CARGO_BIN_EXE_sts2-mcp-server"))
-            .env_clear()
-            .env("STS2_RUNTIME_PROFILE", "negotiated-composition-v1")
-            .env("STS2_GATEWAY_ADDR", address)
-            .env("STS2_GATEWAY_TOKEN", "gateway-test-token")
-            .env("STS2_INSTANCE_ID", "instance-1")
-            .env("STS2_CALLER_ID", "harness")
-            .env("STS2_SESSION_ID", "session-1")
-            .env("STS2_MCP_SESSION_ID", "mcp-session-1")
-            .env("STS2_LEASE_ID", "lease-1")
-            .env("STS2_LEASE_EPOCH", "1")
-            .env("STS2_LOOKUP_BINDING_DISCOVERY_REQUEST_JSON", lookup_request)
+        command
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
@@ -238,6 +250,63 @@ fn v1_gateway_fallback_preserves_legacy_catalog_without_live_bootstrap() {
 }
 
 #[test]
+fn live_bootstrap_requires_a_correlated_current_lookup_binding() {
+    let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+    let address = listener.local_addr().unwrap().to_string();
+    let gateway = thread::spawn(move || support::serve_gateway_without_lookup(listener));
+    let mut child = spawn_mcp_without_lookup(address);
+    let mut stdin = child.0.stdin.take().unwrap();
+    let mut stdout = BufReader::new(child.0.stdout.take().unwrap());
+    let _ = mcp_request(
+        &mut stdin,
+        &mut stdout,
+        &mut child.0,
+        json!({
+            "jsonrpc":"2.0",
+            "id":"initialize",
+            "method":"initialize",
+            "params":{
+                "protocolVersion":"2025-06-18",
+                "capabilities":{},
+                "clientInfo":{"name":"negotiated-no-lookup-test","version":"1"}
+            }
+        }),
+    );
+    let listed = mcp_request(
+        &mut stdin,
+        &mut stdout,
+        &mut child.0,
+        json!({"jsonrpc":"2.0","id":"list","method":"tools/list","params":{}}),
+    );
+    let tools = listed["result"]["tools"].as_array().unwrap();
+    assert!(
+        !tools.iter().any(|tool| {
+            tool["name"] == "sts2.game_information.live_observation_bootstrap"
+                || tool["name"] == "sts2.game_information_binding"
+        }),
+        "live tools require an owner-correlated lookup witness"
+    );
+    let refused = mcp_request(
+        &mut stdin,
+        &mut stdout,
+        &mut child.0,
+        json!({
+            "jsonrpc":"2.0",
+            "id":"bootstrap-without-lookup",
+            "method":"tools/call",
+            "params":{
+                "name":"sts2.game_information.live_observation_bootstrap",
+                "arguments":{}
+            }
+        }),
+    );
+    assert!(refused["error"].is_object(), "{refused}");
+    drop(stdin);
+    wait_child(&mut child.0);
+    gateway.join().unwrap().unwrap();
+}
+
+#[test]
 fn malformed_owner_discovery_fails_before_gateway_io() {
     let duplicate = LOOKUP_REQUEST.replace(
         r#""authority_epoch":7"#,
@@ -276,6 +345,7 @@ fn stale_schema_and_oversized_startup_snapshot_fail_closed() {
         "identity",
         "producer-run",
         "witness",
+        "foreign-authority",
         "duplicate-offer",
         "recovery",
     ] {

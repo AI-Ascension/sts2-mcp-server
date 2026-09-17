@@ -126,7 +126,11 @@ pub(super) fn mapped_layer(
     let mut layer = CapabilityLayer::new(owner, NEGOTIATED_COMPOSITION_REVISION);
     let mut wire_limits = BTreeMap::new();
     for mapping in MAPPINGS {
-        if mapping.local == GAME_INFORMATION_BINDING_TOOL && !lookup_is_current {
+        if matches!(
+            mapping.local,
+            GAME_INFORMATION_BINDING_TOOL | GAME_INFORMATION_LIVE_OBSERVATION_BOOTSTRAP_TOOL
+        ) && !lookup_is_current
+        {
             continue;
         }
         let Some(mapped) = combine_remote(mapping, remote)? else {

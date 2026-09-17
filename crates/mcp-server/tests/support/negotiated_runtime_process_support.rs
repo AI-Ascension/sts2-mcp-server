@@ -162,6 +162,18 @@ pub(crate) fn serve_gateway_v1(listener: TcpListener) -> Result<(), String> {
     super::write_json_response(&mut snapshot_request, &snapshot)
 }
 
+pub(crate) fn serve_gateway_without_lookup(listener: TcpListener) -> Result<(), String> {
+    let (mut snapshot_request, _) = super::accept_bounded(&listener)?;
+    let request = super::read_request(&mut snapshot_request)?;
+    super::assert_startup_identity(&request, "negotiated-capabilities-startup");
+    assert_eq!(request.method, "GET");
+    assert_eq!(
+        request.path,
+        "/v1/instances/instance-1/negotiated-capabilities"
+    );
+    super::write_json_response(&mut snapshot_request, &negotiated_snapshot())
+}
+
 pub(crate) fn serve_invalid_snapshot(listener: TcpListener, mutation: &str) -> Result<(), String> {
     let (mut discovery, _) = super::accept_bounded(&listener)?;
     let request = super::read_request(&mut discovery)?;
@@ -194,6 +206,7 @@ pub(crate) fn serve_invalid_snapshot(listener: TcpListener, mutation: &str) -> R
             snapshot["lookup_binding_witness"]["binding_id"] =
                 json!("0000000000000000000000000000000000000000000000000000000000000000")
         }
+        "foreign-authority" => snapshot["lookup_binding_witness"]["authority_epoch"] = json!(99),
         "duplicate-offer" => {
             let duplicate = snapshot["offers"][0].clone();
             snapshot["offers"].as_array_mut().unwrap().push(duplicate);
