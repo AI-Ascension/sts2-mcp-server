@@ -5,6 +5,15 @@ exists.
 
 ## Unreleased
 
+- Fix the live-observation bootstrap adapter: `RuntimeGatewayAdapter::body` did not recognize the
+  `game-information/live-observation-bootstrap` route, so it fell through to `inject_profile_identity`
+  and added the runtime-v1 transport identity (`instance_id`, `session_id`, `lease_id`,
+  `lease_epoch`) to the sealed bootstrap envelope. The envelope schema sets
+  `additionalProperties: false`, so the gateway rejected every bootstrap as schema-invalid before
+  contacting the producer. The adapter now forwards the sealed envelope verbatim and refuses a body
+  that carries any legacy identity member, which a regression test pins. This is source/component
+  evidence; native host behavior and integrated readiness remain unverified.
+
 - Fix the `save-profile-v1` downstream byte carrier: the gateway byte array is decoded exactly once
   so a decoded body that is itself an array fails closed instead of settling, an over-limit carrier
   is classified oversized before element conversion, and the executable's save-profile transport
