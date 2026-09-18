@@ -5,6 +5,17 @@ exists.
 
 ## Unreleased
 
+- Fix the live-observation bootstrap **transient-error classification**: a producer that cannot
+  observe a native snapshot answers with the protocol's typed `error_response` under a 4xx/5xx
+  status, which the gateway forwards verbatim. The MCP transport classifier's 408/502/503/504
+  envelope allowlist covered the runtime-v3/v4, coop, seeded-run and game-information-query
+  protocols but not `game-information-live-observation-bootstrap-v1`, so that answer collapsed into
+  `GatewayError::Unavailable` and surfaced as a retryable `-32003` tool error with the typed code
+  discarded. The live-bootstrap protocol is now in the allowlist, so `not_observable` reaches the
+  caller as the permanent missing-capability answer the protocol defines instead of an opaque
+  transport failure. This is source/component evidence; native host behavior and integrated
+  readiness remain unverified.
+
 - Fix the live-observation bootstrap adapter: `RuntimeGatewayAdapter::body` did not recognize the
   `game-information/live-observation-bootstrap` route, so it fell through to `inject_profile_identity`
   and added the runtime-v1 transport identity (`instance_id`, `session_id`, `lease_id`,

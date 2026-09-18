@@ -9,8 +9,8 @@ use std::io::ErrorKind;
 use std::net::TcpListener;
 use sts2_mcp_server::{
     COOP_NATIVE_PROTOCOL_VERSION, Correlation, GatewayAdapter, GatewayError, GatewayMethod,
-    GatewayRequest, GatewayResponse, JsonValue, RUNTIME_V2_PROTOCOL_VERSION,
-    RUNTIME_V3_GAMEPLAY_PROTOCOL_VERSION, SEEDED_RUN_PROTOCOL_VERSION,
+    GatewayRequest, GatewayResponse, JsonValue, LIVE_BOOTSTRAP_PROTOCOL_VERSION,
+    RUNTIME_V2_PROTOCOL_VERSION, RUNTIME_V3_GAMEPLAY_PROTOCOL_VERSION, SEEDED_RUN_PROTOCOL_VERSION,
 };
 
 #[path = "catalog_http_tests.rs"]
@@ -225,6 +225,30 @@ fn native_conflict_responses_are_retained_for_projection() -> Result<(), String>
     let response = exchange::classify(GatewayResponse { status: 409, body })
         .map_err(|error| format!("classify failed: {error:?}"))?;
     assert_eq!(response.status, 409);
+    Ok(())
+}
+
+/// A producer that cannot observe a native snapshot answers the bootstrap with a typed
+/// `error_response` under a 5xx status. The gateway forwards those bytes verbatim, so the
+/// transport classifier must retain the envelope instead of collapsing the answer into a
+/// transient `GatewayError::Unavailable`; otherwise the harness maps `not_observable` to
+/// `ProviderUnavailable` and retries a permanent refusal.
+#[test]
+fn live_bootstrap_typed_errors_survive_5xx_classification() -> Result<(), String> {
+    for status in [408, 502, 503, 504] {
+        let body = JsonValue::object([
+            (
+                String::from("protocol_version"),
+                JsonValue::string(LIVE_BOOTSTRAP_PROTOCOL_VERSION),
+            ),
+            (String::from("kind"), JsonValue::string("error_response")),
+        ]);
+        assert!(is_runtime_result(&body), "status {status}");
+        let response = exchange::classify(GatewayResponse { status, body }).map_err(|error| {
+            format!("status {status} was not classified as a typed answer: {error:?}")
+        })?;
+        assert_eq!(response.status, status);
+    }
     Ok(())
 }
 
