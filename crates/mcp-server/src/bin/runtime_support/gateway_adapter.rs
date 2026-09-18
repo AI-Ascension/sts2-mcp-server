@@ -38,9 +38,12 @@ impl RuntimeGatewayAdapter {
         let is_exact_restore = binding::is_exact_restore_route(request);
         let is_game_information_binding =
             binding::is_game_information_binding_route(&self.config, request);
+        let is_game_information_live_bootstrap =
+            binding::is_game_information_live_bootstrap_route(&self.config, request);
         if !is_save_profile
             && !is_exact_restore
             && !is_game_information_binding
+            && !is_game_information_live_bootstrap
             && (is_runtime_v2
                 || is_runtime_v3
                 || is_runtime_v4_action
@@ -61,6 +64,8 @@ impl RuntimeGatewayAdapter {
             }
         } else if is_game_information_binding {
             negotiated::validate_binding_body(&object)?;
+        } else if is_game_information_live_bootstrap {
+            negotiated::validate_live_bootstrap_body(&object)?;
         } else if !is_save_profile && !is_exact_restore {
             self.inject_profile_identity(&mut object);
         }
@@ -232,3 +237,7 @@ impl RuntimeGatewayAdapter {
         }
     }
 }
+
+#[cfg(test)]
+#[path = "gateway_adapter_tests.rs"]
+mod tests;

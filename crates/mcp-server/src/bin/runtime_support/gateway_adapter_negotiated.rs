@@ -99,3 +99,46 @@ pub(super) fn validate_binding_body(
     }
     Ok(())
 }
+
+/// The legacy transport identity `inject_profile_identity` adds to runtime-v1 bodies.
+///
+/// The bootstrap profile is a self-describing envelope that the gateway re-validates against the
+/// pinned schema, and that schema sets `additionalProperties: false`. These four members are
+/// therefore *foreign members* on a bootstrap body, not an authority the gateway needs: adding
+/// them made the gateway reject the request as schema-invalid before any producer call, which the
+/// harness observed as `ProviderUnavailable` with no bootstrap request in the downstream trace.
+pub(super) const LEGACY_IDENTITY_FIELDS: [&str; 4] =
+    ["instance_id", "session_id", "lease_id", "lease_epoch"];
+
+/// Admit the live-observation bootstrap envelope unchanged, refusing any legacy identity member.
+///
+/// The envelope is built and bounded by the bootstrap tool adapter, and the gateway is its
+/// authority: it re-parses the bytes against the pinned schema and re-derives scope from its own
+/// configured authority. The adapter must therefore forward the body verbatim. This guard states
+/// that invariant directly rather than duplicating the schema's field list, so an additive schema
+/// change cannot turn a valid request into a rejection here.
+pub(super) fn validate_live_bootstrap_body(
+    object: &BTreeMap<String, JsonValue>,
+) -> Result<(), GatewayError> {
+    if !matches!(
+        object.get("protocol_version"),
+        Some(JsonValue::String(version))
+            if version.as_str() == sts2_mcp_server::LIVE_BOOTSTRAP_PROTOCOL_VERSION
+    ) || !matches!(
+        object.get("schema_digest"),
+        Some(JsonValue::String(digest))
+            if digest.as_str() == sts2_mcp_server::LIVE_BOOTSTRAP_SCHEMA_DIGEST
+    ) || !matches!(
+        object.get("kind"),
+        Some(JsonValue::String(kind)) if kind.as_str() == "bootstrap_request"
+    ) {
+        return Err(GatewayError::Rejected);
+    }
+    if LEGACY_IDENTITY_FIELDS
+        .iter()
+        .any(|field| object.contains_key(*field))
+    {
+        return Err(GatewayError::Rejected);
+    }
+    Ok(())
+}
