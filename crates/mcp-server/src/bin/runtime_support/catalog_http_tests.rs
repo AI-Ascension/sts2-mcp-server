@@ -37,6 +37,22 @@ fn compact_catalog_refusal_survives_the_real_http_adapter() -> Result<(), String
             true,
         ),
         (
+            503,
+            "launch_contract_refused_isolated_user_dir_mismatch",
+            "request-1",
+            "sts2.legal_actions",
+            false,
+            true,
+        ),
+        (
+            503,
+            "launch_contract_refusedx",
+            "request-1",
+            "sts2.legal_actions",
+            false,
+            false,
+        ),
+        (
             409,
             "stale_generation",
             "wrong",
