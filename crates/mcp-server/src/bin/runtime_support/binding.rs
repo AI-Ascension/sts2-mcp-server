@@ -145,6 +145,7 @@ pub(super) fn admit(config: &RuntimeConfig, request: &GatewayRequest) -> Result<
         && !request.path.ends_with("/map-snapshot")
         && !request.path.ends_with("/checkpoint-reference")
         && !request.path.ends_with("/game-information/capabilities")
+        && !request.path.ends_with("/game-information/content-manifest")
         && !request.path.ends_with("/game-information/query")
         && !game_information_binding_route
         && !game_information_live_bootstrap_route
@@ -153,6 +154,7 @@ pub(super) fn admit(config: &RuntimeConfig, request: &GatewayRequest) -> Result<
         // MCP correlation sessions are a separate namespace; only explicit gateway
         // authority headers/body fields are compared with configured gateway identity.
         let game_information_route = request.path.ends_with("/game-information/capabilities")
+            || request.path.ends_with("/game-information/content-manifest")
             || request.path.ends_with("/game-information/query")
             || game_information_binding_route
             || game_information_live_bootstrap_route;

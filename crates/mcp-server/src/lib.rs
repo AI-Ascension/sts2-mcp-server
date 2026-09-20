@@ -13,6 +13,7 @@ mod protocol_artifact_coop_native;
 mod protocol_artifact_coop_receipt_query;
 mod protocol_artifact_exact_restore;
 mod protocol_artifact_game_information;
+mod protocol_artifact_game_information_content_manifest;
 mod protocol_artifact_game_information_live_observation_bootstrap;
 #[path = "protocol_artifact_runtime_v2_hash.rs"]
 mod protocol_artifact_hash;
@@ -56,9 +57,9 @@ pub use catalog::{EXPERT_ACTION_TOOL, EXPERT_RECONCILE_TOOL, EXPERT_STATE_TOOL};
 pub use catalog::{EXPERT_REST_ACTION_TOOL, EXPERT_REST_RECONCILE_TOOL};
 pub use catalog::{
     GAME_INFORMATION_AVAILABILITY_TOOL, GAME_INFORMATION_BINDING_TOOL,
-    GAME_INFORMATION_CAPABILITIES_TOOL, GAME_INFORMATION_DETAIL_TOOL, GAME_INFORMATION_GET_TOOL,
-    GAME_INFORMATION_LIST_TOOL, GAME_INFORMATION_LIVE_OBSERVATION_BOOTSTRAP_TOOL,
-    GAME_INFORMATION_SEARCH_TOOL,
+    GAME_INFORMATION_CAPABILITIES_TOOL, GAME_INFORMATION_CONTENT_MANIFEST_TOOL,
+    GAME_INFORMATION_DETAIL_TOOL, GAME_INFORMATION_GET_TOOL, GAME_INFORMATION_LIST_TOOL,
+    GAME_INFORMATION_LIVE_OBSERVATION_BOOTSTRAP_TOOL, GAME_INFORMATION_SEARCH_TOOL,
 };
 pub use catalog::{RECONCILE_SEEDED_RUN_TOOL, START_SEEDED_RUN_TOOL};
 pub use catalog::{
@@ -115,6 +116,13 @@ pub use protocol_artifact_game_information::{
     GAME_INFORMATION_PROTOCOL_SOURCE_COMMIT, GAME_INFORMATION_PROTOCOL_VERSION,
     GAME_INFORMATION_SCHEMA_DIGEST, GAME_INFORMATION_SCHEMA_SOURCE, GameInformationArtifactError,
     verify_game_information_artifact,
+};
+pub use protocol_artifact_game_information_content_manifest::{
+    CONTENT_MANIFEST_ARTIFACT, CONTENT_MANIFEST_GATEWAY_MAX_RESPONSE_BYTES,
+    CONTENT_MANIFEST_GENERATOR, CONTENT_MANIFEST_MAX_MESSAGE_BYTES,
+    CONTENT_MANIFEST_PROTOCOL_VERSION, CONTENT_MANIFEST_SCHEMA_DIGEST,
+    CONTENT_MANIFEST_SCHEMA_SOURCE, ContentManifestArtifactError,
+    content_manifest_conformance_paths, verify_content_manifest_artifact,
 };
 pub use protocol_artifact_game_information_live_observation_bootstrap::{
     LIVE_BOOTSTRAP_ARTIFACT, LIVE_BOOTSTRAP_GENERATOR, LIVE_BOOTSTRAP_MAX_BODY_BYTES,

@@ -225,11 +225,11 @@ freshness, visualizer rendering, or navigation effects.
 ## Game-information query profile
 
 ADR 0020 adds the additive `game-information-query-v1-mcp` profile, selected only with
-`STS2_RUNTIME_PROFILE=game-information-query-v1`. It advertises six read-only tools for
-capabilities, static list/search/get, live detail, and static/live availability. Static queries
-bind content manifest, locale, and visibility scope; live queries additionally bind an instance,
-run/epoch, coherent snapshot, and parent observation. Definition references and live
-instance references remain distinct.
+`STS2_RUNTIME_PROFILE=game-information-query-v1`. It advertises eight read-only tools for
+capabilities, the closed lookup binding, the whole content manifest, static list/search/get, live
+detail, and static/live availability. Static queries bind content manifest, locale, and visibility
+scope; live queries additionally bind an instance, run/epoch, coherent snapshot, and parent
+observation. Definition references and live instance references remain distinct.
 
 The MCP adapter maps capabilities to bodyless `GET /v1/instances/{id}/game-information/capabilities`
 and every query to `POST /v1/instances/{id}/game-information/query` with the pinned
@@ -238,6 +238,14 @@ identity, requested fields and per-field availability, canonical byte accounting
 pagination, cursor fences, generation and the 262 KiB message bound. The artifact is pinned to
 merged protocol main `34f68b18` (schema `376845b0…`). Unsupported producer kinds or feature-owner
 specializations are not advertised.
+
+The whole-manifest read is ADR 0028: a bodyless
+`GET /v1/instances/{id}/game-information/content-manifest` that the gateway implements at merge
+`2d7f758b`. It carries no selector, so the gateway keeps deciding which content authority answers,
+and it is clamped to the 128 KiB the fixed route frames. The projection states the pinned
+artifact's identity — the seven envelope members, the ten catalog members, schema digest
+`416a3976…`, and each refusal code's own reason vocabulary — and relays a complete catalog
+verbatim, so a shortened, catalog-carrying, or mispaired answer fails closed.
 Gateway #52 and game-mod extraction are external integration gates; this source/fake lane does not
 claim host readiness or live snapshot support.
 

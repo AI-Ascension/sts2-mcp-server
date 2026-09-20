@@ -4,6 +4,9 @@ use std::collections::BTreeMap;
 
 use sts2_mcp_server::{GatewayError, GatewayMethod, GatewayRequest, JsonValue};
 
+/// The adapter's name for the gateway's fixed whole-manifest read.
+pub(super) const CONTENT_MANIFEST_OPERATION: &str = "sts2.game_information_content_manifest";
+
 pub(super) fn wire_operation(instance_id: &str, request: &GatewayRequest) -> Option<&'static str> {
     let v1_prefix = format!("/v1/instances/{instance_id}/");
     let v3_prefix = format!("/v3/instances/{instance_id}/");
@@ -11,6 +14,11 @@ pub(super) fn wire_operation(instance_id: &str, request: &GatewayRequest) -> Opt
         && request.path == format!("{v1_prefix}game-information/capabilities")
     {
         return Some("sts2.game_information_capabilities");
+    }
+    if request.method == GatewayMethod::Get
+        && request.path == format!("{v1_prefix}game-information/content-manifest")
+    {
+        return Some(CONTENT_MANIFEST_OPERATION);
     }
     if request.method == GatewayMethod::Post
         && request.path == format!("{v1_prefix}game-information/lookup-binding")

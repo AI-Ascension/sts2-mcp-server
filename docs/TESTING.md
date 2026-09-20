@@ -239,15 +239,20 @@ evidence.
 
 ## Game-information query checks
 
-`game_information_query.rs` verifies the six strict descriptors, closed schemas against valid
-arguments, read-only annotations, pinned artifact/checksums, exact capabilities/query routes,
-static two-page cursor continuation, live snapshot detail, Unicode text and byte bounds, complete
-definition identity, canonical unavailable-page accounting, structured stale/transport/projection
-errors, foreign and oversized input rejection, and malformed read-only response rejection with a
-fake gateway. Executable profile/binding tests verify explicit authority, the fixed capabilities
-route, and a distinct structured size error for an oversized HTTP body across the loopback HTTP
-adapter. These are synthetic source/component checks; gateway #52, producer capability negotiation,
-game-mod extraction, and host snapshot freshness remain external gates.
+`game_information_query.rs` verifies the eight strict descriptors, closed schemas against valid
+arguments, read-only annotations, pinned artifact/checksums, exact capabilities, whole-manifest, and
+query routes, static two-page cursor continuation, live snapshot detail, Unicode text and byte
+bounds, complete definition identity, canonical unavailable-page accounting, structured
+stale/transport/projection errors, foreign and oversized input rejection, and malformed read-only
+response rejection with a fake gateway. The whole-manifest read is additionally driven by the
+protocol's own vendored case: its eight vectors are checked against the pinned paths and digests, a
+complete catalog and its typed `access_denied` refusal are relayed, every declared refusal pairing
+survives as its own code, and each invalid vector fails closed as
+`game_information_malformed_response`. Executable profile/binding tests verify explicit authority,
+the fixed capabilities route, and a distinct structured size error for an oversized HTTP body
+across the loopback HTTP adapter. These are synthetic source/component checks; gateway #52,
+producer capability negotiation, game-mod extraction, and host snapshot freshness remain external
+gates.
 
 ## Negotiated composition checks
 

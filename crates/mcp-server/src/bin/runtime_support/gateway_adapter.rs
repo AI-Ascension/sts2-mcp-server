@@ -2,13 +2,13 @@
 
 use super::{RuntimeGatewayAdapter, binding, exchange};
 use sts2_mcp_server::{
-    COOP_NATIVE_PROTOCOL_VERSION, COOP_NATIVE_SCHEMA_DIGEST, COOP_RECEIPT_QUERY_PROTOCOL_VERSION,
-    ExactRestorePhase, GAME_INFORMATION_PROTOCOL_VERSION, GAME_INFORMATION_SCHEMA_DIGEST,
-    GatewayAdapter, GatewayError, GatewayRequest, GatewayResponse, JsonValue,
-    RUNTIME_MAP_V1_PROTOCOL_VERSION, RUNTIME_V2_PROTOCOL_VERSION,
-    RUNTIME_V3_GAMEPLAY_PROTOCOL_VERSION, RUNTIME_V4_EXPERT_ACTION_PROTOCOL_VERSION,
-    RUNTIME_V4_EXPERT_REST_ACTION_PROTOCOL_VERSION, SEEDED_RUN_PROTOCOL_VERSION,
-    SEEDED_RUN_SCHEMA_DIGEST, validate_exact_restore_response,
+    CONTENT_MANIFEST_GATEWAY_MAX_RESPONSE_BYTES, COOP_NATIVE_PROTOCOL_VERSION,
+    COOP_NATIVE_SCHEMA_DIGEST, COOP_RECEIPT_QUERY_PROTOCOL_VERSION, ExactRestorePhase,
+    GAME_INFORMATION_PROTOCOL_VERSION, GAME_INFORMATION_SCHEMA_DIGEST, GatewayAdapter,
+    GatewayError, GatewayRequest, GatewayResponse, JsonValue, RUNTIME_MAP_V1_PROTOCOL_VERSION,
+    RUNTIME_V2_PROTOCOL_VERSION, RUNTIME_V3_GAMEPLAY_PROTOCOL_VERSION,
+    RUNTIME_V4_EXPERT_ACTION_PROTOCOL_VERSION, RUNTIME_V4_EXPERT_REST_ACTION_PROTOCOL_VERSION,
+    SEEDED_RUN_PROTOCOL_VERSION, SEEDED_RUN_SCHEMA_DIGEST, validate_exact_restore_response,
 };
 
 #[path = "gateway_adapter_negotiated.rs"]
@@ -178,7 +178,7 @@ impl GatewayAdapter for RuntimeGatewayAdapter {
             Some(_) => recovery_body(&request)?,
             None => self.body(&request)?,
         };
-        let response_limit = if self.enforce_wire_limits {
+        let admitted_bytes = if self.enforce_wire_limits {
             let operation = wire_operation.ok_or(GatewayError::Rejected)?;
             let limits = self
                 .wire_limits
@@ -190,6 +190,14 @@ impl GatewayAdapter for RuntimeGatewayAdapter {
             limits.max_response_bytes
         } else {
             self.max_response_bytes
+        };
+        // The fixed whole-manifest route admits only the gateway's own smaller framing bound, so
+        // this hop must not buffer a larger body even where the profile's message ceiling is
+        // higher: a longer body is not an answer that route can legally produce.
+        let response_limit = if wire_operation == Some(negotiated::CONTENT_MANIFEST_OPERATION) {
+            admitted_bytes.min(CONTENT_MANIFEST_GATEWAY_MAX_RESPONSE_BYTES)
+        } else {
+            admitted_bytes
         };
         let response = match exchange::exchange(&self.config, request, body, response_limit) {
             Ok(response) => response,

@@ -77,7 +77,7 @@ fn initialize_tools_list_and_manifest_discovery_succeed() {
 
     let wire = request(&mut server, "list", "tools/list", json!({}));
     assert_eq!(wire["result"]["revision"], REVISION);
-    assert_eq!(wire["result"]["tools"].as_array().map(Vec::len), Some(7));
+    assert_eq!(wire["result"]["tools"].as_array().map(Vec::len), Some(8));
 
     let wire = call(
         &mut server,
@@ -290,7 +290,7 @@ fn interleaved_lookup_sequence_succeeds_in_order() {
 
     let wire = request(&mut server, "step-2", "tools/list", json!({}));
     assert_eq!(wire["result"]["revision"], REVISION);
-    assert_eq!(wire["result"]["tools"].as_array().map(Vec::len), Some(7));
+    assert_eq!(wire["result"]["tools"].as_array().map(Vec::len), Some(8));
 
     let wire = call(
         &mut server,

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 
 use super::*;
-use crate::gateway::GatewayError;
+use crate::gateway::{GatewayError, GatewayMethod};
 use crate::{GatewayRequest, GatewayResponse, JsonValue, McpServer, ToolCatalog, parse_json};
 
 #[derive(Clone)]

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 
 use super::RuntimeConfig;
+use sts2_mcp_server::{CONTENT_MANIFEST_PROTOCOL_VERSION, CONTENT_MANIFEST_SCHEMA_DIGEST};
 use sts2_mcp_server::{
     GAME_INFORMATION_PROTOCOL_VERSION, GAME_INFORMATION_SCHEMA_DIGEST, GatewayError, JsonValue,
     SAVE_PROFILE_CONTRACT,
@@ -12,7 +13,10 @@ pub(crate) fn validate(
     correlation: &str,
     kind: &str,
 ) -> Result<(), GatewayError> {
-    if matches!(kind, "capabilities_response" | "game_information_response") {
+    if matches!(
+        kind,
+        "capabilities_response" | "content_manifest_response" | "game_information_response"
+    ) {
         return game_information(config, body, correlation, kind);
     }
     if kind == "save_profile_response" {
@@ -88,8 +92,20 @@ fn game_information(
     let JsonValue::Object(object) = body else {
         return Err(GatewayError::MalformedResponse);
     };
-    if object.get("protocol_version") != Some(&JsonValue::string(GAME_INFORMATION_PROTOCOL_VERSION))
-        || object.get("schema_digest") != Some(&JsonValue::string(GAME_INFORMATION_SCHEMA_DIGEST))
+    // Each game-information read kind has its own pinned profile and digest, so the
+    // expected identity is selected by the kind the request path already implied.
+    let (protocol_version, schema_digest) = match expected {
+        "content_manifest_response" => (
+            CONTENT_MANIFEST_PROTOCOL_VERSION,
+            CONTENT_MANIFEST_SCHEMA_DIGEST,
+        ),
+        _ => (
+            GAME_INFORMATION_PROTOCOL_VERSION,
+            GAME_INFORMATION_SCHEMA_DIGEST,
+        ),
+    };
+    if object.get("protocol_version") != Some(&JsonValue::string(protocol_version))
+        || object.get("schema_digest") != Some(&JsonValue::string(schema_digest))
         || object.get("correlation_id") != Some(&JsonValue::string(correlation))
     {
         return Err(GatewayError::MalformedResponse);
@@ -102,6 +118,11 @@ fn game_information(
             response_kind.as_str(),
             "capabilities_response" | "error_response"
         ))
+        || (expected == "content_manifest_response"
+            && !matches!(
+                response_kind.as_str(),
+                "content_manifest_response" | "error_response"
+            ))
         || (expected == "game_information_response"
             && !matches!(response_kind.as_str(), "query_response" | "error_response"))
     {

@@ -5,6 +5,23 @@ exists.
 
 ## Unreleased
 
+- Expose the whole content catalog as the eighth `game-information-query-v1-mcp` read. The profile
+  could answer bounded list/search/get/detail/availability reads from a catalog but never told a
+  caller what that catalog was, so a definition absent from a page was indistinguishable from one
+  the authority never had. `sts2.game_information_content_manifest` forwards a bodyless
+  `GET /v1/instances/{id}/game-information/content-manifest` — the route `AI-Ascension/sts2-gateway#87`
+  (merge `2d7f758b`) implements — with the four context arguments and no selector, so the gateway
+  keeps deciding which content authority the request is answered from. The projection states the
+  pinned artifact's own identity rather than re-deriving it: the exactly-seven-member envelope, the
+  `sts2-protocol/game-information-content-manifest-v1` provenance, schema digest `416a3976…`, the
+  ten catalog members, and each refusal code's own reason vocabulary, so a shortened catalog, a
+  catalog-carrying refusal, and a mispaired refusal all fail closed instead of reaching a consumer.
+  The hop is clamped to the 128 KiB the fixed route frames, including on the negotiated wire-limit
+  path. The protocol's own case file and its eight vectors are vendored byte-for-byte and pinned by
+  digest; the artifact's `SHA256SUMS` upstream covers only the files beside it, so that narrower
+  checksum inventory is recorded rather than papered over. Producer integration in
+  `sts2-game-mod`, live gateway readiness, host authority, and deployment remain unverified.
+
 - Admit the refused-launch-contract recovery code on the legal-action read. The game-mod answers a
   refused launch contract with `503 launch_contract_refused`, or the prefix, `_`, and one bounded
   reason token, while `catalog_reobserve_body` admitted only `host_not_configured` and

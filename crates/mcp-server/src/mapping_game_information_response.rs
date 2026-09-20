@@ -2,6 +2,7 @@
 
 use std::collections::BTreeMap;
 
+use super::GameInformationContext;
 use crate::json::JsonValue;
 use crate::protocol_artifact_game_information::{
     GAME_INFORMATION_ARTIFACT, GAME_INFORMATION_MAX_MESSAGE_BYTES,
@@ -9,10 +10,10 @@ use crate::protocol_artifact_game_information::{
     GAME_INFORMATION_SCHEMA_SOURCE,
 };
 
-use super::GameInformationContext;
-
 #[path = "mapping_game_information_binding_validation.rs"]
 pub(super) mod binding_validation;
+#[path = "mapping_game_information_response_manifest.rs"]
+pub(super) mod manifest;
 #[path = "mapping_game_information_shapes.rs"]
 mod shapes;
 
@@ -203,7 +204,9 @@ pub(super) fn protocol_error_category(code: &str) -> &'static str {
         }
         "unsupported_version" => "unsupported",
         "unknown_id" | "missing_capability" => "missing",
-        "denied_scope" | "read_only_violation" => "denied",
+        // `access_denied` is the whole-manifest envelope's own refusal for an authority that
+        // admits no complete catalog; it is a denial, not a malformed answer.
+        "denied_scope" | "read_only_violation" | "access_denied" => "denied",
         "stale_snapshot"
         | "stale_cursor"
         | "mixed_generation"

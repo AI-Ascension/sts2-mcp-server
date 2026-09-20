@@ -3,8 +3,9 @@
 use super::CallKind;
 use crate::catalog::{
     GAME_INFORMATION_AVAILABILITY_TOOL, GAME_INFORMATION_BINDING_TOOL,
-    GAME_INFORMATION_CAPABILITIES_TOOL, GAME_INFORMATION_DETAIL_TOOL, GAME_INFORMATION_GET_TOOL,
-    GAME_INFORMATION_LIST_TOOL, GAME_INFORMATION_SEARCH_TOOL,
+    GAME_INFORMATION_CAPABILITIES_TOOL, GAME_INFORMATION_CONTENT_MANIFEST_TOOL,
+    GAME_INFORMATION_DETAIL_TOOL, GAME_INFORMATION_GET_TOOL, GAME_INFORMATION_LIST_TOOL,
+    GAME_INFORMATION_SEARCH_TOOL,
 };
 
 pub(super) fn arguments(tool_name: &str) -> &'static [&'static str] {
@@ -22,6 +23,9 @@ pub(super) fn arguments(tool_name: &str) -> &'static [&'static str] {
             "authority_epoch",
         ],
         GAME_INFORMATION_CAPABILITIES_TOOL => {
+            &["instance_id", "mcp_session_id", "lease_id", "lease_epoch"]
+        }
+        GAME_INFORMATION_CONTENT_MANIFEST_TOOL => {
             &["instance_id", "mcp_session_id", "lease_id", "lease_epoch"]
         }
         GAME_INFORMATION_LIST_TOOL | GAME_INFORMATION_SEARCH_TOOL => &[
@@ -134,6 +138,7 @@ pub(super) fn kind_for(name: &str) -> Option<CallKind> {
         GAME_INFORMATION_DETAIL_TOOL => Some(CallKind::Detail),
         GAME_INFORMATION_AVAILABILITY_TOOL => Some(CallKind::Availability),
         GAME_INFORMATION_CAPABILITIES_TOOL | GAME_INFORMATION_BINDING_TOOL => None,
+        GAME_INFORMATION_CONTENT_MANIFEST_TOOL => None,
         _ => None,
     }
 }
@@ -148,5 +153,6 @@ pub(crate) fn is_tool(name: &str) -> bool {
             | GAME_INFORMATION_DETAIL_TOOL
             | GAME_INFORMATION_AVAILABILITY_TOOL
             | GAME_INFORMATION_BINDING_TOOL
+            | GAME_INFORMATION_CONTENT_MANIFEST_TOOL
     )
 }
