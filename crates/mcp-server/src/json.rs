@@ -109,6 +109,7 @@ impl std::error::Error for JsonParseError {}
 
 pub(crate) fn parse(input: &str) -> Result<JsonValue, JsonParseError> {
     let mut parser = Parser {
+        source: input,
         bytes: input.as_bytes(),
         position: 0,
         depth: 0,
@@ -130,6 +131,7 @@ pub fn parse_json(input: &str) -> Result<JsonValue, String> {
 }
 
 struct Parser<'a> {
+    source: &'a str,
     bytes: &'a [u8],
     position: usize,
     depth: usize,
@@ -182,12 +184,13 @@ impl Parser<'_> {
                 Some(byte) if byte < 0x20 => return Err(self.error("control byte in JSON string")),
                 Some(byte) if byte < 0x80 => value.push(byte as char),
                 Some(_) => {
-                    let tail = std::str::from_utf8(&self.bytes[self.position - 1..])
-                        .map_err(|_| self.error("invalid UTF-8 string"))?;
-                    let character = tail
-                        .chars()
-                        .next()
-                        .ok_or_else(|| self.error("invalid string"))?;
+                    // The source is already valid UTF-8. Do not revalidate the
+                    // remaining input for each unescaped non-ASCII scalar.
+                    let character = self
+                        .source
+                        .get(self.position - 1..)
+                        .and_then(|tail| tail.chars().next())
+                        .ok_or_else(|| self.error("invalid UTF-8 string"))?;
                     self.position += character.len_utf8() - 1;
                     value.push(character);
                 }
