@@ -5,6 +5,19 @@ exists.
 
 ## Unreleased
 
+- Admit the refused-launch-contract recovery code on the legal-action read. The game-mod answers a
+  refused launch contract with `503 launch_contract_refused`, or the prefix, `_`, and one bounded
+  reason token, while `catalog_reobserve_body` admitted only `host_not_configured` and
+  `host_observation_unavailable`, so a refusal collapsed into a generic failure and the mod's
+  vocabulary never reached a caller on this route. The admitted set is now the producer's own rule
+  rather than a second list: the bare prefix, or the prefix, `_`, and a token of 1 to 64 ASCII
+  alphanumerics, `_`, or `-`. A code the mod cannot compose — a trailing separator, a dot, a slash,
+  a space, a non-ASCII byte, a 65-byte token, or a neighbouring string that merely starts the same
+  way — still fails closed, as do every other status, correlation mismatch, extra key, and
+  oversized body. This mirrors `AI-Ascension/sts2-gateway#85`; the harness-side consumer
+  (`sts2-harness` `runtime_v3_wire.rs` and its ADR 0010) is deliberately unchanged here and remains
+  `unverified` on this route.
+
 - Fix the live-observation bootstrap **transient-error classification**: a producer that cannot
   observe a native snapshot answers with the protocol's typed `error_response` under a 4xx/5xx
   status, which the gateway forwards verbatim. The MCP transport classifier's 408/502/503/504

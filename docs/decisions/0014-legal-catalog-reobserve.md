@@ -17,9 +17,14 @@ generic invalid-envelope error, losing the instruction to obtain a fresh observa
 
 For legal-action responses only, MCP preserves that compact body as an error result
 when correlation matches, recovery is `reobserve`, and status/code are exactly 409 with
-`stale_generation`, or 503 with `host_not_configured` or `host_observation_unavailable`.
-The body is bounded to 1,024 bytes and rejects extra fields. Other routes, success
-statuses, unknown codes, and mismatched correlation keep the existing fail-closed path.
+`stale_generation`, or 503 with `host_not_configured`, `host_observation_unavailable`, or a
+refused-launch-contract code. A refused launch contract is a distinct failure from a lane that never
+declared one, and it arrives as the game-mod's own refusal prefix `launch_contract_refused` either
+alone or followed by `_` and one reason token of 1 to 64 ASCII alphanumerics, `_` or `-` — the exact
+vocabulary the producer composes, so a string the producer cannot emit is refused here rather than
+admitted as a neighbouring code (`AI-Ascension/sts2-gateway#85`). The body is bounded to 1,024 bytes
+and rejects extra fields. Other routes, success statuses, unknown codes, and mismatched correlation
+keep the existing fail-closed path.
 
 This is a read refusal, never a legal-action catalog or a mutation receipt. The harness
 owns bounded reobservation and must obtain matching fresh state and actions before
