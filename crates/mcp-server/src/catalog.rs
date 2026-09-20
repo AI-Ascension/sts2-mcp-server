@@ -97,6 +97,7 @@ pub const GAME_INFORMATION_GET_TOOL: &str = game_information::GET_TOOL;
 pub const GAME_INFORMATION_DETAIL_TOOL: &str = game_information::DETAIL_TOOL;
 pub const GAME_INFORMATION_AVAILABILITY_TOOL: &str = game_information::AVAILABILITY_TOOL;
 pub const GAME_INFORMATION_BINDING_TOOL: &str = game_information::BINDING_TOOL;
+pub const GAME_INFORMATION_CONTENT_MANIFEST_TOOL: &str = game_information::CONTENT_MANIFEST_TOOL;
 pub const GAME_INFORMATION_LIVE_OBSERVATION_BOOTSTRAP_TOOL: &str =
     game_information_live_observation_bootstrap::TOOL;
 pub use composition::{

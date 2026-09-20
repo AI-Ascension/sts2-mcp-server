@@ -72,6 +72,11 @@ pub(crate) fn response_kind(
                 {
                     Some("capabilities_response")
                 }
+                (GatewayMethod::Get, "game-information/content-manifest")
+                    if version == "v1" && request.body.is_none() =>
+                {
+                    Some("content_manifest_response")
+                }
                 (GatewayMethod::Post, "game-information/query")
                     if version == "v1"
                         && has_protocol_digest(

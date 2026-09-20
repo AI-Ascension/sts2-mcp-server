@@ -66,13 +66,18 @@ crates/mcp-server/src/projection_runtime_map* complete graph/result validation
 protocol-artifact/game-information-query-v1/  pinned manifest, schema, goldens, and checksums
 schemas/game-information-query-v1.schema.json source-path schema companion
 conformance/cases/game-information-query-v1.json implementation-neutral consumer case
-crates/mcp-server/src/catalog_game_information.rs strict six-tool descriptors
+crates/mcp-server/src/catalog_game_information.rs strict eight-tool descriptors
 crates/mcp-server/src/mapping_game_information*.rs typed fixed-route request/response seam
+protocol-artifact/game-information-content-manifest-v1/ pinned whole-catalog artifact
+schemas/game-information-content-manifest-v1.schema.json source-path schema companion
+conformance/cases/game-information-content-manifest-v1.json whole-catalog case and vectors
 ```
 
 The protocol owner remains responsible for the neutral model and conformance meaning. MCP owns
 framing, catalog selection, session binding, fixed gateway mapping, and safe projection; it does
-not import game-mod or visualizer implementation.
+not import game-mod or visualizer implementation. The whole-catalog read is the eighth member of
+the same catalog; its own case and eight vectors are vendored beside the query case and pinned by
+digest, because the artifact's upstream `SHA256SUMS` covers only the files beside it.
 
 ## Save-profile additions
 

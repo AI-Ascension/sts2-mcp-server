@@ -14,6 +14,7 @@ pub(super) const GET_TOOL: &str = "sts2.game_information_get";
 pub(super) const DETAIL_TOOL: &str = "sts2.game_information_detail";
 pub(super) const AVAILABILITY_TOOL: &str = "sts2.game_information_availability";
 pub(super) const BINDING_TOOL: &str = "sts2.game_information_binding";
+pub(super) const CONTENT_MANIFEST_TOOL: &str = "sts2.game_information_content_manifest";
 
 pub(super) fn is_tool(name: &str) -> bool {
     matches!(
@@ -25,6 +26,7 @@ pub(super) fn is_tool(name: &str) -> bool {
             | DETAIL_TOOL
             | AVAILABILITY_TOOL
             | BINDING_TOOL
+            | CONTENT_MANIFEST_TOOL
     )
 }
 
@@ -52,6 +54,11 @@ pub(super) fn build() -> super::ToolCatalog {
             descriptor(
                 CAPABILITIES_TOOL,
                 "Read the producer's bounded game-information manifest and effective capabilities. This is read-only and does not provision or select an instance.",
+                schema::context(&["instance_id", "mcp_session_id", "lease_id", "lease_epoch"]),
+            ),
+            descriptor(
+                CONTENT_MANIFEST_TOOL,
+                "Read the whole content catalog for the configured content authority, or the protocol's typed limit refusal when the gateway admits no complete form of it. This is read-only, takes no selector, and never returns a shortened catalog.",
                 schema::context(&["instance_id", "mcp_session_id", "lease_id", "lease_epoch"]),
             ),
             descriptor(

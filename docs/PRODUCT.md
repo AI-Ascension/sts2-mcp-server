@@ -90,14 +90,18 @@ deployment, and release compatibility require separate acceptance evidence.
 ## `game-information-query-v1-mcp` profile
 
 ADR 0020 defines the additive game-information profile selected with
-`STS2_RUNTIME_PROFILE=game-information-query-v1`. It advertises capabilities, list, search, get,
-live detail, and availability reads, all with strict closed schemas and read-only/non-destructive/
-idempotent annotations. It maps only to the fixed gateway capabilities GET and query POST routes.
-Definitions use content-manifest identities; live detail uses a separate instance/run/epoch and
-snapshot identity. Bounded text, item/page bytes, cursor, requested fields, field availability,
-provenance, and typed error validation remain at the MCP boundary. It consumes merged protocol
-main `34f68b18` (schema `376845b0…`). No specialized producer query is advertised until a feature
-owner registers one through the accepted protocol capability set. The deterministic fake/loopback
+`STS2_RUNTIME_PROFILE=game-information-query-v1`. It advertises eight reads — capabilities, the
+closed lookup binding, the whole content manifest, list, search, get, live detail, and availability
+— all with strict closed schemas and read-only/non-destructive/idempotent annotations. It maps only
+to the fixed gateway capabilities GET, whole-manifest GET, and query POST routes. Definitions use
+content-manifest identities; live detail uses a separate instance/run/epoch and snapshot identity.
+The whole-manifest read carries no selector and is clamped to the 128 KiB the fixed bodyless route
+frames, so a refusal the gateway relays stays the protocol's typed refusal rather than becoming a
+shortened catalog. Bounded text, item/page bytes, cursor, requested fields, field availability,
+provenance, and typed error validation remain at the MCP boundary. It consumes merged protocol main
+`34f68b18` (schema `376845b0…`) and the whole-manifest artifact the gateway implements at merge
+`2d7f758b` (schema `416a3976…`). No specialized producer query is advertised until a feature owner
+registers one through the accepted protocol capability set. The deterministic fake/loopback
 evidence does not establish gateway #52, game-mod extraction, or host compatibility.
 
 ## `negotiated-composition-v1-mcp` profile
