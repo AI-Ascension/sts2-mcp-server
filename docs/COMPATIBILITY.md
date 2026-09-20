@@ -65,7 +65,7 @@ host to a supported compatibility row.
 | `negotiated-composition-v1-mcp` | Startup discovery and validated Gateway snapshot, then fixed Runtime-v3 and game-information routes with optional owner-bound lookup-binding | Pinned Gateway snapshot artifact (schema `24491a0a…`, Gateway merge `e15248cd`), strict duplicate-key/size/identity/schema/witness checks, explicit omission of the unmapped map operation, and shipped stdio process against a strict loopback peer for startup, catalog, capabilities, state, and lookup-binding observe | MCP/Gateway-boundary behavior confirmed against a synthetic peer; live Gateway readiness/selection, producer and host authority, game effects, provider execution, deployment, and release compatibility unverified |
 | `save-profile-v1-mcp` | Fixed `GET` list/current/status and `POST` select/create-disposable routes under `/v1/instances/{id}` | Five-tool catalog, closed schemas, fake-gateway route/body/error/reconciliation tests, executable route/authority binding tests | Source/component consumer seam confirmed for merged gateway PR #53; game-mod launch-profile/save-slot integration, live gateway, host settlement, provider, deployment, and release remain unverified |
 | `exact-restore-v1-mcp` | Fixed `POST /v1/exact-restore/{begin,chunk,finish,commit,lookup}` routes | Pinned neutral and wrapper artifacts, five-phase MCP mapping, configured lease/correlation binding, and loopback HTTP tests | Source/component adapter confirmed at the pinned contract; gateway durability, native restore, host effects, deployment, and release remain unverified |
-| `watchdog-recovery-v1-mcp` | Fixed `POST /v1/recovery/operation/{lookup,reconcile}` sideband routes | Installed frame-schema digest, nine-tool ordered catalog with two wired reads, closed envelope/reference/result validation, verbatim record pass-through, and loopback HTTP tests | Source/component sideband confirmed at the pinned frame contract; gateway persistence, the recovery-control host routes, duplicate-key rejection, native restore, deployment, and release remain unverified |
+| `watchdog-recovery-v1-mcp` | Fixed `POST /v1/recovery/operation/{lookup,reconcile}` sideband routes | Installed frame-schema digest, nine-tool ordered catalog with two wired reads, closed envelope/reference/result validation, verbatim record pass-through, frame-boundary duplicate-member refusal, and loopback HTTP tests | Source/component sideband confirmed at the pinned frame contract; gateway persistence, the recovery-control host routes, native restore, deployment, and release remain unverified |
 
 For `coop-native-v1-mcp`, configured instance, MCP-session, gateway-session, lease, and correlation
 identities remain header/path bounded at 128 bytes. Operation, peer, action, proposal, and vote-choice
@@ -361,9 +361,10 @@ fixed `recovery_read` or `recovery_reconcile` capability header, and bounds one 
 Artifact, serialized MCP mapping, and loopback HTTP tests are source/component evidence only. They
 do not establish that a gateway durably stores the operation record, that the recovery-control host
 routes exist and can settle an unresolved operation, or that a native restore adapter and release
-support exist. Duplicate JSON keys in a recovery frame are folded rather than rejected by the MCP
-frame validator, so a duplicated envelope member is not refused; that gap is recorded rather than
-claimed closed.
+support exist. A recovery frame that repeats a JSON object member is refused before the mapping
+layer: the shared frame parser (`crate::json::parse` through `FrameCodec::decode`) rejects a
+repeated member instead of folding it, and `transport_tests.rs` pins that for a repeated sideband
+envelope member as well as a repeated top-level member.
 
 ### Native co-op compatibility
 

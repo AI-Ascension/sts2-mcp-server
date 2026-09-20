@@ -363,8 +363,9 @@ instead of a generic unavailable error. The executable requires `STS2_RECOVERY_T
 fixed recovery capability header, and bounds one frame at 256 KiB. A bare `{"error_code": …}`
 short-circuit body is reported as `watchdog_recovery_frame_invalid`. Artifact, serialized MCP, and
 loopback tests establish the MCP source/component boundary only; gateway persistence, native
-restore and recovery-control host routes, duplicate-key rejection, and release support remain
-unverified.
+restore and recovery-control host routes, and release support remain unverified. Duplicate JSON
+object members, including a repeated sideband envelope member, are refused by the shared frame
+parser before any recovery mapping runs, so the second member is never folded.
 
 ## Runtime-v4 expert REST-action profile
 
