@@ -28,6 +28,7 @@ fn config() -> RuntimeConfig {
         lease_epoch: 7,
         recovery_token: None,
         exact_restore_profile: false,
+        recovery_profile: false,
         coop_native_peer_binding: None,
     }
 }

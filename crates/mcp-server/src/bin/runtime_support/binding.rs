@@ -7,6 +7,8 @@ use sts2_mcp_server::{GatewayError, GatewayMethod, GatewayRequest, JsonValue};
 mod exact_restore;
 #[path = "binding_native_peer.rs"]
 mod native_peer;
+#[path = "binding_recovery.rs"]
+mod recovery;
 #[path = "binding_response.rs"]
 mod response;
 #[path = "binding_response_kind.rs"]
@@ -51,6 +53,7 @@ pub(super) fn is_game_information_live_bootstrap_route(
 pub(super) use exact_restore::{
     is_route as is_exact_restore_route, validate as exact_restore_binding,
 };
+pub(super) use recovery::{is_route as is_recovery_route, validate as recovery_binding};
 pub(super) use save_profile::classify as classify_save_profile;
 
 pub(super) fn admit(config: &RuntimeConfig, request: &GatewayRequest) -> Result<(), GatewayError> {
@@ -66,17 +69,23 @@ pub(super) fn admit(config: &RuntimeConfig, request: &GatewayRequest) -> Result<
         .nth(1)
         .ok_or(GatewayError::Rejected)?;
     let exact_restore_route = is_exact_restore_route(request);
+    let recovery_route = is_recovery_route(request);
     let game_information_binding_route = is_game_information_binding_route(config, request);
     let game_information_live_bootstrap_route =
         is_game_information_live_bootstrap_route(config, request);
     if !matches!(version, "v1" | "v2" | "v3" | "v4")
         || (!exact_restore_route
+            && !recovery_route
             && !request
                 .path
                 .starts_with(&format!("/{version}/instances/{}/", config.instance_id)))
         || !safe_header_value(&request.correlation.mcp_request_id.stable_text())
     {
         return Err(GatewayError::Rejected);
+    }
+    if recovery_route {
+        recovery_binding(config, request)?;
+        return Ok(());
     }
     if exact_restore_route {
         exact_restore_binding(config, request)?;

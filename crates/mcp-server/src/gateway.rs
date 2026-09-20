@@ -46,4 +46,15 @@ pub enum GatewayError {
 
 pub trait GatewayAdapter {
     fn forward(&mut self, request: GatewayRequest) -> Result<GatewayResponse, GatewayError>;
+
+    /// The configured gateway caller identity for profiles whose outgoing
+    /// frames must bind `actor`/`auth` to the authenticated caller.
+    ///
+    /// The value is never taken from a tool argument, so a profile that needs
+    /// it must report it here rather than trusting the caller-supplied
+    /// envelope. Profiles without such an identity return `None` and their
+    /// requests are unaffected.
+    fn frame_principal(&self) -> Option<&str> {
+        None
+    }
 }

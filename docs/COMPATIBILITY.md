@@ -65,6 +65,7 @@ host to a supported compatibility row.
 | `negotiated-composition-v1-mcp` | Startup discovery and validated Gateway snapshot, then fixed Runtime-v3 and game-information routes with optional owner-bound lookup-binding | Pinned Gateway snapshot artifact (schema `24491a0a…`, Gateway merge `e15248cd`), strict duplicate-key/size/identity/schema/witness checks, explicit omission of the unmapped map operation, and shipped stdio process against a strict loopback peer for startup, catalog, capabilities, state, and lookup-binding observe | MCP/Gateway-boundary behavior confirmed against a synthetic peer; live Gateway readiness/selection, producer and host authority, game effects, provider execution, deployment, and release compatibility unverified |
 | `save-profile-v1-mcp` | Fixed `GET` list/current/status and `POST` select/create-disposable routes under `/v1/instances/{id}` | Five-tool catalog, closed schemas, fake-gateway route/body/error/reconciliation tests, executable route/authority binding tests | Source/component consumer seam confirmed for merged gateway PR #53; game-mod launch-profile/save-slot integration, live gateway, host settlement, provider, deployment, and release remain unverified |
 | `exact-restore-v1-mcp` | Fixed `POST /v1/exact-restore/{begin,chunk,finish,commit,lookup}` routes | Pinned neutral and wrapper artifacts, five-phase MCP mapping, configured lease/correlation binding, and loopback HTTP tests | Source/component adapter confirmed at the pinned contract; gateway durability, native restore, host effects, deployment, and release remain unverified |
+| `watchdog-recovery-v1-mcp` | Fixed `POST /v1/recovery/operation/{lookup,reconcile}` sideband routes | Installed frame-schema digest, nine-tool ordered catalog with two wired reads, closed envelope/reference/result validation, verbatim record pass-through, and loopback HTTP tests | Source/component sideband confirmed at the pinned frame contract; gateway persistence, the recovery-control host routes, duplicate-key rejection, native restore, deployment, and release remain unverified |
 
 For `coop-native-v1-mcp`, configured instance, MCP-session, gateway-session, lease, and correlation
 identities remain header/path bounded at 128 bytes. Operation, peer, action, proposal, and vote-choice
@@ -328,6 +329,41 @@ commit result blocks another commit in that process and remains eligible for loo
 serialized MCP, and loopback tests are source/component evidence only; they do not establish that a
 gateway durably stores operations, that the game-mod has a restore adapter, or that a host restore
 effect succeeds.
+
+### Watchdog recovery sideband compatibility
+
+The additive `watchdog-recovery-v1-mcp` profile is selected with
+`STS2_RUNTIME_PROFILE=watchdog-recovery-v1` and consumes the installed
+`sts2-protocol/watchdog-recovery-v1` frame contract at schema digest
+`fb934d3157485aaf6e13e6ebbb213ec8a14c7fc6f5eeebc06b7a22c1f0009217`. It advertises nine watchdog
+tools in fixed order and wires only `watchdog.operation_lookup` and `watchdog.operation_reconcile`
+to the fixed `POST /v1/recovery/operation/{lookup,reconcile}` routes. The other seven durable boot
+and dispatch tools are shape-only and are refused with `watchdog_recovery_route_not_installed`
+because this sideband carries neither route.
+
+Each argument is a closed `{mcp_session_id, payload}` wrapper whose session must equal the active
+MCP session. Lookup carries `{operation, lookup_scope: "historical_read"}`; reconcile carries
+`{operation, strategy, current_fence}`. The request frame is generated in-process from the
+configured `STS2_CALLER_ID` — which this profile requires to be a UUID v4, enforced fail-closed at
+startup — and never from a tool argument, so a caller cannot select the principal the gateway
+authorizes. Unknown envelope or payload members, wrong direction or kind, a foreign principal, a
+non-matching capability, a missing or mismatched correlation echo, an unsupported result status, and
+an absent original context all fail closed.
+
+The accepted gateway frame is surfaced verbatim as the tool result rather than projected. Only the
+runtime owner holds the durable intent a surfaced operation record must be cross-checked against, so
+re-summarizing the record here would remove the evidence the caller needs; the adapter's job is to
+bind the response to the exchange and confirm it is a closed recovery response. A gateway answer
+that is a bare `{"error_code": …}` short-circuit body is reported as `watchdog_recovery_frame_invalid`
+instead of being passed through as a frame. The executable requires `STS2_RECOVERY_TOKEN`, sends the
+fixed `recovery_read` or `recovery_reconcile` capability header, and bounds one frame at 256 KiB.
+
+Artifact, serialized MCP mapping, and loopback HTTP tests are source/component evidence only. They
+do not establish that a gateway durably stores the operation record, that the recovery-control host
+routes exist and can settle an unresolved operation, or that a native restore adapter and release
+support exist. Duplicate JSON keys in a recovery frame are folded rather than rejected by the MCP
+frame validator, so a duplicated envelope member is not refused; that gap is recorded rather than
+claimed closed.
 
 ### Native co-op compatibility
 

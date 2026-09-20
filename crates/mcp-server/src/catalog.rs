@@ -41,6 +41,8 @@ mod runtime_v4_expert_rest_action;
 mod save_profile;
 #[path = "catalog_seeded_run.rs"]
 mod seeded_run;
+#[path = "catalog_watchdog_recovery.rs"]
+pub(crate) mod watchdog_recovery;
 
 pub const GET_STATE_TOOL: &str = "get_state";
 pub const SUBMIT_ACTION_TOOL: &str = "submit_action";
@@ -85,6 +87,7 @@ pub const SAVE_PROFILE_CONTRACT: &str = save_profile::CONTRACT;
 pub const SAVE_PROFILE_PROFILE: &str = save_profile::REVISION;
 pub const SAVE_PROFILE_SCHEMA_REVISION: &str = save_profile::CONTRACT;
 pub const SAVE_PROFILE_LAUNCH_PROFILE_CONTRACT: &str = save_profile::LAUNCH_PROFILE_CONTRACT;
+pub const WATCHDOG_RECOVERY_PROFILE: &str = watchdog_recovery::REVISION;
 pub const SAVE_PROFILE_MAX_BODY_BYTES: usize = 16 * 1024;
 pub const SAVE_PROFILE_MAX_OPERATION_BYTES: usize = 128;
 pub const GAME_INFORMATION_CAPABILITIES_TOOL: &str = game_information::CAPABILITIES_TOOL;
@@ -256,6 +259,7 @@ impl ToolCatalog {
             || self.is_game_information()
             || self.is_live_observation_bootstrap()
             || self.is_negotiated_composition()
+            || self.is_watchdog_recovery()
         {
             MAX_FRAME_BYTES
         } else {

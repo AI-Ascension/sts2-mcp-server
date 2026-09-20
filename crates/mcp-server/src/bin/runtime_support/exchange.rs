@@ -50,7 +50,7 @@ pub(super) fn exchange_startup(
     correlation: &str,
     max_response_bytes: usize,
 ) -> Result<GatewayResponse, GatewayError> {
-    if config.exact_restore_profile {
+    if config.exact_restore_profile || config.recovery_profile {
         return Err(GatewayError::Rejected);
     }
     let method = match method {
@@ -109,7 +109,7 @@ fn exchange_wire(
     let deadline = Instant::now() + Duration::from_secs(5);
     let mut stream = TcpStream::connect_timeout(&config.gateway_address, Duration::from_secs(2))
         .map_err(|error| map_io(http::classify_io(error)))?;
-    let headers = request_headers(config, supplied_headers, correlation, body.len());
+    let headers = request_headers(config, supplied_headers, correlation, body.len(), path);
     write_request(&mut stream, method, path, &headers, body, deadline).map_err(
         |error| match error {
             ReadError::Malformed | ReadError::Oversized => GatewayError::Rejected,
@@ -141,6 +141,7 @@ fn request_headers(
     supplied: BTreeMap<String, String>,
     correlation: &str,
     body_length: usize,
+    path: &str,
 ) -> BTreeMap<String, String> {
     let mut headers = supplied;
     let token = config
@@ -152,6 +153,16 @@ fn request_headers(
         headers.insert(
             String::from("x-sts2-recovery-capability"),
             String::from("exact_restore"),
+        );
+    }
+    // The recovery sideband route demands the capability of the operation it
+    // carries, so it is derived from the route rather than sent as a constant.
+    if config.recovery_profile
+        && let Some(operation) = sts2_mcp_server::RecoveryOperation::from_path(path)
+    {
+        headers.insert(
+            String::from("x-sts2-recovery-capability"),
+            String::from(operation.capability()),
         );
     }
     headers.insert(String::from("Host"), config.gateway_address.to_string());

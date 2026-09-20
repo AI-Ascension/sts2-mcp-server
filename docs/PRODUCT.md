@@ -145,3 +145,18 @@ Requests and responses are capped at 16 KiB, chunks at 8 KiB decoded, and closur
 use lookup. Local artifact, serialized MCP, and loopback HTTP tests prove only the consumer adapter
 boundary. Gateway durability, a working native restore adapter, host effects, and deployment support
 remain unverified.
+
+## `watchdog-recovery-v1-mcp` profile
+
+ADR 0027 defines the additive watchdog recovery sideband selected with
+`STS2_RUNTIME_PROFILE=watchdog-recovery-v1`. It exposes nine watchdog tools but wires only the two
+recovery reads, `watchdog.operation_lookup` and `watchdog.operation_reconcile`, to the fixed
+`/v1/recovery/operation/` routes; the durable boot and dispatch tools are advertised for shape only
+and refused. Lookup never authorizes a mutation and reconcile never replays the original action.
+
+The request frame is built in-process from the configured `STS2_CALLER_ID` (required to be a UUID
+v4) and never from a tool argument, and the accepted gateway frame is surfaced verbatim so the
+runtime owner can cross-check the operation record against its durable intent. The executable
+requires `STS2_RECOVERY_TOKEN` and sends only the fixed `recovery_read`/`recovery_reconcile`
+capability. Local serialized MCP and loopback tests prove only the sideband boundary; gateway
+persistence, recovery-control host routes, and release support remain unverified.
