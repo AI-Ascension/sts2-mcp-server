@@ -25,12 +25,14 @@ mod protocol_artifact_runtime_v4_expert;
 mod protocol_artifact_runtime_v4_expert_rest_action;
 mod protocol_artifact_seeded_run;
 mod receipt_query_json;
+mod recovery_frame;
 mod server;
 mod transport;
 
 pub use catalog::CHECKPOINT_REFERENCE_TOOL;
 pub use catalog::COOP_RECEIPT_QUERY_TOOL;
 pub use catalog::COOP_SYNCHRONIZATION_TOOL;
+pub use catalog::WATCHDOG_RECOVERY_PROFILE;
 pub use catalog::{
     CAPABILITY_DISCOVERY_TOOL, CapabilityGroup, CapabilityLayer, CapabilityOffer, CapabilityOwner,
     CapabilityScope, NEGOTIATED_COMPOSITION_REVISION, NEGOTIATION_STALE_CODE,
@@ -176,6 +178,11 @@ pub use protocol_artifact_seeded_run::{
     verify_seeded_run_artifact,
 };
 pub use receipt_query_json::canonical_coop_receipt_query;
+pub use recovery_frame::{
+    RECOVERY_CONTRACT, RECOVERY_MAX_FRAME_BYTES, RECOVERY_SCHEMA_DIGEST, RecoveryOperation,
+    RecoveryRequest, build_recovery_request, utc_timestamp_now, uuid_v4, valid_timestamp,
+    valid_uuid, valid_uuid_v4, validate_recovery_request, validate_recovery_response,
+};
 pub use server::{
     MCP_PROTOCOL_VERSION, McpServer, SERVER_NAME, SERVER_VERSION, SessionEvent,
     SessionRefreshReason, SessionUpdate,

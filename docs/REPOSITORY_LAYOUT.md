@@ -87,3 +87,17 @@ docs/decisions/0025-save-profile-mcp-tools.md             owner/compatibility de
 `gateway-save-profile-v1` remains a gateway-local contract; no game-mod implementation, save path,
 launch command, or copied host logic is stored here. The executable profile is capability-gated and
 unsupported owners advertise no usable save-profile descriptors.
+
+## Watchdog recovery sideband additions
+
+```text
+crates/mcp-server/src/recovery_frame*.rs          closed frame envelope, scalars, and validation
+crates/mcp-server/src/catalog_watchdog_recovery.rs ordered nine-tool sideband catalog
+crates/mcp-server/src/mapping_watchdog_recovery*.rs two wired fixed-route reads and their tests
+crates/mcp-server/src/bin/runtime_support/binding_recovery*.rs executable route/header admission
+docs/decisions/0027-watchdog-recovery-mcp-sideband.md      owner/compatibility decision
+```
+
+The durable boot and dispatch routes stay with the runtime owner; this sideband stores no lease,
+fence, intent, or operation record, and it surfaces a gateway recovery frame verbatim rather than
+projecting it.

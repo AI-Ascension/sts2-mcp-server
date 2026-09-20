@@ -337,6 +337,35 @@ alias). Unsupported owners advertise no usable save-profile tools; read-only own
 the three reads. The gateway's merged PR #53 is a source/component dependency, while launch-profile
 integration, game-mod save-slot semantics, host effects, and live readiness remain external gates.
 
+## Watchdog recovery sideband profile
+
+ADR 0027 adds the opt-in `watchdog-recovery-v1-mcp` profile, selected with
+`STS2_RUNTIME_PROFILE=watchdog-recovery-v1`. It advertises nine watchdog tools in fixed order but
+wires only the two recovery reads: `watchdog.operation_lookup` to
+`POST /v1/recovery/operation/lookup` with capability `recovery_read`, and
+`watchdog.operation_reconcile` to `POST /v1/recovery/operation/reconcile` with capability
+`recovery_reconcile`. The remaining seven durable boot and dispatch tools are advertised for shape
+only and are refused with a typed `watchdog_recovery_route_not_installed` error, because the boot
+and dispatch routes belong to the runtime owner rather than to this sideband.
+
+Each call is a closed `{mcp_session_id, payload}` wrapper. The session must equal the active MCP
+session; the payload is the caller's recovery reference and is validated, never rewritten. The
+request frame is generated in-process from the configured `STS2_CALLER_ID` — which this profile
+requires to be a UUID v4 — and never from a tool argument. The gateway response is bound to the
+exchange and then surfaced verbatim as the tool result, because only the runtime owner can
+cross-check a surfaced operation record against its own durable intent; projecting it here would
+destroy that evidence. Lookup never authorizes a mutation and reconcile never replays the original
+action.
+
+Recovery exchanges bypass the instance-prefixed admission path and the shared response classifier,
+so an unresolved `503` carrying a `MAY_HAVE_BEEN_DISPATCHED` frame reaches the caller as that frame
+instead of a generic unavailable error. The executable requires `STS2_RECOVERY_TOKEN`, adds the
+fixed recovery capability header, and bounds one frame at 256 KiB. A bare `{"error_code": …}`
+short-circuit body is reported as `watchdog_recovery_frame_invalid`. Artifact, serialized MCP, and
+loopback tests establish the MCP source/component boundary only; gateway persistence, native
+restore and recovery-control host routes, duplicate-key rejection, and release support remain
+unverified.
+
 ## Runtime-v4 expert REST-action profile
 
 The additive `runtime-v4-expert-rest-action` profile is selected with

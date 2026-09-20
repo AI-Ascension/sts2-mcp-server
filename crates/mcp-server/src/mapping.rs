@@ -44,6 +44,8 @@ mod runtime_v4_expert_rest_action;
 mod save_profile;
 #[path = "mapping_seeded_run.rs"]
 mod seeded_run;
+#[path = "mapping_watchdog_recovery.rs"]
+mod watchdog_recovery;
 
 use composed_limits::{contains_page_items_over, enforce_composed_response, limit_error};
 pub(crate) use helpers::safe_segment;
@@ -63,6 +65,9 @@ pub(crate) fn tools_call<G: GatewayAdapter>(
     }
     if server.catalog.is_save_profile() {
         return save_profile::tools_call(server, request);
+    }
+    if server.catalog.is_watchdog_recovery() {
+        return watchdog_recovery::tools_call(server, request);
     }
     let request_params = request.params.clone();
     let request_id = request.id.clone();

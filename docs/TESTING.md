@@ -343,3 +343,24 @@ available.
 These tests confirm only the MCP boundary and synthetic Gateway responses. They do not establish
 Gateway persistence across restarts, native restore support, host effect success, or release
 compatibility.
+
+## Watchdog recovery sideband checks
+
+`watchdog_recovery_mapping` drives the production recovery mapping through serialized MCP calls and
+confirms the ordered nine-tool catalog, the two wired routes, the typed
+`watchdog_recovery_route_not_installed` refusal for the seven shape-only tools, the active-session
+binding, and the fail-closed envelope, reference, result, and witness validation. It also asserts
+verbatim pass-through: an unresolved `503` frame carrying `MAY_HAVE_BEEN_DISPATCHED` reaches the
+caller as that exact frame rather than as a generic unavailable error, and a bare
+`{"error_code": …}` body becomes `watchdog_recovery_frame_invalid`.
+
+`binding_recovery` unit tests cover the fixed-route admission of the two sideband paths, the
+requirement for a recovery profile, the re-validation of the frame against the configured caller,
+and the exact `x-mcp-session-id`/`x-sts2-correlation-id` header allowlist. The frame-scalar and
+identity tests exercise UUID v4 and calendar-correct timestamp validation plus the generated
+correlation identifier.
+
+These tests confirm only the MCP source/component boundary and synthetic Gateway responses. They do
+not establish Gateway persistence, the recovery-control host routes that would settle an unresolved
+operation, duplicate-JSON-key rejection in the frame validator, native restore support, or release
+compatibility.

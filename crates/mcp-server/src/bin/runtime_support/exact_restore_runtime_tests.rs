@@ -157,6 +157,7 @@ fn config(address: SocketAddr) -> RuntimeConfig {
         gateway_token: String::new(),
         recovery_token: Some(String::from("recovery-secret")),
         exact_restore_profile: true,
+        recovery_profile: false,
         instance_id: String::from("02ab8278-c166-4557-bd6d-8f7575484a55"),
         caller_id: String::from("harness"),
         session_id: String::from("session-example"),

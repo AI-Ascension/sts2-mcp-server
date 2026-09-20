@@ -14,6 +14,12 @@ pub(super) const RUNTIME_V3_MAX_RESPONSE_BYTES: usize = 128 * 1024;
 pub(super) const MAP_MAX_RESPONSE_BYTES: usize = 256 * 1024;
 /// Gateway response body limit for game-information-query-v1 envelopes.
 pub(super) const GAME_INFORMATION_MAX_RESPONSE_BYTES: usize = 256 * 1024;
+/// Gateway response body limit for the `watchdog-recovery-v1` sideband.
+///
+/// A recovery frame carries the whole historical operation record — including
+/// the retained original action bytes — so the sideband keeps a bound strictly
+/// above the recovery frame limit instead of the 64 KiB legacy default.
+pub(super) const RECOVERY_MAX_RESPONSE_BYTES: usize = 512 * 1024;
 /// Worst-case numeric carrier for a body at the decoded save-profile limit.
 ///
 /// Each byte of the decoded body is written as up to three digits plus a

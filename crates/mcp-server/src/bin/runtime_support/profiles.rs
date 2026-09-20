@@ -10,7 +10,7 @@ use sts2_mcp_server::{
 
 use super::http::{
     GAME_INFORMATION_MAX_RESPONSE_BYTES, LEGACY_MAX_RESPONSE_BYTES, MAP_MAX_RESPONSE_BYTES,
-    RUNTIME_V3_MAX_RESPONSE_BYTES, SAVE_PROFILE_MAX_RESPONSE_BYTES,
+    RECOVERY_MAX_RESPONSE_BYTES, RUNTIME_V3_MAX_RESPONSE_BYTES, SAVE_PROFILE_MAX_RESPONSE_BYTES,
 };
 
 /// One selected executable profile: its tool catalog and the gateway response
@@ -167,8 +167,14 @@ pub(crate) fn profile_for_name(profile: Option<&str>) -> Result<RuntimeProfile, 
             requires_coop_native_peer_binding: false,
             wire_limits: BTreeMap::new(),
         }),
+        "watchdog-recovery-v1" => Ok(RuntimeProfile {
+            catalog: ToolCatalog::watchdog_recovery(),
+            max_response_bytes: RECOVERY_MAX_RESPONSE_BYTES,
+            requires_coop_native_peer_binding: false,
+            wire_limits: BTreeMap::new(),
+        }),
         value => Err(format!(
-            "STS2_RUNTIME_PROFILE must be runtime-v1, runtime-v2, runtime-v3-gameplay, runtime-v4-expert, runtime-v4-expert-rest-action, runtime-map-v1, coop-synchronization-v1, coop-receipt-query-v1, exact-restore-v1, seeded-run-v1, coop-native-v1, checkpoint-reference-v1, game-information-query-v1, negotiated-composition-v1, or save-profile-v1, got {value}"
+            "STS2_RUNTIME_PROFILE must be runtime-v1, runtime-v2, runtime-v3-gameplay, runtime-v4-expert, runtime-v4-expert-rest-action, runtime-map-v1, coop-synchronization-v1, coop-receipt-query-v1, exact-restore-v1, seeded-run-v1, coop-native-v1, checkpoint-reference-v1, game-information-query-v1, negotiated-composition-v1, save-profile-v1, or watchdog-recovery-v1, got {value}"
         )),
     }
 }

@@ -142,9 +142,14 @@ fn protocol_is(object: &std::collections::BTreeMap<String, JsonValue>, expected:
 }
 
 impl GatewayAdapter for RuntimeGatewayAdapter {
+    fn frame_principal(&self) -> Option<&str> {
+        self.config.frame_principal()
+    }
+
     fn forward(&mut self, request: GatewayRequest) -> Result<GatewayResponse, GatewayError> {
         binding::admit(&self.config, &request)?;
         let restore = binding::exact_restore_binding(&self.config, &request)?;
+        let recovery = binding::recovery_binding(&self.config, &request)?;
         if let Some(binding) = &restore
             && binding.phase == ExactRestorePhase::Commit
             && self.lookup_only_operations.contains(&binding.operation_id)
@@ -166,7 +171,13 @@ impl GatewayAdapter for RuntimeGatewayAdapter {
         let wire_operation = negotiated::wire_operation(&self.config.instance_id, &request);
         let catalog_read = request.method == sts2_mcp_server::GatewayMethod::Get
             && request.path == format!("/v3/instances/{}/legal-actions", self.config.instance_id);
-        let body = self.body(&request)?;
+        // A recovery frame is the whole request: it carries its own instance
+        // context, so the profile identity injection must not run and the frame
+        // must reach the gateway byte-for-byte as this layer built it.
+        let body = match &recovery {
+            Some(_) => recovery_body(&request)?,
+            None => self.body(&request)?,
+        };
         let response_limit = if self.enforce_wire_limits {
             let operation = wire_operation.ok_or(GatewayError::Rejected)?;
             let limits = self
@@ -205,6 +216,14 @@ impl GatewayAdapter for RuntimeGatewayAdapter {
             }
             return Ok(response);
         }
+        if recovery.is_some() {
+            // The recovery status is part of the answer: an unresolved operation
+            // answers 503 together with a complete frame, so the transport
+            // classifier must not flatten it into an unavailability error. The
+            // mapping layer validates the frame against the operation that asked
+            // for it and surfaces it verbatim.
+            return Ok(response);
+        }
         if catalog_read
             && sts2_mcp_server::catalog_reobserve_body(&response, &correlation).is_some()
         {
@@ -222,6 +241,21 @@ impl GatewayAdapter for RuntimeGatewayAdapter {
             exchange::classify(response)
         }
     }
+}
+
+/// Encodes one admitted recovery frame without profile identity injection.
+fn recovery_body(request: &GatewayRequest) -> Result<Vec<u8>, GatewayError> {
+    let Some(value) = &request.body else {
+        return Ok(Vec::new());
+    };
+    if value.as_object().is_none() {
+        return Err(GatewayError::Rejected);
+    }
+    let encoded = value.to_json();
+    if encoded.len() > sts2_mcp_server::RECOVERY_MAX_FRAME_BYTES {
+        return Err(GatewayError::Rejected);
+    }
+    Ok(encoded.into_bytes())
 }
 
 impl RuntimeGatewayAdapter {

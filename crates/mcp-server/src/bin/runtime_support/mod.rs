@@ -19,7 +19,7 @@ const DEFAULT_MCP_SESSION_ID: &str = "mcp-session-1";
 pub(crate) fn startup_from_environment() -> Result<(RuntimeConfig, profiles::RuntimeProfile), String>
 {
     if profiles::runtime_profile_name()? == "negotiated-composition-v1" {
-        let config = RuntimeConfig::from_environment(false, false)?;
+        let config = RuntimeConfig::from_environment(false, false, false)?;
         let profile = negotiated_startup::bootstrap(&config)?;
         return Ok((config, profile));
     }
@@ -27,6 +27,7 @@ pub(crate) fn startup_from_environment() -> Result<(RuntimeConfig, profiles::Run
     let config = RuntimeConfig::from_environment(
         profile.requires_coop_native_peer_binding,
         profile.catalog.revision == "exact-restore-v1-mcp",
+        profile.catalog.revision == sts2_mcp_server::WATCHDOG_RECOVERY_PROFILE,
     )?;
     Ok((config, profile))
 }
@@ -42,6 +43,7 @@ pub(crate) struct RuntimeConfig {
     pub(crate) lease_epoch: i64,
     recovery_token: Option<String>,
     exact_restore_profile: bool,
+    recovery_profile: bool,
     coop_native_peer_binding: Option<CoopNativePeerBinding>,
 }
 
@@ -49,12 +51,13 @@ impl RuntimeConfig {
     pub(crate) fn from_environment(
         requires_coop_native_peer_binding: bool,
         exact_restore_profile: bool,
+        recovery_profile: bool,
     ) -> Result<Self, String> {
         let gateway_address = gateway_address(&required_or_default(
             "STS2_GATEWAY_ADDR",
             "127.0.0.1:15525",
         )?)?;
-        let (gateway_token, recovery_token) = if exact_restore_profile {
+        let (gateway_token, recovery_token) = if exact_restore_profile || recovery_profile {
             let token = required("STS2_RECOVERY_TOKEN")?;
             if !safe_token(&token) {
                 return Err(String::from(
@@ -93,6 +96,14 @@ impl RuntimeConfig {
                 return Err(format!("{name} is empty, unsafe, or oversized"));
             }
         }
+        // The sideband route binds the frame actor and auth to the authenticated
+        // gateway caller, so the recovery profile refuses to start unless the
+        // configured caller is the identity that route accepts.
+        if recovery_profile && !sts2_mcp_server::valid_uuid_v4(&caller_id) {
+            return Err(String::from(
+                "STS2_CALLER_ID must be the gateway caller UUID for the recovery sideband",
+            ));
+        }
         // The native credential pair is meaningful only to the native profile.
         // Do not make unrelated profiles fail because an operator has a partial
         // native configuration in their process environment.
@@ -112,8 +123,14 @@ impl RuntimeConfig {
             lease_epoch,
             recovery_token,
             exact_restore_profile,
+            recovery_profile,
             coop_native_peer_binding,
         })
+    }
+
+    /// The gateway caller identity every recovery frame must carry.
+    pub(crate) fn frame_principal(&self) -> Option<&str> {
+        self.recovery_profile.then_some(self.caller_id.as_str())
     }
 
     pub(crate) fn native_peer_id(&self) -> Option<&str> {
