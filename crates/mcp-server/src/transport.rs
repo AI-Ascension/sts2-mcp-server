@@ -50,3 +50,7 @@ impl FrameCodec {
         response.to_json()
     }
 }
+
+#[cfg(test)]
+#[path = "transport_tests.rs"]
+mod tests;

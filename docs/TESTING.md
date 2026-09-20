@@ -362,5 +362,7 @@ correlation identifier.
 
 These tests confirm only the MCP source/component boundary and synthetic Gateway responses. They do
 not establish Gateway persistence, the recovery-control host routes that would settle an unresolved
-operation, duplicate-JSON-key rejection in the frame validator, native restore support, or release
-compatibility.
+operation, native restore support, or release compatibility. Duplicate JSON object members are
+refused before the mapping layer: `transport_tests.rs` drives `FrameCodec::decode` with a repeated
+top-level member and with a repeated sideband envelope member and requires
+`FrameError::InvalidJson` for both, with the un-repeated control frame decoding.

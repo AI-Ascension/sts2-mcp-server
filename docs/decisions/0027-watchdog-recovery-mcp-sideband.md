@@ -74,10 +74,14 @@ generic unavailable error.
 
 Artifact, validation, serialized MCP mapping, and loopback HTTP tests establish source/component
 behavior at the MCP boundary only. The following claims remain unverified and must not be inferred
-from this decision: duplicate-JSON-key rejection is not implemented in the MCP frame validator, so
-a duplicated envelope member is folded rather than refused; gateway persistence of the operation
-record; the existence or behavior of a native restore adapter; the recovery-control host routes
+from this decision: gateway persistence of the operation record; the existence or behavior of a
+native restore adapter; the recovery-control host routes
 that would let a real gateway settle an unresolved operation; and deployment or release support.
+Duplicate JSON object members are refused before the recovery mapping runs: every frame reaches
+the mapping layer through the shared parser (`crate::json::parse`), which fails a repeated object
+member, so `FrameCodec::decode` answers `FrameError::InvalidJson` rather than folding the second
+member. `transport_tests.rs` pins that at the frame boundary for both a repeated top-level member
+and a repeated sideband envelope member.
 No independent review was obtained for this change: a single author identity owns the change, and
 the subagents an independent review would require were unavailable, so the accompanying review is
 a labelled self-review at the exact head.
