@@ -11,6 +11,12 @@
 //! host and not evidence of native host behavior. No game process exists, so a
 //! lookup or reconcile that replayed (re-dispatched) an effect would be visible
 //! as a second dispatch control frame.
+//!
+//! Reviewed `sts2-gateway` `main` (`2d7f758`) returns `409
+//! recovery_operation_context_mismatch` on the lookup/reconcile read path
+//! (`service_recovery_ops_core.rs` compares the parsed original context against a
+//! full operation reference), so this gate requires a gateway build that corrects
+//! those comparison sites; it is not yet reproducible from reviewed gateway commits.
 
 use serde_json::{Value, json};
 use std::net::{SocketAddr, TcpListener};

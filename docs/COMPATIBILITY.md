@@ -372,9 +372,11 @@ runtime binary named by `STS2_COOP_GATEWAY_BINARY` over stdio. Its loopback host
 operation through bootstrap, host fence, lease acquire, intent, and a settled dispatch. The gate
 then confirms authenticated lookup and reconcile (both the gateway routes and the two sideband
 tools) return the settled record without a second dispatch, refuses an unknown operation and a
-missing capability header, and surfaces a lost host answer as an unresolved `UNKNOWN` result. This
-is executable durable-sideband evidence; native restore, native settlement, and release support
-remain unverified.
+missing capability header, and surfaces a lost host answer as an unresolved `UNKNOWN` result.
+Passing the gate requires a gateway build carrying the `service_recovery_ops_core.rs`
+reference-comparison fix; reviewed `sts2-gateway` `main` (`2d7f758`) still returns `409
+recovery_operation_context_mismatch` on the read path. With that fix it is executable
+durable-sideband evidence; native restore, native settlement, and release support remain unverified.
 
 ### Native co-op compatibility
 

@@ -378,7 +378,7 @@ runtime binary named by `STS2_COOP_GATEWAY_BINARY`. A synthetic loopback host te
 lease acquire, intent, and a settled dispatch. The gate then confirms both the gateway routes and
 the two sideband tools return the settled record without a second dispatch (no game resend),
 refuses an unknown operation and a missing capability header, and surfaces a lost host answer as an
-unresolved `UNKNOWN` result instead of a fabricated settlement. Run it with the reviewed gateway
+unresolved `UNKNOWN` result instead of a fabricated settlement. Run it against a gateway runtime
 binary:
 
 ```sh
@@ -388,5 +388,13 @@ STS2_COOP_GATEWAY_BINARY=/path/to/sts2-gateway-runtime \
 ```
 
 The loopback host is deterministic synthetic test code, not a game host. Passing this gate proves
-the executable durable-sideband composition — real MCP, real gateway, settled record, no resend —
-but not native settlement, native restore, gameplay, or release compatibility.
+the executable durable-sideband composition — real MCP, a real gateway carrying the fix below,
+settled record, no resend — but not native settlement, native restore, gameplay, or release
+compatibility.
+
+The gate is currently RED on reviewed `sts2-gateway` `main`
+(`2d7f758b8a64744b0b83a2598f1028267d73b3a9`): `POST /v1/recovery/operation/lookup` and
+`/v1/recovery/operation/reconcile` return `409 recovery_operation_context_mismatch`, because
+`service_recovery_ops_core.rs` compares the parsed original context against a full operation
+reference. It passes only against a gateway build that corrects those two comparison sites, so the
+gateway fix is a load-bearing blocker with no merged equivalent yet.
