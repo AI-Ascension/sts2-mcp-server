@@ -40,7 +40,7 @@ arbitrary downstream route is introduced.
 
 Executable startup verifies the copied Gateway negotiated-capabilities artifact
 (`sts2-gateway-negotiated-capabilities-v1`, schema digest
-`24491a0a539ac377f889e56910f777152ca3a9e6b16f7238475d122f43582ccb`, source
+`447c066568897ef720c07ade7963c97ba037645eccb9a8b71a0724d0d22fd299`, source
 `sts2-gateway` merge `e15248cd41f89188706a8a19e974f97bf5880a9f`). It fetches the closed,
 16 KiB-bounded snapshot over the configured authenticated Gateway connection and checks its exact
 instance, caller, gateway/MCP sessions, lease and correlation against runtime configuration. The
