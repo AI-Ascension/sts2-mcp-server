@@ -110,7 +110,7 @@ fn validate_metadata(object: &BTreeMap<String, JsonValue>) -> Result<(), &'stati
         .and_then(JsonValue::as_string)
         != Some("runtime-v3-gameplay")
         || object.get("schema_digest").and_then(JsonValue::as_string)
-            != Some("8e99cea36b7ede97532348fd8efe302ca79260895265a7bf14ddf7e006d8ff63")
+            != Some("daa216902d3211b9537924105b27e7718dd93dec82969a3c550131a27147c06b")
     {
         return Err("Runtime-v3 metadata is unsupported");
     }

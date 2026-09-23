@@ -16,7 +16,7 @@ fn verifies_the_frozen_gateway_artifact_and_schema_pin() {
     );
     assert_eq!(
         NEGOTIATED_CAPABILITIES_V2_SCHEMA_DIGEST,
-        "848ecaf673645a42e09357d3014c812a826d7938f4b723beeef19a81b3b8341a"
+        "c6453f1a760675c7492261eb7b50be76cf87d8c7d4762a070d26693b15225b7f"
     );
 }
 
