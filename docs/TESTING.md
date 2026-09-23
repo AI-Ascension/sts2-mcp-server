@@ -371,3 +371,22 @@ operation, native restore support, or release compatibility. Duplicate JSON obje
 refused before the mapping layer: `transport_tests.rs` drives `FrameCodec::decode` with a repeated
 top-level member and with a repeated sideband envelope member and requires
 `FrameError::InvalidJson` for both, with the un-repeated control frame decoding.
+
+The ignored `watchdog_recovery_sideband` gate composes the real MCP executable with the gateway
+runtime binary named by `STS2_COOP_GATEWAY_BINARY`. A synthetic loopback host terminates the fixed `POST
+/api/v1/runtime/recovery` mux and records one durable operation through bootstrap, host fence,
+lease acquire, intent, and a settled dispatch. The gate then confirms both the gateway routes and
+the two sideband tools return the settled record without a second dispatch (no game resend),
+refuses an unknown operation and a missing capability header, and surfaces a lost host answer as an
+unresolved `UNKNOWN` result instead of a fabricated settlement. Run it with the reviewed gateway
+binary:
+
+```sh
+STS2_COOP_GATEWAY_BINARY=/path/to/sts2-gateway-runtime \
+  cargo test --locked --offline --package sts2-mcp-server --test watchdog_recovery_sideband \
+  -- --ignored
+```
+
+The loopback host is deterministic synthetic test code, not a game host. Passing this gate proves
+the executable durable-sideband composition — real MCP, real gateway, settled record, no resend —
+but not native settlement, native restore, gameplay, or release compatibility.
