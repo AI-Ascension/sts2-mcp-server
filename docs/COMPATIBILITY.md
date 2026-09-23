@@ -366,6 +366,16 @@ layer: the shared frame parser (`crate::json::parse` through `FrameCodec::decode
 repeated member instead of folding it, and `transport_tests.rs` pins that for a repeated sideband
 envelope member as well as a repeated top-level member.
 
+The ignored `watchdog_recovery_sideband` executable gate wires the real sideband to the gateway
+runtime binary named by `STS2_COOP_GATEWAY_BINARY` over stdio. Its loopback host terminates the fixed `POST
+/api/v1/runtime/recovery` mux — synthetic test code, not a game host — and records one durable
+operation through bootstrap, host fence, lease acquire, intent, and a settled dispatch. The gate
+then confirms authenticated lookup and reconcile (both the gateway routes and the two sideband
+tools) return the settled record without a second dispatch, refuses an unknown operation and a
+missing capability header, and surfaces a lost host answer as an unresolved `UNKNOWN` result. This
+is executable durable-sideband evidence; native restore, native settlement, and release support
+remain unverified.
+
 ### Native co-op compatibility
 
 The additive `coop-native-v1-mcp` profile is selected with `STS2_RUNTIME_PROFILE=coop-native-v1` and
