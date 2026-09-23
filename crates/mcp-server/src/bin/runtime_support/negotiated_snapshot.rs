@@ -19,7 +19,7 @@ use super::super::{
 
 const RUNTIME_WITNESS_PROFILE: &str = "runtime-v3-gameplay";
 const RUNTIME_WITNESS_DIGEST: &str =
-    "8e99cea36b7ede97532348fd8efe302ca79260895265a7bf14ddf7e006d8ff63";
+    "daa216902d3211b9537924105b27e7718dd93dec82969a3c550131a27147c06b";
 const LOOKUP_PROFILE: &str = "game-information-lookup-binding-v1";
 const LOOKUP_DIGEST: &str = "f10f9af01d6be1de104069ba842e7971971e88f27553e782e81174ee7aa1cd58";
 

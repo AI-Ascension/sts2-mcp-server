@@ -214,7 +214,7 @@ local tests. Live MCP/gateway, provider, and host compatibility remain `unverifi
 
 This branch consumes protocol PR #14 producer `a81ec64d7d14bdb3079b8c7dc3c75e5c88693dfd`:
 Runtime-v3 gameplay schema digest
-`8e99cea36b7ede97532348fd8efe302ca79260895265a7bf14ddf7e006d8ff63` replaces
+`daa216902d3211b9537924105b27e7718dd93dec82969a3c550131a27147c06b` replaces
 `b37c80f583aeaf4f81ede2083bcfb4129196baf5eb092470e8738173c4b7226c`.
 The catalog and projection admit argument-free proceed, confirm-selection and cancel-selection.
 Mixed proposal versions fail closed; producer and consumers must update together. The copied schema,
