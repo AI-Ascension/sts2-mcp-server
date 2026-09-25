@@ -5,6 +5,14 @@ exists.
 
 ## Unreleased
 
+- Denied `rustdoc::private_intra_doc_links` and `rustdoc::redundant_explicit_links` in the new
+  `Check documentation links` step, alongside `broken_intra_doc_links`. Both are warn-by-default, so
+  without the deny a link from a public item to a private one prints a warning that resolves only
+  because the gate always passes `--document-private-items` — a class the step can never observe on
+  any run. No link is broken at this revision and no source file changed; the three-lint command
+  exits 0 with zero warnings on the unmodified tree and exits 101 when a public-to-private link is
+  added, where the single-lint command exits 0 with one warning.
+
 - Expose the whole content catalog as the eighth `game-information-query-v1-mcp` read. The profile
   could answer bounded list/search/get/detail/availability reads from a catalog but never told a
   caller what that catalog was, so a definition absent from a page was indistinguishable from one
