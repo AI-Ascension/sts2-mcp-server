@@ -19,6 +19,12 @@ use super::super::{
 
 const RUNTIME_WITNESS_PROFILE: &str = "runtime-v3-gameplay";
 const RUNTIME_WITNESS_DIGEST: &str =
+    "843e2e546116c8011f378d271406ac2fb4ec0e4c2dedd32dee46cc1500315ad5";
+/// The frozen `negotiated-capabilities-v1` artifact constrains this witness to
+/// the runtime-v3 digest that was current when v1 was published. A gateway
+/// still speaking v1 therefore reports that older witness, and refusing it
+/// would make the legacy fallback unreachable rather than safer.
+const RUNTIME_WITNESS_DIGEST_V1: &str =
     "daa216902d3211b9537924105b27e7718dd93dec82969a3c550131a27147c06b";
 const LOOKUP_PROFILE: &str = "game-information-lookup-binding-v1";
 const LOOKUP_DIGEST: &str = "f10f9af01d6be1de104069ba842e7971971e88f27553e782e81174ee7aa1cd58";
@@ -116,8 +122,13 @@ fn validate_producer(value: &JsonValue) -> Result<(), String> {
 
 fn validate_runtime_witness(value: &JsonValue) -> Result<(), String> {
     let witness = member(value, "runtime_v3_baseline_witness")?;
+    let expected_digest = match member(value, "schema_version")?.as_string() {
+        Some("sts2-gateway-negotiated-capabilities-v2") => RUNTIME_WITNESS_DIGEST,
+        Some("sts2-gateway-negotiated-capabilities-v1") => RUNTIME_WITNESS_DIGEST_V1,
+        _ => RUNTIME_WITNESS_DIGEST,
+    };
     if string(witness, "profile")? != RUNTIME_WITNESS_PROFILE
-        || string(witness, "schema_digest")? != RUNTIME_WITNESS_DIGEST
+        || string(witness, "schema_digest")? != expected_digest
         || member(witness, "configured_state_probe")? != &JsonValue::Bool(true)
         || member(witness, "recovery_kinds")?
             != &JsonValue::Array(vec![

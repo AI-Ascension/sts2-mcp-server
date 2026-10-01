@@ -150,6 +150,9 @@ pub(crate) fn serve_gateway_v1(listener: TcpListener) -> Result<(), String> {
     let mut snapshot = negotiated_snapshot();
     snapshot["schema_version"] = json!("sts2-gateway-negotiated-capabilities-v1");
     snapshot["gateway_revision"] = json!("sts2-gateway-negotiated-capabilities-v1");
+    // A v1 gateway reports the v1-era runtime-v3 witness, because the frozen v1
+    // artifact pins that digest and would reject anything newer.
+    snapshot["runtime_v3_baseline_witness"]["schema_digest"] = json!(super::V1_RUNTIME_SCHEMA);
     snapshot["offers"] = Value::Array(
         snapshot["offers"]
             .as_array()
