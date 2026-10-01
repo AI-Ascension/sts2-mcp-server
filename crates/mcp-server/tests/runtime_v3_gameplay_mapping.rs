@@ -357,7 +357,7 @@ fn fixture_identity(generation: i64) -> Vec<(String, JsonValue)> {
         ),
         (
             String::from("schema_digest"),
-            JsonValue::string("daa216902d3211b9537924105b27e7718dd93dec82969a3c550131a27147c06b"),
+            JsonValue::string("843e2e546116c8011f378d271406ac2fb4ec0e4c2dedd32dee46cc1500315ad5"),
         ),
         (
             String::from("provenance"),
