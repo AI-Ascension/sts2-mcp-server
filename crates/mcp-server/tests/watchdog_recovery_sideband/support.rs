@@ -30,7 +30,7 @@ pub const CONTRACT: &str = "watchdog-recovery-v1";
 pub const SCHEMA: &str = "fb934d3157485aaf6e13e6ebbb213ec8a14c7fc6f5eeebc06b7a22c1f0009217";
 pub const LEASE_CONTRACT: &str = "watchdog-host-lease-control-v1";
 pub const LEASE_SCHEMA: &str = "e22faf0f7d3cd313a007b65e52058b3c255153d5778dd8124055c283adf977f9";
-pub const V3_SCHEMA: &str = "843e2e546116c8011f378d271406ac2fb4ec0e4c2dedd32dee46cc1500315ad5";
+pub const V3_SCHEMA: &str = "0ae1d4d1525162da3059c028dcdb70df1d4d2dcf9620c5edd9b543e5f04aacc2";
 pub const ZERO_DIGEST: &str = "0000000000000000000000000000000000000000000000000000000000000000";
 
 pub const DEPLOYMENT: &str = "00000000-0000-4000-8000-000000000001";
