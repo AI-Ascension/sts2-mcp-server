@@ -19,7 +19,7 @@ use super::super::{
 
 const RUNTIME_WITNESS_PROFILE: &str = "runtime-v3-gameplay";
 const RUNTIME_WITNESS_DIGEST: &str =
-    "843e2e546116c8011f378d271406ac2fb4ec0e4c2dedd32dee46cc1500315ad5";
+    "0ae1d4d1525162da3059c028dcdb70df1d4d2dcf9620c5edd9b543e5f04aacc2";
 /// The frozen `negotiated-capabilities-v1` artifact constrains this witness to
 /// the runtime-v3 digest that was current when v1 was published. A gateway
 /// still speaking v1 therefore reports that older witness, and refusing it

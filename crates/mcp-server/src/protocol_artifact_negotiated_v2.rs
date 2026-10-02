@@ -7,7 +7,7 @@ use crate::json::JsonValue;
 pub const NEGOTIATED_CAPABILITIES_V2_PROTOCOL_VERSION: &str =
     "sts2-gateway-negotiated-capabilities-v2";
 pub const NEGOTIATED_CAPABILITIES_V2_SCHEMA_DIGEST: &str =
-    "47f254a74dfbfc493d49cdcee0cd0b6eadd8273eee1f3cd6a4efa028a18edf0d";
+    "4d8f7beabba4724f74f02f82661cdf849cebb78d9e11b801a4fbe311cc2452f5";
 /// Gateway source pin carrying the immutable artifact consumed here.
 pub const NEGOTIATED_CAPABILITIES_V2_SOURCE_COMMIT: &str =
     "bfe28e455de48d6d9db466bbcf6062ab5d85e9af";

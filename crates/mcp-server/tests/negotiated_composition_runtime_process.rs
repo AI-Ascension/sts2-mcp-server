@@ -19,7 +19,7 @@ const LOOKUP_REQUEST: &str = r#"{"operation":"discovery","scope":{"project_id":"
 const LOOKUP_SCHEMA: &str = "f10f9af01d6be1de104069ba842e7971971e88f27553e782e81174ee7aa1cd58";
 const GAME_INFORMATION_SCHEMA: &str =
     "376845b0c86b4afcd2c79ffba753eb7e7e416f5410da26b4dae970cfee2221d9";
-const RUNTIME_SCHEMA: &str = "843e2e546116c8011f378d271406ac2fb4ec0e4c2dedd32dee46cc1500315ad5";
+const RUNTIME_SCHEMA: &str = "0ae1d4d1525162da3059c028dcdb70df1d4d2dcf9620c5edd9b543e5f04aacc2";
 /// The frozen `negotiated-capabilities-v1` artifact still constrains the
 /// runtime-v3 baseline witness to the digest that was current when v1 was
 /// published, so a faithful v1 gateway keeps reporting that older witness.
