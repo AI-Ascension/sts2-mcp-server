@@ -392,9 +392,21 @@ the executable durable-sideband composition — real MCP, a real gateway carryin
 settled record, no resend — but not native settlement, native restore, gameplay, or release
 compatibility.
 
-The gate is currently RED on reviewed `sts2-gateway` `main`
-(`2d7f758b8a64744b0b83a2598f1028267d73b3a9`): `POST /v1/recovery/operation/lookup` and
-`/v1/recovery/operation/reconcile` return `409 recovery_operation_context_mismatch`, because
-`service_recovery_ops_core.rs` compares the parsed original context against a full operation
-reference. It passes only against a gateway build that corrects those two comparison sites, so the
-gateway fix is a load-bearing blocker with no merged equivalent yet.
+The `409 recovery_operation_context_mismatch` was a real historical defect on gateway
+`2d7f758b8a64744b0b83a2598f1028267d73b3a9`: lookup and reconcile compared the parsed original
+context where the full operation reference was required. Gateway [PR #94](https://github.com/AI-Ascension/sts2-gateway/pull/94)
+fixed those comparisons and merged to `main` as
+[`9fe5383de88b74d3a3d045398e1df00027906d7c`](https://github.com/AI-Ascension/sts2-gateway/commit/9fe5383de88b74d3a3d045398e1df00027906d7c).
+The gate also had a separate stale runtime-v3 schema pin: MCP [PR #80](https://github.com/AI-Ascension/sts2-mcp-server/pull/80)
+repinned it from `8e99cea36b7ede97532348fd8efe302ca79260895265a7bf14ddf7e006d8ff63` to
+`daa216902d3211b9537924105b27e7718dd93dec82969a3c550131a27147c06b`, then merged as
+[`00aaa37900cb8ab8528043dee6ce2ab85e506d56`](https://github.com/AI-Ascension/sts2-mcp-server/commit/00aaa37900cb8ab8528043dee6ce2ab85e506d56).
+
+The issue's [2026-09-23 recorded results](https://github.com/AI-Ascension/sts2-mcp-server/issues/72#issuecomment-5804523220)
+distinguish the historical configurations: gateway `2d7f758` returned the 409; that gateway with
+the PR #94 correction passed once; gateway `main` with the correction but before the MCP #80 repin
+exited during startup on the stale schema digest; and gateway `main` with both merged fixes passed
+once. Those are previously reported results, not a gate run made by this documentation change.
+The evidence used two real binaries — the MCP executable and gateway runtime — with a synthetic
+loopback host. It is not native host evidence: native T2/T3 recovery and settlement remain
+unverified.
