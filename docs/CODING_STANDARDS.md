@@ -10,7 +10,8 @@ make a workspace command green.
 
 - Use the pinned Rust `1.97.1` toolchain and edition 2024.
 - Keep MCP framing, gateway mapping, schemas, validation, and diagnostics in focused modules. The current
-  seam uses an in-tree bounded JSON representation and has no external runtime dependency.
+  seam uses an in-tree bounded JSON representation and the pinned `jsonschema` and
+  `serde_json` runtime dependencies for schema validation and JSON conversion.
 - Keep domain meaning and host behavior outside the adapter; consume only declared boundary contracts.
 - Use explicit types for MCP sessions, gateway sessions, game instances, requests, operations, and
   correlation IDs. Never merge namespaces because two fields are both named `id`.
