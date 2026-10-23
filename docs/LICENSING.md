@@ -10,8 +10,9 @@ but its files must not be committed, vendored, or packaged here.
 
 New Rust and managed source files carry an `SPDX-License-Identifier: MIT` header. Dependencies and
 fixtures require an exact version/source, license review, redistribution status, and notice entry before
-they are used. The current workspace packages use only the Rust standard library, so no runtime
-dependency notice is required beyond [THIRD_PARTY_NOTICES.md](../THIRD_PARTY_NOTICES.md).
+they are used. The policy tool uses only the Rust standard library; the MCP package also uses
+`jsonschema` and `serde_json` at runtime. See [THIRD_PARTY_NOTICES.md](../THIRD_PARTY_NOTICES.md)
+for their locked versions and the requirement to review complete notices before distribution.
 
 Do not copy or transliterate a reference implementation. Compatibility requirements must be expressed
 as project-owned contracts and tests, with first-party or authorized evidence recorded separately.
